@@ -8,7 +8,7 @@ export const SOURCES = {
   himalayas: { label: "Himalayas", homepage: "https://himalayas.app", color: "#0e7490", kind: "feed" },
   adzuna: { label: "Adzuna", homepage: "https://www.adzuna.com", color: "#be123c", kind: "api" },
   linkedin: { label: "LinkedIn", homepage: "https://www.linkedin.com", color: "#0a66c2", kind: "session" },
-  seek: { label: "Seek", homepage: "https://www.seek.com.au", color: "#e60278", kind: "session" },
+  seek: { label: "Seek", homepage: "https://au.seek.com", color: "#e60278", kind: "session" },
 } as const satisfies Record<string, SourceMeta>;
 
 export type SourceId = keyof typeof SOURCES;
@@ -37,7 +37,7 @@ export function sourceMeta(id: string): SourceMeta {
 // Deep links to each site's own search for the same keywords.
 export const DEEP_LINK_SITES = [
   { label: "LinkedIn", search: (q: string) => `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}` },
-  { label: "Seek", search: (q: string) => `https://www.seek.com.au/jobs?keywords=${encodeURIComponent(q)}` },
+  { label: "Seek", search: (q: string) => `https://au.seek.com/jobs?keywords=${encodeURIComponent(q)}` },
   { label: "Glassdoor", search: (q: string) => `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(q)}` },
   { label: "Arc", search: (q: string) => `https://arc.dev/remote-jobs?search=${encodeURIComponent(q)}` },
   { label: "YC Work at a Startup", search: (q: string) => `https://www.workatastartup.com/jobs?query=${encodeURIComponent(q)}` },

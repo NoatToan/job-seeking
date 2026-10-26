@@ -91,7 +91,7 @@ def test_parse_seek_cards():
     assert first.location == "Sydney NSW, CBD"
     assert first.salary_text == "$150k – $170k + super"
     assert first.employment_type == "Full time" and not first.remote
-    assert first.url == "https://www.seek.com.au/job/81234567"
+    assert first.url == "https://au.seek.com/job/81234567"
     assert second.company == "Private advertiser" and second.remote
 
 
@@ -107,3 +107,18 @@ def test_cloudflare_interstitial_is_blocked():
     assert not is_blocked(
         seek, "https://www.seek.com.au/react-jobs", "React Jobs in All Australia - SEEK"
     )
+
+
+def test_parse_linkedin_logged_out_cards():
+    html = """
+    <ul><li><div class="base-card job-search-card" data-entity-urn="urn:li:jobPosting:4111111111">
+      <a class="base-card__full-link" href="https://www.linkedin.com/jobs/view/react-dev-4111111111?trk=x"></a>
+      <h3 class="base-search-card__title"> React Developer </h3>
+      <h4 class="base-search-card__subtitle"><a>Employment Hero</a></h4>
+      <span class="job-search-card__location">Sydney, New South Wales, Australia</span>
+    </div></li></ul>
+    """
+    (job,) = parse_linkedin(html)
+    assert job.external_id == "4111111111"
+    assert job.title == "React Developer" and job.company == "Employment Hero"
+    assert job.location == "Sydney, New South Wales, Australia"

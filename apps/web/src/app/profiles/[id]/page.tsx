@@ -18,6 +18,7 @@ async function ProfileMatches({ params, searchParams }: PageProps<"/profiles/[id
     remote: profile.remoteOnly,
     locations: profile.locations,
     sources: profile.sources,
+    profileId: profile.id,
     page,
   });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));

@@ -129,3 +129,18 @@ def load_search_profiles(conn: psycopg.Connection, ids: list[int] | None = None)
         )
         for r in rows
     ]
+
+
+def link_profile_jobs(conn: psycopg.Connection, profile_id: int, jobs: list[JobRecord]) -> None:
+    """Remember that a site's search for this profile returned these (already upserted) jobs."""
+    keys = [(j.source, j.external_id) for j in dedupe(jobs)]
+    if not keys:
+        return
+    conn.execute(
+        "INSERT INTO profile_jobs (profile_id, job_id)"
+        " SELECT %s, j.id FROM jobs j"
+        " JOIN unnest(%s::text[], %s::text[]) AS k(source, external_id)"
+        "   ON j.source = k.source AND j.external_id = k.external_id"
+        " ON CONFLICT DO NOTHING",
+        (profile_id, [k[0] for k in keys], [k[1] for k in keys]),
+    )

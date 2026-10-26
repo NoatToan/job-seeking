@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from html import unescape
 from urllib.parse import quote, urlencode, urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -24,7 +25,8 @@ class SearchProfile:
 
 
 def _text(node: Tag | None) -> str | None:
-    return clean(node.get_text(" ", strip=True)) if node else None
+    # LinkedIn double-encodes some entities (e.g. "&#8211;" inside the text)
+    return clean(unescape(node.get_text(" ", strip=True))) if node else None
 
 
 def _plain_keywords(keywords: str) -> str:
@@ -56,26 +58,47 @@ def linkedin_search_url(profile: SearchProfile, location: str | None, page: int)
 def parse_linkedin(html: str) -> list[JobRecord]:
     soup = BeautifulSoup(html, "html.parser")
     jobs: dict[str, JobRecord] = {}
-    cards = soup.select("[data-occludable-job-id], [data-job-id], li:has(a[href*='/jobs/view/'])")
+    # logged in: data-occludable-job-id cards; logged out: base-card with a jobPosting urn
+    cards = soup.select(
+        "[data-occludable-job-id], [data-job-id], [data-entity-urn*='jobPosting'],"
+        " li:has(a[href*='/jobs/view/'])"
+    )
     for card in cards:
-        job_id = card.get("data-occludable-job-id") or card.get("data-job-id")
+        urn = str(card.get("data-entity-urn") or "")
+        job_id = (
+            card.get("data-occludable-job-id")
+            or card.get("data-job-id")
+            or (urn.rsplit(":", 1)[-1] if urn else None)
+        )
         link = card.select_one("a[href*='/jobs/view/']")
         if not job_id and link:
             m = _LINKEDIN_JOB_ID.search(str(link.get("href", "")))
             job_id = m.group(1) if m else None
         if not job_id or not str(job_id).isdigit() or job_id in jobs:
             continue
-        title = _text(card.select_one(".job-card-list__title, .job-card-container__link strong"))
-        title = title or (clean(link.get("aria-label")) if link else None) or _text(link)
+        title = _text(
+            card.select_one(
+                ".job-card-list__title, .job-card-container__link strong, .base-search-card__title"
+            )
+        )
+        title = (
+            title
+            or (clean(unescape(str(link.get("aria-label") or ""))) if link else None)
+            or _text(link)
+        )
         if not title:
             continue
         company = _text(
             card.select_one(
-                ".artdeco-entity-lockup__subtitle, .job-card-container__primary-description"
+                ".artdeco-entity-lockup__subtitle, .job-card-container__primary-description,"
+                " .base-search-card__subtitle"
             )
         )
         location = _text(
-            card.select_one(".artdeco-entity-lockup__caption, .job-card-container__metadata-item")
+            card.select_one(
+                ".artdeco-entity-lockup__caption, .job-card-container__metadata-item,"
+                " .job-search-card__location"
+            )
         )
         url = f"https://www.linkedin.com/jobs/view/{job_id}/"
         jobs[str(job_id)] = JobRecord(
@@ -95,6 +118,7 @@ def parse_linkedin(html: str) -> list[JobRecord]:
 # --- Seek -------------------------------------------------------------------------------------
 
 SEEK = "seek"
+SEEK_BASE = "https://au.seek.com"  # moved from www.seek.com.au (redirects) in 2026
 
 
 def _slug(value: str) -> str:
@@ -108,7 +132,7 @@ def seek_search_url(profile: SearchProfile, location: str | None, page: int) -> 
     params = {"daterange": "1", "sortmode": "ListedDate", "page": str(page + 1)}
     if profile.remote_only:
         params["where"] = "Remote"  # Seek's work-from-home filter is a location term
-    return "https://www.seek.com.au" + path + "?" + urlencode(params)
+    return SEEK_BASE + path + "?" + urlencode(params)
 
 
 def parse_seek(html: str) -> list[JobRecord]:
@@ -126,7 +150,7 @@ def parse_seek(html: str) -> list[JobRecord]:
             or None
         )
         work_type = _text(card.select_one("[data-automation='jobWorkType']"))
-        url = urljoin("https://www.seek.com.au", f"/job/{job_id}")
+        url = urljoin(SEEK_BASE, f"/job/{job_id}")
         jobs[job_id] = JobRecord(
             source=SEEK,
             external_id=job_id,
@@ -155,6 +179,8 @@ class Site:
     parse: Callable[[str], list[JobRecord]]
     #: URL fragments that mean "not logged in" or "security check" — the user must act.
     block_markers: tuple[str, ...]
+    #: CSS selector that is present once search results have rendered.
+    result_selector: str = "body"
 
 
 #: Page titles of bot-check interstitials (Cloudflare, generic CAPTCHA pages).
@@ -174,12 +200,14 @@ SITES: dict[str, Site] = {
         search_url=linkedin_search_url,
         parse=parse_linkedin,
         block_markers=("/checkpoint", "/authwall", "/login", "/uas/login"),
+        result_selector="[data-occludable-job-id], [data-entity-urn*='jobPosting']",
     ),
     SEEK: Site(
         id=SEEK,
-        login_url="https://www.seek.com.au/oauth/login",
+        login_url=f"{SEEK_BASE}/oauth/login",
         search_url=seek_search_url,
         parse=parse_seek,
         block_markers=("/challenge", "captcha"),
+        result_selector="article[data-job-id], [data-automation='searchResults']",
     ),
 }

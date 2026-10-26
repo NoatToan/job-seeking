@@ -17,6 +17,8 @@ export interface JobQuery extends JobFilters {
   locations?: string[];
   /** extra: restrict to these sources */
   sources?: string[];
+  /** also include jobs a site's own search returned for this profile (profile_jobs) */
+  profileId?: string;
 }
 
 const JOB_COLUMNS = `id, source, url, apply_url, title, company, location, remote, employment_type,
@@ -31,16 +33,23 @@ export async function listJobs(filters: JobQuery): Promise<{ jobs: Job[]; total:
   const tsq = q ? sql`websearch_to_tsquery('english', ${q})` : null;
   const locations = (filters.locations ?? []).filter(Boolean).map((l) => `%${escapeLike(l)}%`);
 
+  const linked = filters.profileId
+    ? sql`id IN (SELECT job_id FROM profile_jobs WHERE profile_id = ${filters.profileId})`
+    : null;
+
   const where = sql`
-    WHERE TRUE
+    WHERE (TRUE
     ${filters.source ? sql`AND source = ${filters.source}` : sql``}
     ${filters.sources?.length ? sql`AND source = ANY(${filters.sources})` : sql``}
     ${filters.remote ? sql`AND remote` : sql``}
     ${locations.length ? sql`AND (location ILIKE ANY(${locations}) ${filters.remote ? sql`` : sql`OR remote`})` : sql``}
-    ${tsq ? sql`AND search @@ ${tsq}` : sql``}
+    ${tsq ? sql`AND search @@ ${tsq}` : sql``})
+    ${linked ? sql`OR ${linked}` : sql``}
   `;
+  // Site-matched jobs get a small boost so they rank among the full-text matches.
   const order = tsq
-    ? sql`ORDER BY ts_rank_cd(search, ${tsq}) DESC, COALESCE(posted_at, first_seen_at) DESC`
+    ? sql`ORDER BY ts_rank_cd(search, ${tsq}) ${linked ? sql`+ CASE WHEN ${linked} THEN 0.1 ELSE 0 END` : sql``} DESC,
+          COALESCE(posted_at, first_seen_at) DESC`
     : sql`ORDER BY COALESCE(posted_at, first_seen_at) DESC, id DESC`;
 
   const [rows, [{ count }]] = await Promise.all([
