@@ -1,7 +1,7 @@
 // Shared React UI. Web-only for now; the Expo app will reuse these through react-native-web
 // or a NativeWind port (milestone 3).
 import type { Job } from "@ujc/core";
-import { sourceMeta } from "@ujc/core";
+import { openToLabel, sourceMeta } from "@ujc/core";
 
 export function SourceBadge({ source }: { source: string }) {
   const meta = sourceMeta(source);
@@ -39,7 +39,7 @@ export function JobCard({ job }: { job: Job }) {
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {job.company}
             {job.location ? ` · ${job.location}` : ""}
-            {job.remote ? " · Remote" : ""}
+            {job.remote ? ` · Remote${openToLabel(job.openTo) ? ` (${openToLabel(job.openTo)})` : ""}` : ""}
           </p>
         </div>
         <SourceBadge source={job.source} />

@@ -23,6 +23,8 @@ class SearchProfile:
     locations: list[str]
     remote_only: bool
     sources: list[str]
+    #: ISO country code of the candidate (e.g. "VN"): hide remote jobs not open to it
+    candidate_country: str | None = None
 
 
 def _text(node: Tag | None) -> str | None:
@@ -30,7 +32,7 @@ def _text(node: Tag | None) -> str | None:
     return clean(unescape(node.get_text(" ", strip=True))) if node else None
 
 
-def _plain_keywords(keywords: str) -> str:
+def plain_keywords(keywords: str) -> str:
     """Site search boxes don't understand our web-search syntax: drop -excluded words and quotes."""
     words = [w for w in keywords.replace('"', " ").split() if not w.startswith("-")]
     return " ".join(w for w in words if w.upper() != "OR")
@@ -44,7 +46,7 @@ _LINKEDIN_JOB_ID = re.compile(r"/jobs/view/(?:[^/?]*-)?(\d+)")
 
 def linkedin_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
     params = {
-        "keywords": _plain_keywords(profile.keywords),
+        "keywords": plain_keywords(profile.keywords),
         "f_TPR": "r86400",  # posted in the last 24 h: the crawl runs daily
         "sortBy": "DD",
         "start": str(page * 25),
@@ -127,7 +129,7 @@ def _slug(value: str) -> str:
 
 
 def seek_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
-    path = f"/{quote(_slug(_plain_keywords(profile.keywords)))}-jobs"
+    path = f"/{quote(_slug(plain_keywords(profile.keywords)))}-jobs"
     if location:
         path += f"/in-{quote(_slug(location))}"
     params = {"daterange": "1", "sortmode": "ListedDate", "page": str(page + 1)}
@@ -179,7 +181,7 @@ _NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 
 
 def arc_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
-    params = {"search": _plain_keywords(profile.keywords)}
+    params = {"search": plain_keywords(profile.keywords)}
     if page:
         params["page"] = str(page + 1)
     return "https://arc.dev/remote-jobs?" + urlencode(params)
@@ -226,7 +228,7 @@ GLASSDOOR = "glassdoor"
 
 
 def glassdoor_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
-    params = {"sc.keyword": _plain_keywords(profile.keywords), "fromAge": "1"}
+    params = {"sc.keyword": plain_keywords(profile.keywords), "fromAge": "1"}
     if location:
         params["locKeyword"] = location
     if profile.remote_only:

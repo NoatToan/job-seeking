@@ -31,7 +31,7 @@ jobs:
         run: uv run pytest
 
       - name: Crawl
-        run: uv run python -m job_crawler
+        run: uv run python -m job_crawler --profiles
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}

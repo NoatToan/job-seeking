@@ -19,10 +19,12 @@ export interface JobQuery extends JobFilters {
   sources?: string[];
   /** also include jobs a site's own search returned for this profile (profile_jobs) */
   profileId?: string;
+  /** hide remote jobs whose open_to clearly excludes the candidate (unknown is kept) */
+  acceptedOpenTo?: string[] | null;
 }
 
 const JOB_COLUMNS = `id, source, url, apply_url, title, company, location, remote, employment_type,
-  salary_text, tags, posted_at, first_seen_at`;
+  salary_text, tags, open_to, posted_at, first_seen_at`;
 
 /** Jobs matching the filters. With keywords, results are ranked by full-text relevance. */
 export async function listJobs(filters: JobQuery): Promise<{ jobs: Job[]; total: number }> {
@@ -38,13 +40,14 @@ export async function listJobs(filters: JobQuery): Promise<{ jobs: Job[]; total:
     : null;
 
   const where = sql`
-    WHERE (TRUE
+    WHERE ((TRUE
     ${filters.source ? sql`AND source = ${filters.source}` : sql``}
     ${filters.sources?.length ? sql`AND source = ANY(${filters.sources})` : sql``}
     ${filters.remote ? sql`AND remote` : sql``}
     ${locations.length ? sql`AND (location ILIKE ANY(${locations}) ${filters.remote ? sql`` : sql`OR remote`})` : sql``}
     ${tsq ? sql`AND search @@ ${tsq}` : sql``})
-    ${linked ? sql`OR ${linked}` : sql``}
+    ${linked ? sql`OR ${linked}` : sql``})
+    ${filters.acceptedOpenTo ? sql`AND (NOT remote OR open_to IS NULL OR open_to && ${filters.acceptedOpenTo})` : sql``}
   `;
   // Site-matched jobs get a small boost so they rank among the full-text matches.
   const order = tsq
@@ -78,6 +81,7 @@ function toJob(r: any): Job {
     employmentType: r.employment_type,
     salaryText: r.salary_text,
     tags: r.tags ?? [],
+    openTo: r.open_to ?? null,
     postedAt: r.posted_at ? new Date(r.posted_at).toISOString() : null,
     firstSeenAt: new Date(r.first_seen_at).toISOString(),
   };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { SOURCE_IDS, sourceMeta } from "@ujc/core";
+import { CANDIDATE_COUNTRIES, SOURCE_IDS, sourceMeta } from "@ujc/core";
 import { createProfileAction } from "./actions";
 
 const input =
@@ -33,6 +33,17 @@ export function ProfileForm() {
       </label>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="remoteOnly" /> Remote only
+      </label>
+      <label className="grid gap-1 text-sm">
+        I&apos;m based in (hides remote jobs not open to this country)
+        <select name="candidateCountry" defaultValue="" className={input}>
+          <option value="">Don&apos;t filter</option>
+          {CANDIDATE_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
       </label>
       <fieldset className="flex flex-wrap gap-3 text-sm">
         <legend className="mb-1">Sources (none = all)</legend>

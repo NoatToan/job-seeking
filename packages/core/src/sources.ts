@@ -6,6 +6,7 @@ export const SOURCES = {
   lever: { label: "Lever", homepage: "https://www.lever.co", color: "#6b46c1", kind: "ats" },
   ashby: { label: "Ashby", homepage: "https://www.ashbyhq.com", color: "#d97706", kind: "ats" },
   himalayas: { label: "Himalayas", homepage: "https://himalayas.app", color: "#0e7490", kind: "feed" },
+  remotive: { label: "Remotive", homepage: "https://remotive.com", color: "#0f766e", kind: "api" },
   adzuna: { label: "Adzuna", homepage: "https://www.adzuna.com", color: "#be123c", kind: "api" },
   linkedin: { label: "LinkedIn", homepage: "https://www.linkedin.com", color: "#0a66c2", kind: "session" },
   seek: { label: "Seek", homepage: "https://au.seek.com", color: "#e60278", kind: "session" },

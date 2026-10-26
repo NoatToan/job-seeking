@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from job_crawler import db
+from job_crawler import db, profile_search
 from job_crawler.http import HttpClient
 from job_crawler.models import Board
 from job_crawler.sources import ATS_SOURCES, DEFAULT_BOARDS, SOURCES, SkipSource
@@ -23,6 +23,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--source", action="append", choices=sorted(SOURCES), help="only these sources (repeatable)"
     )
     parser.add_argument("--dry-run", action="store_true", help="fetch and count, no DB writes")
+    parser.add_argument(
+        "--profiles",
+        action="store_true",
+        help="also search each saved search profile's keywords on Himalayas / Remotive",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -48,9 +53,18 @@ def main(argv: list[str] | None = None) -> int:
     with HttpClient() as http:
         for source in sources:
             failed += not run_source(source, http, conn)
+        if args.profiles:
+            failed += run_profile_search(http, conn, args.dry_run)
     if conn is not None:
         conn.close()
     return 1 if failed else 0
+
+
+def run_profile_search(http: HttpClient, conn, dry_run: bool) -> int:
+    if conn is None:
+        log.info("profile search needs the database (search profiles live there): skipped")
+        return 0
+    return profile_search.run(conn, http, db.load_search_profiles(conn), dry_run=dry_run)
 
 
 def boards_for(source: str, conn) -> list[Board]:

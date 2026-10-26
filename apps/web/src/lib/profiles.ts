@@ -1,6 +1,6 @@
 import "server-only";
 import { connection } from "next/server";
-import { isSourceId } from "@ujc/core";
+import { acceptedTokens, isSourceId } from "@ujc/core";
 import { db } from "./db";
 
 export interface SearchProfile {
@@ -10,6 +10,7 @@ export interface SearchProfile {
   locations: string[];
   remoteOnly: boolean;
   sources: string[];
+  candidateCountry: string | null;
   createdAt: string;
 }
 
@@ -19,6 +20,7 @@ export interface ProfileInput {
   locations: string[];
   remoteOnly: boolean;
   sources: string[];
+  candidateCountry: string | null;
 }
 
 /** Validates raw form input; returns the cleaned profile or an error message. */
@@ -34,7 +36,15 @@ export function parseProfileInput(form: FormData): ProfileInput | { error: strin
     .filter(Boolean)
     .slice(0, 10);
   const sources = form.getAll("sources").map(String).filter(isSourceId);
-  return { name, keywords, locations, remoteOnly: form.get("remoteOnly") === "on", sources };
+  const country = text("candidateCountry");
+  return {
+    name,
+    keywords,
+    locations,
+    remoteOnly: form.get("remoteOnly") === "on",
+    sources,
+    candidateCountry: acceptedTokens(country) ? country : null,
+  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +56,7 @@ function toProfile(r: any): SearchProfile {
     locations: r.locations ?? [],
     remoteOnly: r.remote_only,
     sources: r.sources ?? [],
+    candidateCountry: r.candidate_country ?? null,
     createdAt: new Date(r.created_at).toISOString(),
   };
 }
@@ -65,8 +76,8 @@ export async function getProfile(id: string): Promise<SearchProfile | null> {
 
 export async function createProfile(p: ProfileInput): Promise<string> {
   const [row] = await db()`
-    INSERT INTO search_profiles (name, keywords, locations, remote_only, sources)
-    VALUES (${p.name}, ${p.keywords}, ${p.locations}, ${p.remoteOnly}, ${p.sources})
+    INSERT INTO search_profiles (name, keywords, locations, remote_only, sources, candidate_country)
+    VALUES (${p.name}, ${p.keywords}, ${p.locations}, ${p.remoteOnly}, ${p.sources}, ${p.candidateCountry})
     RETURNING id`;
   return String(row.id);
 }

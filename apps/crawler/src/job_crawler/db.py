@@ -114,7 +114,8 @@ def load_search_profiles(conn: psycopg.Connection, ids: list[int] | None = None)
     from job_crawler.session.sites import SearchProfile
 
     rows = conn.execute(
-        "SELECT id, name, keywords, locations, remote_only, sources FROM search_profiles"
+        "SELECT id, name, keywords, locations, remote_only, sources, candidate_country"
+        " FROM search_profiles"
         " WHERE %(ids)s::bigint[] IS NULL OR id = ANY(%(ids)s::bigint[]) ORDER BY id",
         {"ids": ids or None},
     ).fetchall()
@@ -126,6 +127,7 @@ def load_search_profiles(conn: psycopg.Connection, ids: list[int] | None = None)
             locations=list(r[3] or []),
             remote_only=r[4],
             sources=list(r[5] or []),
+            candidate_country=r[6],
         )
         for r in rows
     ]

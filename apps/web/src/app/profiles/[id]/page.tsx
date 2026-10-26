@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DEEP_LINK_SITES } from "@ujc/core";
+import { acceptedTokens, CANDIDATE_COUNTRIES, DEEP_LINK_SITES } from "@ujc/core";
 import { JobCard, SourceBadge } from "@ujc/ui";
 import { listJobs, PAGE_SIZE } from "@/lib/jobs";
 import { getProfile } from "@/lib/profiles";
@@ -19,6 +19,7 @@ async function ProfileMatches({ params, searchParams }: PageProps<"/profiles/[id
     locations: profile.locations,
     sources: profile.sources,
     profileId: profile.id,
+    acceptedOpenTo: acceptedTokens(profile.candidateCountry),
     page,
   });
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -39,7 +40,11 @@ async function ProfileMatches({ params, searchParams }: PageProps<"/profiles/[id
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           <code>{profile.keywords}</code>
           {profile.locations.length ? ` · ${profile.locations.join(", ")}` : ""}
-          {profile.remoteOnly ? " · remote only" : ""} · {total.toLocaleString()} matches
+          {profile.remoteOnly ? " · remote only" : ""}
+          {profile.candidateCountry
+            ? ` · open to ${CANDIDATE_COUNTRIES.find((c) => c.code === profile.candidateCountry)?.label}`
+            : ""}{" "}
+          · {total.toLocaleString()} matches
         </p>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {bySource.map(([source, n]) => (
