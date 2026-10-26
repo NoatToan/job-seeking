@@ -9,6 +9,8 @@ export const SOURCES = {
   adzuna: { label: "Adzuna", homepage: "https://www.adzuna.com", color: "#be123c", kind: "api" },
   linkedin: { label: "LinkedIn", homepage: "https://www.linkedin.com", color: "#0a66c2", kind: "session" },
   seek: { label: "Seek", homepage: "https://au.seek.com", color: "#e60278", kind: "session" },
+  arc: { label: "Arc", homepage: "https://arc.dev", color: "#4338ca", kind: "session" },
+  glassdoor: { label: "Glassdoor", homepage: "https://www.glassdoor.com", color: "#0caa41", kind: "session" },
 } as const satisfies Record<string, SourceMeta>;
 
 export type SourceId = keyof typeof SOURCES;

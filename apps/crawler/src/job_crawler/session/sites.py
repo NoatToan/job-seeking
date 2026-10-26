@@ -1,5 +1,6 @@
 """Search URL builders and result-page parsers for session sites (pure, tested offline)."""
 
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -9,7 +10,7 @@ from urllib.parse import quote, urlencode, urljoin
 from bs4 import BeautifulSoup, Tag
 
 from job_crawler.models import JobRecord
-from job_crawler.text import clean
+from job_crawler.text import clean, format_salary, parse_datetime
 
 
 @dataclass(frozen=True)
@@ -171,6 +172,106 @@ def parse_seek(html: str) -> list[JobRecord]:
     return [j for j in jobs.values() if j.title]
 
 
+# --- Arc.dev (public pages, all remote; data is in the Next.js page JSON) ---------------------
+
+ARC = "arc"
+_NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
+
+
+def arc_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
+    params = {"search": _plain_keywords(profile.keywords)}
+    if page:
+        params["page"] = str(page + 1)
+    return "https://arc.dev/remote-jobs?" + urlencode(params)
+
+
+def parse_arc(html: str) -> list[JobRecord]:
+    m = _NEXT_DATA.search(html)
+    if not m:
+        return []
+    try:
+        props = json.loads(m.group(1))["props"]["pageProps"]
+    except (ValueError, KeyError, TypeError):
+        return []
+    jobs: dict[str, JobRecord] = {}
+    for item in (props.get("arcJobs") or []) + (props.get("externalJobs") or []):
+        key, slug, title = item.get("randomKey"), item.get("urlString"), clean(item.get("title"))
+        if not key or not slug or not title or key in jobs:
+            continue
+        url = f"https://arc.dev/remote-jobs/details/{slug}-{key}"
+        countries = item.get("requiredCountries") or []
+        jobs[key] = JobRecord(
+            source=ARC,
+            external_id=key,
+            url=url,
+            apply_url=url,
+            title=title,
+            company=clean((item.get("company") or {}).get("name")) or "Confidential (via Arc)",
+            location="Remote" + (f" ({', '.join(countries)})" if countries else ""),
+            remote=True,
+            employment_type=clean(item.get("jobType")),
+            salary_text=format_salary(
+                item.get("minAnnualSalary"), item.get("maxAnnualSalary"), "USD", "year"
+            ),
+            tags=[c["name"] for c in item.get("categories") or [] if c.get("name")],
+            posted_at=parse_datetime(item.get("postedAt")),
+            raw=item,
+        )
+    return list(jobs.values())
+
+
+# --- Glassdoor (Cloudflare-protected: the user passes the check in a visible window) -----------
+
+GLASSDOOR = "glassdoor"
+
+
+def glassdoor_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
+    params = {"sc.keyword": _plain_keywords(profile.keywords), "fromAge": "1"}
+    if location:
+        params["locKeyword"] = location
+    if profile.remote_only:
+        params["remoteWorkType"] = "1"
+    return "https://www.glassdoor.com/Job/jobs.htm?" + urlencode(params)
+
+
+def parse_glassdoor(html: str) -> list[JobRecord]:
+    soup = BeautifulSoup(html, "html.parser")
+    jobs: dict[str, JobRecord] = {}
+    for card in soup.select("li[data-test='jobListing'], [data-jobid]"):
+        job_id = str(card.get("data-jobid") or "")
+        title_link = card.select_one("a[data-test='job-title'], a[data-test='job-link']")
+        if not job_id.isdigit() or not title_link or job_id in jobs:
+            continue
+        href = str(title_link.get("href") or "")
+        url = (
+            urljoin("https://www.glassdoor.com", href)
+            if href
+            else (f"https://www.glassdoor.com/job-listing/j?jl={job_id}")
+        )
+        location = _text(card.select_one("[data-test='emp-location']"))
+        jobs[job_id] = JobRecord(
+            source=GLASSDOOR,
+            external_id=job_id,
+            url=url,
+            apply_url=url,
+            title=_text(title_link) or "",
+            company=_text(
+                card.select_one(
+                    "[class*='EmployerProfile_compactEmployerName'], [data-test='employer-name']"
+                )
+            )
+            or "Unknown",
+            location=location,
+            remote="remote" in (location or "").lower(),
+            salary_text=_text(card.select_one("[data-test='detailSalary']")),
+            description=_text(
+                card.select_one("[data-test='descSnippet'], [class*='jobDescriptionSnippet']")
+            ),
+            raw={"card_text": _text(card)},
+        )
+    return [j for j in jobs.values() if j.title]
+
+
 @dataclass(frozen=True)
 class Site:
     id: str
@@ -181,6 +282,8 @@ class Site:
     block_markers: tuple[str, ...]
     #: CSS selector that is present once search results have rendered.
     result_selector: str = "body"
+    #: result pages this site supports per search (Glassdoor uses "load more", not pages)
+    max_pages: int = 5
 
 
 #: Page titles of bot-check interstitials (Cloudflare, generic CAPTCHA pages).
@@ -209,5 +312,22 @@ SITES: dict[str, Site] = {
         parse=parse_seek,
         block_markers=("/challenge", "captcha"),
         result_selector="article[data-job-id], [data-automation='searchResults']",
+    ),
+    ARC: Site(
+        id=ARC,
+        login_url="https://arc.dev/login",
+        search_url=arc_search_url,
+        parse=parse_arc,
+        block_markers=("captcha",),
+        result_selector="#__NEXT_DATA__",
+    ),
+    GLASSDOOR: Site(
+        id=GLASSDOOR,
+        login_url="https://www.glassdoor.com/profile/login_input.htm",
+        search_url=glassdoor_search_url,
+        parse=parse_glassdoor,
+        block_markers=("/profile/login", "captcha"),
+        result_selector="li[data-test='jobListing'], [data-test='jobsList']",
+        max_pages=1,
     ),
 }

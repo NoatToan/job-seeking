@@ -1,10 +1,10 @@
-"""uv run python -m job_crawler.session {login,crawl,poc} [--engine cloak|chromium] ...
+"""uv run python -m job_crawler.session {login,crawl,check} ...
 
-login linkedin|seek        open a visible browser; log in by hand, then close the window
+login SITE                 open a visible browser; log in by hand, then close the window
 crawl [--site ...] [--profile ID ...] [--pages N] [--dry-run]
                            crawl the saved search profiles with the logged-in session
-poc [--keywords K] [--location L] [--headed]
-                           load one search page per site with each engine and compare
+check [--site ...] [--keywords K] [--location L] [--headed]
+                           load one search page per site (logged out): reachable or blocked?
 """
 
 import argparse
@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 from job_crawler import db
 from job_crawler.cli import REPO_ROOT
 from job_crawler.models import JobRecord
-from job_crawler.session.engine import ENGINES, open_context, profile_dir
+from job_crawler.session.engine import open_context, profile_dir
 from job_crawler.session.sites import SITES, SearchProfile, Site, is_blocked
 
 log = logging.getLogger("job_crawler.session")
@@ -30,13 +30,13 @@ MAX_PAGES = 5
 BLOCK_WAIT_SECONDS = 300
 
 
-def _launch(site: Site, engine: str, headless: bool = False):
+def _launch(site: Site, headless: bool = False):
     """Browser with this site's own persistent profile (where the user's login lives)."""
-    return open_context(engine, profile_dir(engine, site.id), headless=headless)
+    return open_context(profile_dir(site.id), headless=headless)
 
 
-def login(site: Site, engine: str) -> int:
-    context = _launch(site, engine)
+def login(site: Site) -> int:
+    context = _launch(site)
     page = context.pages[0] if context.pages else context.new_page()
     page.goto(site.login_url)
     print(f"Log in to {site.id} in the browser window, then close the window.")
@@ -73,7 +73,7 @@ def _wait_for_user(site: Site, page) -> bool:
 def _wait_for_results(site: Site, page, timeout_ms: int = 15_000) -> None:
     """Redirects and client rendering finish after DOMContentLoaded: wait for the result list."""
     try:
-        page.wait_for_selector(site.result_selector, timeout=timeout_ms)
+        page.wait_for_selector(site.result_selector, state="attached", timeout=timeout_ms)
     except Exception:  # noqa: BLE001 - no results (or a new layout): parse what is there
         log.warning("%s: result list not found at %s", site.id, page.url.split("?")[0])
 
@@ -86,17 +86,17 @@ def _scroll_results(page) -> None:
 
 
 def crawl_site(
-    site: Site, profiles: list[SearchProfile], pages: int, engine: str, headless: bool = False
+    site: Site, profiles: list[SearchProfile], pages: int, headless: bool = False
 ) -> tuple[dict[int, list[JobRecord]], str | None]:
     """Jobs found per search profile id, plus an error if the run stopped early."""
-    context = _launch(site, engine, headless)
+    context = _launch(site, headless)
     page = context.pages[0] if context.pages else context.new_page()
     jobs: dict[int, list[JobRecord]] = {}
     error = None
     try:
         for profile in profiles:
             for location in profile.locations or [None]:
-                for n in range(pages):
+                for n in range(min(pages, site.max_pages)):
                     url = site.search_url(profile, location, n)
                     page.goto(url, wait_until="domcontentloaded")
                     page.wait_for_timeout(random.uniform(2500, 4500))
@@ -155,7 +155,7 @@ def crawl(args: argparse.Namespace) -> int:
             if not profiles:
                 continue
             run_id = None if args.dry_run else db.start_run(conn, site.id)
-            by_profile, error = crawl_site(site, profiles, args.pages, args.engine, args.headless)
+            by_profile, error = crawl_site(site, profiles, args.pages, args.headless)
             jobs = [j for found_jobs in by_profile.values() for j in found_jobs]
             found = len(db.dedupe(jobs))
             if args.dry_run:
@@ -179,52 +179,48 @@ def crawl(args: argparse.Namespace) -> int:
         conn.close()
 
 
-def poc(args: argparse.Namespace) -> int:
-    """One search page per site, per engine, in a throwaway profile (logged out): blocked or not?"""
+def check(args: argparse.Namespace) -> int:
+    """One search page per site in a throwaway profile (logged out): reachable or blocked?"""
     profile = SearchProfile(
         id=0, name="poc", keywords=args.keywords, locations=[], remote_only=False, sources=[]
     )
     rows = []
-    for engine in args.engines or list(ENGINES):
-        for site_id in args.site or list(SITES):
-            site = SITES[site_id]
-            url = site.search_url(profile, args.location, 0)
-            started = time.monotonic()
-            row = {"engine": engine, "site": site.id, "blocked": None, "jobs": 0, "title": ""}
-            with tempfile.TemporaryDirectory(prefix="ujc-poc-") as tmp:
+    for site_id in args.site or list(SITES):
+        site = SITES[site_id]
+        url = site.search_url(profile, args.location, 0)
+        started = time.monotonic()
+        row = {"site": site.id, "blocked": None, "jobs": 0, "title": ""}
+        with tempfile.TemporaryDirectory(prefix="ujc-poc-") as tmp:
+            try:
+                context = open_context(Path(tmp), headless=not args.headed)
                 try:
-                    context = open_context(engine, Path(tmp), headless=not args.headed)
-                    try:
-                        page = context.pages[0] if context.pages else context.new_page()
-                        page.goto(url, wait_until="domcontentloaded", timeout=45_000)
-                        # give a non-interactive challenge time to resolve by itself
-                        for _ in range(6):
-                            page.wait_for_timeout(2500)
-                            if not _blocked(site, page):
-                                break
-                        row["blocked"] = _blocked(site, page)
-                        if not row["blocked"]:
-                            _wait_for_results(site, page)
-                            _scroll_results(page)
-                            row["jobs"] = len(site.parse(page.content()))
-                        row["title"] = page.title()[:60]
-                        row["url"] = page.url.split("?")[0]
-                    finally:
-                        context.close()
-                except Exception as exc:  # noqa: BLE001 - report and continue
-                    row["title"] = f"error: {type(exc).__name__}: {exc}"[:80]
-            row["seconds"] = round(time.monotonic() - started, 1)
-            rows.append(row)
-            log.info("poc %s", row)
-            time.sleep(random.uniform(3, 6))
+                    page = context.pages[0] if context.pages else context.new_page()
+                    page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+                    # some checks clear on their own after a few seconds; we only wait
+                    for _ in range(6):
+                        page.wait_for_timeout(2500)
+                        if not _blocked(site, page):
+                            break
+                    row["blocked"] = _blocked(site, page)
+                    if not row["blocked"]:
+                        _wait_for_results(site, page)
+                        _scroll_results(page)
+                        row["jobs"] = len(site.parse(page.content()))
+                    row["title"] = page.title()[:60]
+                    row["url"] = page.url.split("?")[0]
+                finally:
+                    context.close()
+            except Exception as exc:  # noqa: BLE001 - report and continue
+                row["title"] = f"error: {type(exc).__name__}: {exc}"[:80]
+        row["seconds"] = round(time.monotonic() - started, 1)
+        rows.append(row)
+        log.info("check %s", row)
+        time.sleep(random.uniform(3, 6))
 
-    print(f"\n{'engine':<9} {'site':<9} {'blocked':<8} {'jobs':>5} {'sec':>5}  page title")
+    print(f"\n{'site':<10} {'blocked':<8} {'jobs':>5} {'sec':>5}  page title")
     for r in rows:
         blocked = "error" if r["blocked"] is None else ("yes" if r["blocked"] else "no")
-        print(
-            f"{r['engine']:<9} {r['site']:<9} {blocked:<8} {r['jobs']:>5} {r['seconds']:>5}"
-            f"  {r['title']}"
-        )
+        print(f"{r['site']:<10} {blocked:<8} {r['jobs']:>5} {r['seconds']:>5}  {r['title']}")
     return 0
 
 
@@ -249,14 +245,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="no window (unattended runs; a CAPTCHA then stops the site instead of waiting)",
     )
-    p_poc = sub.add_parser("poc", help="compare engines on one search page per site")
-    p_poc.add_argument("--site", action="append", choices=sorted(SITES))
-    p_poc.add_argument("--engine", dest="engines", action="append", choices=ENGINES)
-    p_poc.add_argument("--keywords", default="react developer")
-    p_poc.add_argument("--location", default=None)
-    p_poc.add_argument("--headed", action="store_true", help="show the browser windows")
-    for p in (p_login, p_crawl):
-        p.add_argument("--engine", choices=ENGINES, default="cloak", help="browser engine")
+    p_check = sub.add_parser("check", help="is each site reachable (logged out)?")
+    p_check.add_argument("--site", action="append", choices=sorted(SITES))
+    p_check.add_argument("--keywords", default="react developer")
+    p_check.add_argument("--location", default=None)
+    p_check.add_argument("--headed", action="store_true", help="show the browser windows")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -264,9 +257,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     load_dotenv(REPO_ROOT / ".env.local", override=False)
     if args.command == "login":
-        return login(SITES[args.site], args.engine)
-    if args.command == "poc":
-        return poc(args)
+        return login(SITES[args.site])
+    if args.command == "check":
+        return check(args)
     args.pages = max(1, min(args.pages, MAX_PAGES))
     return crawl(args)
 

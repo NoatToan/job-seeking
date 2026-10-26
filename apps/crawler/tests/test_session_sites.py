@@ -3,8 +3,12 @@ from urllib.parse import parse_qs, urlsplit
 from job_crawler.session.sites import (
     SITES,
     SearchProfile,
+    arc_search_url,
+    glassdoor_search_url,
     is_blocked,
     linkedin_search_url,
+    parse_arc,
+    parse_glassdoor,
     parse_linkedin,
     parse_seek,
     seek_search_url,
@@ -122,3 +126,89 @@ def test_parse_linkedin_logged_out_cards():
     assert job.external_id == "4111111111"
     assert job.title == "React Developer" and job.company == "Employment Hero"
     assert job.location == "Sydney, New South Wales, Australia"
+
+
+def _next_data(page_props: dict) -> str:
+    import json
+
+    payload = json.dumps({"props": {"pageProps": page_props}})
+    return f'<html><script id="__NEXT_DATA__" type="application/json">{payload}</script></html>'
+
+
+def test_arc_search_url():
+    q = parse_qs(urlsplit(arc_search_url(PROFILE, None, 1)).query)
+    assert q == {"search": ["react native typescript"], "page": ["2"]}
+    assert "page" not in arc_search_url(PROFILE, None, 0)
+
+
+def test_parse_arc_next_data():
+    html = _next_data(
+        {
+            "arcJobs": [
+                {
+                    "randomKey": "pugy8dj8tg",
+                    "title": "Senior React Developer",
+                    "jobType": "contract",
+                    "requiredCountries": [],
+                    "minAnnualSalary": 90000,
+                    "maxAnnualSalary": 120000,
+                    "urlString": "senior-react-developer",
+                    "postedAt": 1792963611,
+                    "company": {"randomKey": None},
+                    "categories": [{"name": "React"}, {"name": "TypeScript"}],
+                }
+            ],
+            "externalJobs": [
+                {
+                    "randomKey": "ptsx1ez43g",
+                    "title": "Frontend Engineer",
+                    "jobType": "permanent",
+                    "requiredCountries": ["US", "CA"],
+                    "urlString": "acme-frontend-engineer",
+                    "postedAt": 1792686229,
+                    "company": {"name": "Acme"},
+                    "categories": [],
+                },
+                {"randomKey": "pugy8dj8tg", "title": "dup", "urlString": "dup"},
+            ],
+        }
+    )
+    first, second = parse_arc(html)
+    assert first.url == "https://arc.dev/remote-jobs/details/senior-react-developer-pugy8dj8tg"
+    assert first.company == "Confidential (via Arc)" and first.remote
+    assert first.tags == ["React", "TypeScript"] and first.salary_text
+    assert first.posted_at is not None and first.posted_at.year == 2026
+    assert second.company == "Acme" and second.location == "Remote (US, CA)"
+    assert parse_arc("<html>no data</html>") == []
+
+
+GLASSDOOR_HTML = """
+<ul data-test="jobsList">
+  <li data-test="jobListing" data-jobid="1009876543210">
+    <a data-test="job-title"
+       href="/job-listing/react-developer-acme-JV_IC2235932.htm?jl=1009876543210"
+       >React Developer</a>
+    <span class="EmployerProfile_compactEmployerName__abc12">Acme Pty Ltd</span>
+    <div data-test="emp-location">Sydney</div>
+    <div data-test="detailSalary">A$120K - A$140K (Employer est.)</div>
+    <div data-test="descSnippet">Build React apps.</div>
+  </li>
+  <li data-test="jobListing" data-jobid="abc"><a data-test="job-title">bad id</a></li>
+</ul>
+"""
+
+
+def test_glassdoor_search_url():
+    q = parse_qs(urlsplit(glassdoor_search_url(PROFILE, "Sydney", 0)).query)
+    assert q["sc.keyword"] == ["react native typescript"]
+    assert q["locKeyword"] == ["Sydney"] and q["remoteWorkType"] == ["1"]
+
+
+def test_parse_glassdoor_cards():
+    (job,) = parse_glassdoor(GLASSDOOR_HTML)
+    assert job.external_id == "1009876543210"
+    assert job.title == "React Developer" and job.company == "Acme Pty Ltd"
+    assert job.url.startswith("https://www.glassdoor.com/job-listing/react-developer-acme")
+    assert job.salary_text == "A$120K - A$140K (Employer est.)"
+    assert job.description == "Build React apps."
+    assert SITES["glassdoor"].max_pages == 1
