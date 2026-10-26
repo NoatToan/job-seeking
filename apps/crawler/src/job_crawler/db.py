@@ -107,3 +107,25 @@ def truncate_error(error: str | None) -> str | None:
     if not error:
         return None
     return error if len(error) <= ERROR_MAX_LEN else error[: ERROR_MAX_LEN - 3] + "..."
+
+
+def load_search_profiles(conn: psycopg.Connection, ids: list[int] | None = None):
+    """Saved search profiles (all, or only `ids`)."""
+    from job_crawler.session.sites import SearchProfile
+
+    rows = conn.execute(
+        "SELECT id, name, keywords, locations, remote_only, sources FROM search_profiles"
+        " WHERE %(ids)s::bigint[] IS NULL OR id = ANY(%(ids)s::bigint[]) ORDER BY id",
+        {"ids": ids or None},
+    ).fetchall()
+    return [
+        SearchProfile(
+            id=r[0],
+            name=r[1],
+            keywords=r[2],
+            locations=list(r[3] or []),
+            remote_only=r[4],
+            sources=list(r[5] or []),
+        )
+        for r in rows
+    ]

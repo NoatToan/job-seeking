@@ -127,7 +127,12 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Unified Job Crawler</h1>
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-2xl font-bold">Unified Job Crawler</h1>
+          <Link href="/profiles" className="text-sm underline">
+            My search profiles →
+          </Link>
+        </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Jobs crawled daily from open feeds and public company job boards. Every job shows where it came from and
           links to the original posting.

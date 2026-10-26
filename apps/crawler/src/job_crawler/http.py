@@ -48,9 +48,7 @@ class HttpClient:
                     response.raise_for_status()
                     return response
                 wait = self._retry_after(response) or self.backoff * 2**attempt
-                log.warning(
-                    "GET %s -> %s, retrying in %.1fs", url, response.status_code, wait
-                )
+                log.warning("GET %s -> %s, retrying in %.1fs", url, response.status_code, wait)
             time.sleep(wait)
             attempt += 1
 

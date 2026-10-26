@@ -22,7 +22,15 @@ CATEGORIES = [
     "remote-design-jobs",
 ]
 _RAW_KEYS = (
-    "id", "title", "link", "published", "region", "country", "state", "skills", "type",
+    "id",
+    "title",
+    "link",
+    "published",
+    "region",
+    "country",
+    "state",
+    "skills",
+    "type",
     "expires_at",
 )
 

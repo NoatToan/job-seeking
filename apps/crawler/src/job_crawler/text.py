@@ -4,8 +4,25 @@ from datetime import UTC, datetime
 from html.parser import HTMLParser
 
 _BLOCK_TAGS = {
-    "br", "p", "div", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6",
-    "tr", "table", "section", "article", "blockquote", "pre", "hr",
+    "br",
+    "p",
+    "div",
+    "li",
+    "ul",
+    "ol",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "tr",
+    "table",
+    "section",
+    "article",
+    "blockquote",
+    "pre",
+    "hr",
 }
 _SKIP_TAGS = {"script", "style"}
 

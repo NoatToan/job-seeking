@@ -7,6 +7,8 @@ export const SOURCES = {
   ashby: { label: "Ashby", homepage: "https://www.ashbyhq.com", color: "#d97706", kind: "ats" },
   himalayas: { label: "Himalayas", homepage: "https://himalayas.app", color: "#0e7490", kind: "feed" },
   adzuna: { label: "Adzuna", homepage: "https://www.adzuna.com", color: "#be123c", kind: "api" },
+  linkedin: { label: "LinkedIn", homepage: "https://www.linkedin.com", color: "#0a66c2", kind: "session" },
+  seek: { label: "Seek", homepage: "https://www.seek.com.au", color: "#e60278", kind: "session" },
 } as const satisfies Record<string, SourceMeta>;
 
 export type SourceId = keyof typeof SOURCES;
@@ -15,8 +17,11 @@ export interface SourceMeta {
   label: string;
   homepage: string;
   color: string;
-  /** feed = public RSS/API, ats = company board on a public ATS API, api = licensed aggregator API */
-  kind: "feed" | "ats" | "api";
+  /**
+   * feed = public RSS/API, ats = company board on a public ATS API, api = licensed aggregator API,
+   * session = crawled in the user's own logged-in browser (apps/crawler job_crawler.session)
+   */
+  kind: "feed" | "ats" | "api" | "session";
 }
 
 export const SOURCE_IDS = Object.keys(SOURCES) as SourceId[];
@@ -29,7 +34,7 @@ export function sourceMeta(id: string): SourceMeta {
   return isSourceId(id) ? SOURCES[id] : { label: id, homepage: "", color: "#6b7280", kind: "feed" };
 }
 
-// Sites whose terms forbid scraping: we only deep-link to their own search (see research report).
+// Deep links to each site's own search for the same keywords.
 export const DEEP_LINK_SITES = [
   { label: "LinkedIn", search: (q: string) => `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}` },
   { label: "Seek", search: (q: string) => `https://www.seek.com.au/jobs?keywords=${encodeURIComponent(q)}` },

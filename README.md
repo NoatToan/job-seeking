@@ -2,7 +2,12 @@
 
 Job aggregator: crawls jobs every day from open feeds and public company job boards, shows the source of every job, and (next milestones) matches them to each user's CVs and helps them apply.
 
-Milestone 1 (this step) only uses sources that allow programmatic access: We Work Remotely RSS, Greenhouse / Lever / Ashby public board APIs, Himalayas, and Adzuna (optional, needs a key). LinkedIn, Seek, Glassdoor, Arc and YC Work at a Startup only appear as deep links to their own search, because their terms forbid scraping (see the research report in the Slack thread).
+Sources:
+- **Daily, server-side (GitHub Actions):** We Work Remotely RSS, Greenhouse / Lever / Ashby public board APIs, Himalayas, Adzuna (optional key).
+- **Personal session crawler (user's machine):** LinkedIn and Seek, in the user's own logged-in browser. See `apps/crawler/README.md`. These sites forbid automated access, so it stays personal, slow, and stops for the user at any CAPTCHA.
+- **Deep links only:** Glassdoor, Arc and YC Work at a Startup.
+
+**Search profiles** (`/profiles`) hold what a user is looking for (keywords in web-search syntax, locations, remote, sources). Jobs are mapped to a profile with Postgres full-text search (a weighted `tsvector` plus a GIN index), ranked by relevance, and every job shows its source badge. Elasticsearch isn't needed at this scale (thousands up to a few million jobs). Revisit it only if we need fuzzy/typo search or heavy faceting over many millions of rows.
 
 ## Layout
 
