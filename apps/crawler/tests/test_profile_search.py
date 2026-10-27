@@ -69,3 +69,9 @@ def test_wanted_respects_profile_sources():
     p = SearchProfile(1, "x", "next.js", [], True, ["remotive"])
     assert profile_search.wanted(p, "remotive") and not profile_search.wanted(p, "himalayas")
     assert profile_search.wanted(SearchProfile(2, "y", "a", [], False, []), "himalayas")
+
+
+def test_mentions_all_keywords():
+    (job,) = remotive.parse(REMOTIVE_PAYLOAD)
+    assert profile_search.mentions_all(job, "next.js visa")
+    assert not profile_search.mentions_all(job, "next.js relocation")

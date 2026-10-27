@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from html import unescape
 from urllib.parse import quote, urlencode, urljoin
 
@@ -180,11 +181,16 @@ ARC = "arc"
 _NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 
 
+def arc_category(keywords: str) -> str:
+    """Arc filters by category URL (/remote-jobs/nextjs); its ?search= returns a generic list.
+    "Next.js" -> "next-js" (Arc redirects it to nextjs), "C#" -> "c_sharp"."""
+    k = plain_keywords(keywords).strip().lower().replace("c#", "c_sharp").replace("+", "p")
+    return re.sub(r"[^a-z0-9_]+", "-", k).strip("-")
+
+
 def arc_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
-    params = {"search": plain_keywords(profile.keywords)}
-    if page:
-        params["page"] = str(page + 1)
-    return "https://arc.dev/remote-jobs?" + urlencode(params)
+    url = f"https://arc.dev/remote-jobs/{quote(arc_category(profile.keywords))}"
+    return url + (f"?page={page + 1}" if page else "")
 
 
 def parse_arc(html: str) -> list[JobRecord]:
@@ -196,11 +202,14 @@ def parse_arc(html: str) -> list[JobRecord]:
     except (ValueError, KeyError, TypeError):
         return []
     jobs: dict[str, JobRecord] = {}
-    for item in (props.get("arcJobs") or []) + (props.get("externalJobs") or []):
+    # arcJobs are posted on Arc (/details/), externalJobs are aggregated by Arc (/j/)
+    items = [("details", i) for i in props.get("arcJobs") or []]
+    items += [("j", i) for i in props.get("externalJobs") or []]
+    for kind, item in items:
         key, slug, title = item.get("randomKey"), item.get("urlString"), clean(item.get("title"))
         if not key or not slug or not title or key in jobs:
             continue
-        url = f"https://arc.dev/remote-jobs/details/{slug}-{key}"
+        url = f"https://arc.dev/remote-jobs/{kind}/{slug}-{key}"
         countries = item.get("requiredCountries") or []
         jobs[key] = JobRecord(
             source=ARC,
@@ -209,7 +218,7 @@ def parse_arc(html: str) -> list[JobRecord]:
             apply_url=url,
             title=title,
             company=clean((item.get("company") or {}).get("name")) or "Confidential (via Arc)",
-            location="Remote" + (f" ({', '.join(countries)})" if countries else ""),
+            location=f"Remote ({', '.join(countries)})" if countries else "Remote (Anywhere)",
             remote=True,
             employment_type=clean(item.get("jobType")),
             salary_text=format_salary(
@@ -227,7 +236,15 @@ def parse_arc(html: str) -> list[JobRecord]:
 GLASSDOOR = "glassdoor"
 
 
+GLASSDOOR_REMOTE_LOCATION_ID = 11047
+
+
 def glassdoor_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
+    if profile.remote_only and not location:
+        kw = " ".join(plain_keywords(profile.keywords).lower().split())
+        slug = quote(kw.replace(" ", "-"), safe="-")
+        span = f"IL.0,6_IS{GLASSDOOR_REMOTE_LOCATION_ID}_KO7,{7 + len(kw)}"
+        return f"https://www.glassdoor.com/Job/remote-{slug}-jobs-SRCH_{span}.htm"
     params = {"sc.keyword": plain_keywords(profile.keywords), "fromAge": "1"}
     if location:
         params["locKeyword"] = location
@@ -236,7 +253,76 @@ def glassdoor_search_url(profile: SearchProfile, location: str | None, page: int
     return "https://www.glassdoor.com/Job/jobs.htm?" + urlencode(params)
 
 
+# Search pages are a Next.js App Router page: listings live in the React Server Components payload
+# (`self.__next_f.push([1, "..."])` chunks) as a "jobListings":[...] array. Ported from the
+# jobflow POC, where it was verified on live pages. The DOM cards below are the fallback.
+_RSC_CHUNK = re.compile(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)</script>', re.S)
+_LISTINGS = re.compile(r'"jobListings":\[')
+_GD_PERIODS = {"ANNUAL": "year", "HOURLY": "hour", "MONTHLY": "month", "WEEKLY": "week"}
+
+
+def _glassdoor_rsc(html: str) -> list[dict] | None:
+    chunks = _RSC_CHUNK.findall(html)
+    if not chunks:
+        return None
+    try:
+        payload = "".join(json.loads(f'"{c}"') for c in chunks)
+    except ValueError:
+        return None
+    m = _LISTINGS.search(payload)
+    if not m:
+        return [] if "jobListings" in payload else None
+    try:
+        items, _ = json.JSONDecoder().raw_decode(payload, m.end() - 1)
+    except ValueError:
+        return None
+    return [i for i in items if isinstance(i, dict)]
+
+
+def _glassdoor_listing(item: dict) -> JobRecord | None:
+    jv = item.get("jobview") or {}
+    h = jv.get("header") or {}
+    job = jv.get("job") or {}
+    listing_id = job.get("listingId") or h.get("jobListingId")
+    url = h.get("seoJobLink")
+    title = clean(job.get("jobTitleText") or h.get("jobTitleText"))
+    if not (listing_id and url and title):
+        return None
+    pay = h.get("payPeriodAdjustedPay") or {}
+    attrs = (h.get("indeedJobAttribute") or {}).get("extractedJobAttributes") or []
+    skills = set((h.get("indeedJobAttribute") or {}).get("skills") or [])
+    location = clean(h.get("locationName"))
+    age = h.get("ageInDays")
+    return JobRecord(
+        source=GLASSDOOR,
+        external_id=str(listing_id),
+        url=urljoin("https://www.glassdoor.com", url),
+        apply_url=urljoin("https://www.glassdoor.com", url),
+        title=title,
+        company=clean(h.get("employerNameFromSearch")) or "Unknown",
+        location=location,
+        remote="remote" in (location or "").lower(),
+        salary_text=format_salary(
+            pay.get("p10"),
+            pay.get("p90"),
+            h.get("payCurrency"),
+            _GD_PERIODS.get(h.get("payPeriod") or ""),
+        )
+        if pay
+        else None,
+        description=clean(" ".join(job.get("descriptionFragmentsText") or [])),
+        tags=[a["value"] for a in attrs if a.get("key") in skills and a.get("value")][:10],
+        posted_at=parse_datetime(
+            (datetime.now(UTC) - timedelta(days=age)).isoformat() if isinstance(age, int) else None
+        ),
+        raw={"easyApply": h.get("easyApply"), "sponsored": h.get("isSponsoredJob")},
+    )
+
+
 def parse_glassdoor(html: str) -> list[JobRecord]:
+    items = _glassdoor_rsc(html)
+    if items is not None:
+        return [j for i in items if (j := _glassdoor_listing(i))]
     soup = BeautifulSoup(html, "html.parser")
     jobs: dict[str, JobRecord] = {}
     for card in soup.select("li[data-test='jobListing'], [data-jobid]"):
@@ -286,6 +372,8 @@ class Site:
     result_selector: str = "body"
     #: result pages this site supports per search (Glassdoor uses "load more", not pages)
     max_pages: int = 5
+    #: False when the site ignored our search and showed a generic page (title-based)
+    is_result_page: Callable[[str], bool] = lambda title: True
 
 
 #: Page titles of bot-check interstitials (Cloudflare, generic CAPTCHA pages).
@@ -322,6 +410,8 @@ SITES: dict[str, Site] = {
         parse=parse_arc,
         block_markers=("captcha",),
         result_selector="#__NEXT_DATA__",
+        # unknown categories fall back to the generic "Remote Jobs (<month>) - Arc" list
+        is_result_page=lambda title: not title.startswith("Remote Jobs ("),
     ),
     GLASSDOOR: Site(
         id=GLASSDOOR,

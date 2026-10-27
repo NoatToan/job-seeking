@@ -17,6 +17,8 @@ export interface Job {
   openTo: string[] | null;
   postedAt: string | null;
   firstSeenAt: string;
+  /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
+  match?: { score: number; summary: string; missingSkills: string[] } | null;
 }
 
 /** Latest crawl result per source. */

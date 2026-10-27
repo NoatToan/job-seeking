@@ -4,6 +4,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
+from job_crawler import eligibility
 from job_crawler.models import Board, JobRecord
 
 log = logging.getLogger(__name__)
@@ -13,11 +14,11 @@ ERROR_MAX_LEN = 2000
 UPSERT_SQL = """
 INSERT INTO jobs (
   source, external_id, url, apply_url, title, company, location, remote,
-  employment_type, salary_text, description, tags, posted_at, raw
+  employment_type, salary_text, description, tags, posted_at, raw, open_to
 ) VALUES (
   %(source)s, %(external_id)s, %(url)s, %(apply_url)s, %(title)s, %(company)s, %(location)s,
   %(remote)s, %(employment_type)s, %(salary_text)s, %(description)s, %(tags)s, %(posted_at)s,
-  %(raw)s
+  %(raw)s, %(open_to)s
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
   url = EXCLUDED.url,
@@ -32,6 +33,7 @@ ON CONFLICT (source, external_id) DO UPDATE SET
   tags = EXCLUDED.tags,
   posted_at = COALESCE(EXCLUDED.posted_at, jobs.posted_at),
   raw = EXCLUDED.raw,
+  open_to = EXCLUDED.open_to,
   last_seen_at = now()
 RETURNING (xmax = 0) AS inserted
 """
@@ -59,7 +61,15 @@ def job_params(job: JobRecord) -> dict[str, Any]:
     params = job.model_dump()
     # mode="json" turns datetimes etc. inside the raw payload into JSON-safe values
     params["raw"] = Jsonb(job.model_dump(mode="json")["raw"])
+    params["open_to"] = eligibility.open_to(job.location, job.remote, structured_locations(job))
     return params
+
+
+def structured_locations(job: JobRecord) -> list[str]:
+    """Country lists some sources give as data, more reliable than the location text."""
+    raw = job.raw or {}
+    values = raw.get("locationRestrictions") or raw.get("requiredCountries") or []
+    return [str(v) for v in values if v] if isinstance(values, list) else []
 
 
 def upsert_jobs(conn: psycopg.Connection, jobs: list[JobRecord]) -> int:
@@ -146,3 +156,20 @@ def link_profile_jobs(conn: psycopg.Connection, profile_id: int, jobs: list[JobR
         " ON CONFLICT DO NOTHING",
         (profile_id, [k[0] for k in keys], [k[1] for k in keys]),
     )
+
+
+def recompute_open_to(conn: psycopg.Connection) -> int:
+    """Re-derive open_to for every stored job (after rule changes). Returns rows changed."""
+    rows = conn.execute(
+        "SELECT id, location, remote, raw->'locationRestrictions', raw->'requiredCountries',"
+        " open_to FROM jobs"
+    ).fetchall()
+    changed = []
+    for job_id, location, remote, restrictions, required, current in rows:
+        extra = [str(v) for v in (restrictions or required or []) if v]
+        tokens = eligibility.open_to(location, remote, extra)
+        if tokens != current:
+            changed.append((tokens, job_id))
+    with conn.transaction(), conn.cursor() as cur:
+        cur.executemany("UPDATE jobs SET open_to = %s WHERE id = %s", changed)
+    return len(changed)

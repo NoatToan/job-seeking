@@ -28,6 +28,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="also search each saved search profile's keywords on Himalayas / Remotive",
     )
+    parser.add_argument(
+        "--recompute-open-to",
+        action="store_true",
+        help="re-derive who may apply (open_to) for all stored jobs, then exit",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -48,6 +53,10 @@ def main(argv: list[str] | None = None) -> int:
             log.error("DATABASE_URL is not set (use --dry-run to crawl without a database)")
             return 2
         conn = db.connect(database_url)
+        if args.recompute_open_to:
+            log.info("open_to updated on %d jobs", db.recompute_open_to(conn))
+            conn.close()
+            return 0
 
     failed = 0
     with HttpClient() as http:

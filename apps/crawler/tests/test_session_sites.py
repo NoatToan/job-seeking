@@ -135,10 +135,13 @@ def _next_data(page_props: dict) -> str:
     return f'<html><script id="__NEXT_DATA__" type="application/json">{payload}</script></html>'
 
 
-def test_arc_search_url():
-    q = parse_qs(urlsplit(arc_search_url(PROFILE, None, 1)).query)
-    assert q == {"search": ["react native typescript"], "page": ["2"]}
-    assert "page" not in arc_search_url(PROFILE, None, 0)
+def test_arc_search_url_uses_category():
+    assert arc_search_url(PROFILE, None, 0) == "https://arc.dev/remote-jobs/react-native-typescript"
+    assert arc_search_url(PROFILE, None, 1).endswith("?page=2")
+    nextjs = SearchProfile(
+        id=2, name="n", keywords="Next.js", locations=[], remote_only=True, sources=[]
+    )
+    assert arc_search_url(nextjs, None, 0) == "https://arc.dev/remote-jobs/next-js"
 
 
 def test_parse_arc_next_data():
@@ -212,3 +215,39 @@ def test_parse_glassdoor_cards():
     assert job.salary_text == "A$120K - A$140K (Employer est.)"
     assert job.description == "Build React apps."
     assert SITES["glassdoor"].max_pages == 1
+
+
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+
+
+def test_parse_glassdoor_live_rsc_page():
+    """Real Glassdoor remote search page (fixture from the jobflow POC)."""
+    jobs = parse_glassdoor((FIXTURES / "glassdoor_search.html").read_text())
+    assert len(jobs) == 30
+    job = next(j for j in jobs if j.external_id == "1010210609012")
+    assert job.company == "AuraOne Human Data"
+    assert job.salary_text and "70" in job.salary_text and "120" in job.salary_text
+    assert "Python" in job.tags
+    assert job.url.startswith("https://www.glassdoor.com/")
+
+
+def test_parse_arc_live_listing_page():
+    jobs = parse_arc((FIXTURES / "arc_listing.html").read_text())
+    assert len(jobs) >= 30
+    assert any("/remote-jobs/j/" in j.url for j in jobs)
+    assert any("/remote-jobs/details/" in j.url for j in jobs)
+
+
+def test_glassdoor_remote_search_url():
+    remote = SearchProfile(
+        id=1, name="x", keywords="Python  Developer", locations=[], remote_only=True, sources=[]
+    )
+    assert glassdoor_search_url(remote, None, 0) == (
+        "https://www.glassdoor.com/Job/remote-python-developer-jobs-SRCH_IL.0,6_IS11047_KO7,23.htm"
+    )
+
+
+def test_arc_generic_page_is_not_a_result_page():
+    arc = SITES["arc"]
+    assert not arc.is_result_page("Remote Jobs (October 2026) - Arc")
+    assert arc.is_result_page("Remote Next.js Jobs (October 2026) - Arc")

@@ -115,6 +115,9 @@ def crawl_site(
                         page.goto(url, wait_until="domcontentloaded")
                         page.wait_for_timeout(3000)
                     _wait_for_results(site, page)
+                    if not site.is_result_page(page.title()):
+                        log.warning("%s: %r is not a search result page, skipped", site.id, url)
+                        break
                     _scroll_results(page)
                     found = site.parse(page.content())
                     log.info(

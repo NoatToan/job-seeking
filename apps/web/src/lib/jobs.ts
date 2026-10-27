@@ -50,13 +50,23 @@ export async function listJobs(filters: JobQuery): Promise<{ jobs: Job[]; total:
     ${filters.acceptedOpenTo ? sql`AND (NOT remote OR open_to IS NULL OR open_to && ${filters.acceptedOpenTo})` : sql``}
   `;
   // Site-matched jobs get a small boost so they rank among the full-text matches.
-  const order = tsq
-    ? sql`ORDER BY ts_rank_cd(search, ${tsq}) ${linked ? sql`+ CASE WHEN ${linked} THEN 0.1 ELSE 0 END` : sql``} DESC,
+
+  // Claude scores from the profile's latest CV, if any: best fits first.
+  const matchJoin = filters.profileId
+    ? sql`LEFT JOIN cv_matches m ON m.job_id = jobs.id AND m.cv_id =
+        (SELECT id FROM cvs WHERE profile_id = ${filters.profileId} ORDER BY created_at DESC LIMIT 1)`
+    : sql``;
+  const matchCols = filters.profileId
+    ? sql`, m.score AS match_score, m.summary AS match_summary, m.missing_skills AS match_missing`
+    : sql``;
+  const byScore = filters.profileId ? sql`m.score DESC NULLS LAST,` : sql``;
+  const orderBy = tsq
+    ? sql`ORDER BY ${byScore} ts_rank_cd(search, ${tsq}) ${linked ? sql`+ CASE WHEN ${linked} THEN 0.1 ELSE 0 END` : sql``} DESC,
           COALESCE(posted_at, first_seen_at) DESC`
-    : sql`ORDER BY COALESCE(posted_at, first_seen_at) DESC, id DESC`;
+    : sql`ORDER BY ${byScore} COALESCE(posted_at, first_seen_at) DESC, id DESC`;
 
   const [rows, [{ count }]] = await Promise.all([
-    sql`SELECT ${sql.unsafe(JOB_COLUMNS)} FROM jobs ${where} ${order}
+    sql`SELECT ${sql.unsafe(JOB_COLUMNS)} ${matchCols} FROM jobs ${matchJoin} ${where} ${orderBy}
         LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`,
     sql<{ count: number }[]>`SELECT count(*)::int AS count FROM jobs ${where}`,
   ]);
@@ -84,6 +94,10 @@ function toJob(r: any): Job {
     openTo: r.open_to ?? null,
     postedAt: r.posted_at ? new Date(r.posted_at).toISOString() : null,
     firstSeenAt: new Date(r.first_seen_at).toISOString(),
+    match:
+      r.match_score == null
+        ? null
+        : { score: r.match_score, summary: r.match_summary, missingSkills: r.match_missing ?? [] },
   };
 }
 

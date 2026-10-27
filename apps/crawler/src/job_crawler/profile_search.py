@@ -42,6 +42,12 @@ SEARCHES: dict[str, Callable[[HttpClient, str], list[JobRecord]]] = {
 }
 
 
+def mentions_all(job: JobRecord, keywords: str) -> bool:
+    """APIs search loosely; only link jobs that really contain every keyword."""
+    text = " ".join([job.title, job.description or "", " ".join(job.tags)]).lower()
+    return all(word in text for word in keywords.lower().split())
+
+
 def wanted(profile: SearchProfile, source: str) -> bool:
     return not profile.sources or source in profile.sources
 
@@ -72,7 +78,9 @@ def run(conn, http: HttpClient, profiles: list[SearchProfile], dry_run: bool = F
                 print(f"{source} · {profile.name}: {found} jobs")
             else:
                 new_total += db.upsert_jobs(conn, jobs)
-                db.link_profile_jobs(conn, profile.id, jobs)
+                db.link_profile_jobs(
+                    conn, profile.id, [j for j in jobs if mentions_all(j, keywords)]
+                )
             http.pause()
         failed += len(errors)
         if run_id is not None:

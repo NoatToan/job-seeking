@@ -37,3 +37,30 @@ uv run python -m job_crawler.session crawl --headless --site arc     # unattende
 - At most 5 result pages per search (Glassdoor 1), slow randomised pacing, no proxies.
 - These sites forbid automated access in their terms: keep it personal and low-volume, and expect
   that your account could be restricted.
+
+## Per-profile keyword search (Himalayas, Remotive)
+
+`uv run python -m job_crawler --profiles` also asks Himalayas' search API and Remotive for each
+search profile's keywords and links the results to the profile (only jobs that contain every
+keyword). Remotive is capped at 4 profiles per run (they ask for few calls a day). The daily
+workflow runs with `--profiles`.
+
+## Who may apply (open_to)
+
+`eligibility.py` turns location text ("USA Only", "Remote (US, CA)", "Worldwide", "APAC") and
+structured country lists into `jobs.open_to`. A profile with "I'm based in: Vietnam" hides remote
+jobs that clearly exclude Vietnam. After changing the rules: `uv run python -m job_crawler --recompute-open-to`.
+
+## CV matching (Claude)
+
+```bash
+uv run python -m job_crawler.matching --profile 7 --cv ~/cv.pdf --limit 24 \
+  --preferences "remote open to Vietnam, or relocation with visa"
+```
+
+Reads the CV (PDF text layer, or Claude OCR for scans/images; TXT/MD as is), extracts a profile
+with Claude, prefilters the profile's jobs by keywords, and asks Claude to score the best ones
+(0-100, reasons in Vietnamese). Results are stored in `cvs` / `cv_matches` and the profile page
+sorts by score. Claude runs through the local `claude -p` CLI (your Claude subscription, no API
+key); set `UJC_CLAUDE_MODEL` to change the model. The CV text is personal data: it is deleted with
+its search profile. Ported from the jobflow POC (`poc_job_crawler`).

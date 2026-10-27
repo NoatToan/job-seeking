@@ -16,6 +16,19 @@ export function SourceBadge({ source }: { source: string }) {
   );
 }
 
+export function MatchBadge({ score }: { score: number }) {
+  const color = score >= 85 ? "#15803d" : score >= 70 ? "#65a30d" : score >= 50 ? "#ca8a04" : "#9ca3af";
+  return (
+    <span
+      className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+      style={{ backgroundColor: color }}
+      title="CV fit score (Claude)"
+    >
+      {score}
+    </span>
+  );
+}
+
 function timeAgo(iso: string | null): string | null {
   if (!iso) return null;
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -42,8 +55,19 @@ export function JobCard({ job }: { job: Job }) {
             {job.remote ? ` · Remote${openToLabel(job.openTo) ? ` (${openToLabel(job.openTo)})` : ""}` : ""}
           </p>
         </div>
-        <SourceBadge source={job.source} />
+        <div className="flex items-center gap-2">
+          {job.match ? <MatchBadge score={job.match.score} /> : null}
+          <SourceBadge source={job.source} />
+        </div>
       </div>
+      {job.match ? (
+        <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+          {job.match.summary}
+          {job.match.missingSkills.length ? (
+            <span className="text-zinc-500"> · thiếu: {job.match.missingSkills.slice(0, 4).join(", ")}</span>
+          ) : null}
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
         {job.salaryText ? <span>{job.salaryText}</span> : null}
         {job.employmentType ? <span>{job.employmentType}</span> : null}
