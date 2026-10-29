@@ -1,4 +1,15 @@
-import type { ApiErrorBody, Job, JobDetail, Page, SourceInfo } from "@ujc/core";
+import type {
+  ApiErrorBody,
+  Cv,
+  FeedPage,
+  Job,
+  JobDetail,
+  LiveSearchPage,
+  MeResponse,
+  Page,
+  Preferences,
+  SourceInfo,
+} from "@ujc/core";
 
 /**
  * Base URL the SPA calls for the API. "" (default) means same origin, so calls go to
@@ -128,4 +139,94 @@ export function getJob(id: string): Promise<JobDetail> {
 /** `GET /api/sources` — source catalogue + latest global crawl run per source. */
 export function getSources(): Promise<SourceInfo[]> {
   return apiFetch<SourceInfo[]>("/api/sources");
+}
+
+// --- Flow v2 (docs/product/FLOW_V2.md §4): email OTP, CV upload, feed, live search. -------------
+
+export interface OtpRequestResponse {
+  sent: boolean;
+  expiresInSec: number;
+  /** Only present in review-mode deployments (`UJC_OTP_REVIEW_MODE=true`); never in production. */
+  devCode?: string;
+}
+
+/** `POST /api/auth/otp` — request a 6-digit sign-in code by email. */
+export function requestOtp(email: string): Promise<OtpRequestResponse> {
+  return apiFetch<OtpRequestResponse>("/api/auth/otp", { method: "POST", body: { email } });
+}
+
+export interface VerifyOtpResponse {
+  user: { id: string; email: string };
+}
+
+/** `POST /api/auth/verify` — exchange the emailed code for a session cookie. */
+export function verifyOtp(email: string, code: string): Promise<VerifyOtpResponse> {
+  return apiFetch<VerifyOtpResponse>("/api/auth/verify", { method: "POST", body: { email, code } });
+}
+
+/** `POST /api/auth/logout` — clears the session cookie. */
+export function logout(): Promise<void> {
+  return apiFetch<void>("/api/auth/logout", { method: "POST" });
+}
+
+/** `GET /api/me` — the signed-in user, their preferences and latest CV. */
+export function getMe(): Promise<MeResponse> {
+  return apiFetch<MeResponse>("/api/me");
+}
+
+/** `PUT /api/me/preferences` — save keywords, remote-only and eligibility country. */
+export function updatePreferences(input: Preferences): Promise<{ preferences: Preferences }> {
+  return apiFetch<{ preferences: Preferences }>("/api/me/preferences", {
+    method: "PUT",
+    body: input,
+  });
+}
+
+/** `POST /api/cvs` — upload a CV (multipart); the host worker scans it asynchronously. */
+export function uploadCv(file: File): Promise<Cv> {
+  const form = new FormData();
+  form.set("file", file);
+  return apiFetch<Cv>("/api/cvs", { method: "POST", body: form });
+}
+
+/** `GET /api/cvs` — the signed-in user's CVs (no extracted text/profile in the list view). */
+export function listCvs(): Promise<{ items: Cv[] }> {
+  return apiFetch<{ items: Cv[] }>("/api/cvs");
+}
+
+/** `GET /api/cvs/{id}` — poll this while `status` is `queued`/`processing`. */
+export function getCv(id: string): Promise<Cv> {
+  return apiFetch<Cv>(`/api/cvs/${encodeURIComponent(id)}`);
+}
+
+/** `DELETE /api/cvs/{id}`. */
+export function deleteCv(id: string): Promise<void> {
+  return apiFetch<void>(`/api/cvs/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export interface FeedFilters {
+  cursor?: string;
+  limit?: number;
+  q?: string;
+  source?: string;
+}
+
+/** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */
+export function getFeed(filters: FeedFilters = {}): Promise<FeedPage> {
+  return apiFetch<FeedPage>(`/api/feed${buildQuery(filters)}`);
+}
+
+export interface LiveSearchFilters {
+  q: string;
+  /** Source ids, e.g. `["seek", "himalayas", "remotive", "wwr", "arc"]`. */
+  sources: string[];
+  cursor?: string;
+}
+
+/** `GET /api/search/live` — queries each platform's own search API right now. */
+export function liveSearch(filters: LiveSearchFilters): Promise<LiveSearchPage> {
+  const { sources, ...rest } = filters;
+  return apiFetch<LiveSearchPage>(
+    `/api/search/live${buildQuery({ ...rest, sources: sources.join(",") })}`,
+  );
 }
