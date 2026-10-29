@@ -2,5 +2,8 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  # esbuild's postinstall only fetches/links its own prebuilt native binary (needed by vitest,
+  # a new dev dependency added in M2-01); no third-party code runs beyond that.
+  esbuild: true
   sharp: false
   unrs-resolver: false
