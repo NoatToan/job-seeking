@@ -15,6 +15,8 @@ def test_reads_values_from_the_environment(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h:5432/db")
     monkeypatch.setenv("UJC_ENV", "production")
     monkeypatch.setenv("UJC_LOG_LEVEL", "WARNING")
+    # production requires a real UJC_SECRET_KEY (see test_settings_secret_key.py)
+    monkeypatch.setenv("UJC_SECRET_KEY", "a-real-production-secret")
     settings = Settings(_env_file=None)
     assert settings.database_url == "postgresql://u:p@h:5432/db"
     assert settings.ujc_env == "production"
