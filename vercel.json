@@ -1,4 +1,21 @@
 {
-  "builds": [{ "src": "apps/web/package.json", "use": "@vercel/next" }],
-  "routes": [{ "src": "/(.*)", "dest": "/apps/web/$1" }]
+  "builds": [
+    {
+      "src": "apps/web/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "out" }
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": ["apps/api/src/**", "apps/crawler/src/**", "apps/mcp/src/**", "db/migrations/**"]
+      }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/apps/web/$1" }
+  ]
 }
