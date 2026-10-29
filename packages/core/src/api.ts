@@ -79,3 +79,60 @@ export interface TaskStatus {
 export interface JobDetail extends Job {
   description: string | null;
 }
+
+// --- Flow v2 (docs/product/FLOW_V2.md §4): email OTP, CV upload, feed, live search. -------------
+
+/** The structured profile extracted from a CV by the host worker's scan (`Cv.profile`). */
+export interface CvProfile {
+  headline: string | null;
+  seniority: string | null;
+  skills: string[];
+  summary: string | null;
+}
+
+/** The signed-in user's uploaded CV and its scan state (`POST/GET/DELETE /api/cvs*`). */
+export interface Cv {
+  id: string;
+  filename: string;
+  status: "queued" | "processing" | "done" | "error";
+  error: string | null;
+  keywords: string[];
+  profile: CvProfile | null;
+  createdAt: string;
+  processedAt: string | null;
+}
+
+/** The user's search preferences (`GET /api/me`, `PUT /api/me/preferences`). */
+export interface Preferences {
+  keywords: string[];
+  remoteOnly: boolean;
+  candidateCountry: string | null;
+}
+
+/** `GET /api/me`. */
+export interface MeResponse {
+  user: { id: string; email: string };
+  preferences: Preferences;
+  latestCv: Cv | null;
+}
+
+/** `GET /api/feed`: the user's personalised, keyset-paginated feed. */
+export interface FeedPage {
+  items: Job[];
+  nextCursor: string | null;
+  keywords: string[];
+}
+
+/** One source's result for a page of `GET /api/search/live` (`sources[]`). */
+export interface LiveSourceStatus {
+  id: string;
+  count: number;
+  error?: string;
+}
+
+/** `GET /api/search/live`: results merged across platforms, with per-source status. */
+export interface LiveSearchPage {
+  items: Job[];
+  nextCursor: string | null;
+  sources: LiveSourceStatus[];
+}
