@@ -1,0 +1,454 @@
+[
+  {
+    "key": "M1-01",
+    "title": "[M1-01] Scaffold apps/api FastAPI service (settings, DB pool, health, migrations runner, tests)",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "infra",
+      "area:api"
+    ],
+    "body": "## Description\nCreate the Python backend `apps/api` (package `ujc_api`, uv project, Python 3.12) that later issues build on.\nTouch **only** `apps/api/**` (no root files, no apps/web) so this runs in parallel with M2-01.\n\n- `apps/api/pyproject.toml`: fastapi, uvicorn[standard], pydantic-settings, psycopg[binary,pool], httpx; dev: pytest, ruff (same ruff config as apps/crawler: line-length 100, py312, select E,F,W,I,B,UP,SIM). Add `job_crawler` as an editable path dependency (`[tool.uv.sources] job_crawler = { path = \"../crawler\", editable = true }`).\n- `src/ujc_api/settings.py` (pydantic-settings; variable names in ARCHITECTURE §10; loads repo-root `.env.local` in development only).\n- `src/ujc_api/db.py`: psycopg `ConnectionPool` (min 1, max 5), `get_conn` FastAPI dependency.\n- `src/ujc_api/migrate.py`: `python -m ujc_api.migrate` applies `db/migrations/*.sql` in name order, one transaction each, recorded in `schema_migrations` (same semantics as `scripts/migrate.mjs`, so both can coexist).\n- `src/ujc_api/logging.py`: JSON logs, `X-Request-ID` middleware (accept incoming or generate uuid4), access log without query strings.\n- `src/ujc_api/main.py`: `create_app()`, error handler producing `{error:{code,message,fields?}}`, routers `GET /api/health` and `GET /api/ready` (DB `SELECT 1` + no pending migrations: 200, else 503). OpenAPI at `/api/openapi.json` + docs only when `UJC_ENV != production`.\n- `tests/conftest.py`: session fixture creating a fresh schema in the `TEST_DATABASE_URL` database (skip DB tests with a clear message if unset), applying all migrations; `client` fixture using FastAPI `TestClient`.\n- `apps/api/README.md`: run (`uv sync`, `uv run uvicorn ujc_api.main:app --reload --port 8000`), test, migrate.\n\n## Acceptance criteria\n- [ ] `uv run ruff check .` and `uv run pytest` pass in apps/api\n- [ ] `GET /api/health` returns 200 `{status:'ok', version}`; `GET /api/ready` returns 200 with DB and 503 when the DB is unreachable (tested with a bad URL)\n- [ ] `python -m ujc_api.migrate` applies 001-006 on an empty DB and is a no-op on the second run (test)\n- [ ] Unknown route returns 404 in the standard error shape; unhandled exception returns 500 without a stack trace in the body\n- [ ] Every response carries `X-Request-ID`; logs are JSON lines with request id, method, path, status, duration\n- [ ] No secrets in code; `.env.local` is only read when `UJC_ENV=development`\n\n## Dependencies\n- none\n\n## Notes\nUse the FastAPI app-factory pattern so tests can build an app with overridden settings.\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md). **Start first**, in parallel with the other kickoff issue (M1-01 / M2-01).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [],
+    "parallel_group": "A",
+    "start_first": true
+  },
+  {
+    "key": "M1-02",
+    "title": "[M1-02] Users, sessions & CSRF: register / login / logout / me / change password",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "feature",
+      "security",
+      "area:api"
+    ],
+    "body": "## Description\nAdd accounts with server-side sessions. Migration **`db/migrations/007_users_auth.sql`** exactly as ARCHITECTURE §4 (users, sessions, email_tokens).\n\n- `ujc_api/auth/passwords.py`: argon2id via `argon2-cffi` (`PasswordHasher()`), `check_needs_rehash` on login, min length 10, reject the top-1000 common passwords (bundled list file).\n- `ujc_api/auth/sessions.py`: create (32 random bytes, store sha256), lookup (update `last_seen_at`, slide `expires_at` at most once an hour), revoke one / all for a user.\n- `ujc_api/auth/csrf.py`: double-submit; `ujc_csrf` cookie (random, not HttpOnly, SameSite=Lax) set by `GET /api/auth/me` and login/register; middleware rejects POST/PUT/PATCH/DELETE carrying a session cookie but a missing/mismatched `X-CSRF-Token` (403 `csrf_failed`). Bearer-token requests are exempt.\n- `ujc_api/auth/deps.py`: `current_user` (401 `unauthenticated`), `optional_user`.\n- `routers/auth.py`: `POST /api/auth/register` (`{email,password,displayName?,acceptTerms}`, 201, sets cookies), `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/change-password` (revokes other sessions). `routers/me.py`: `GET/PATCH /api/me/settings` (displayName, country ISO from the packages/core list, IANA timezone, locale en|vi).\n- Cookie `ujc_session`: HttpOnly, SameSite=Lax, Path=/, Secure when `UJC_ENV=production`, Max-Age from `UJC_SESSION_DAYS`.\n- In-process rate limiter `ujc_api/ratelimit.py` (token bucket keyed by string; injectable clock for tests): login 10/min/IP + 5/min/email, register 5/hour/IP, returning 429 + `Retry-After`.\n- CORS middleware only for `UJC_CORS_ORIGINS`, with credentials.\n\n## Acceptance criteria\n- [ ] Migration 007 applies cleanly after 001-006\n- [ ] Register returns 201, stores an argon2id hash, sets `ujc_session` (HttpOnly) and `ujc_csrf` cookies\n- [ ] Wrong password returns 401 `invalid_credentials` with the same message as an unknown email; a hash is always computed (no timing oracle)\n- [ ] Logout deletes the session row; the old cookie then gets 401\n- [ ] Mutating request without the CSRF header gets 403; with it, OK; Bearer requests exempt\n- [ ] Change password revokes all other sessions (test)\n- [ ] Rate limits return 429 with Retry-After (tests use a fake clock)\n- [ ] Passwords, tokens and cookies never appear in logs (test captures logs)\n- [ ] Coverage of `ujc_api/auth` at least 90%\n\n## Dependencies\n- M1-01\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-01"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M1-03",
+    "title": "[M1-03] Email verification & password reset with pluggable mailer",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "feature",
+      "security",
+      "area:api"
+    ],
+    "body": "## Description\n- `ujc_api/mail.py`: `Mailer` protocol; `ConsoleMailer` (logs subject + links; dev/test), `MemoryMailer` (tests) and `SmtpMailer` (stdlib `smtplib` + STARTTLS, `SMTP_*`, `MAIL_FROM`); chosen by `UJC_MAILER`. Plain-text + simple HTML templates in `ujc_api/templates/email/`.\n- Tokens in `email_tokens` (sha256 stored): `verify_email` 24 h, `reset_password` 1 h, single use.\n- Endpoints: `POST /api/auth/verify-email {token}`, `POST /api/auth/resend-verification` (session; 3/hour), `POST /api/auth/forgot-password {email}` (always 202; 3/hour/email), `POST /api/auth/reset-password {token,newPassword}` (revokes all sessions).\n- Registration (M1-02) now sends the verification email. Links use `UJC_PUBLIC_URL` + SPA routes `/verify-email?token=` and `/reset-password?token=`.\n- `GET /api/auth/me` includes `emailVerified: boolean`.\n\n## Acceptance criteria\n- [ ] Register triggers exactly one verification email (MemoryMailer)\n- [ ] Valid token sets `email_verified_at`; reused or expired token returns 400 `token_invalid`\n- [ ] Forgot-password for an unknown email returns 202 and sends nothing; for a known email sends one link\n- [ ] Reset password changes the hash, marks the token used, deletes all sessions\n- [ ] SmtpMailer unit-tested against a stub SMTP server\n\n## Dependencies\n- M1-02\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-02"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M1-04",
+    "title": "[M1-04] Ownership & visibility migration (multi-user data model)",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "feature",
+      "security",
+      "area:api",
+      "area:crawler"
+    ],
+    "body": "## Description\nMake data owner-scoped. Migration **`db/migrations/008_ownership.sql`** exactly as ARCHITECTURE §4 (user_id on search_profiles/cvs/crawl_runs, crawl_runs.profile_id/trigger, jobs.owner_user_id + new unique index `jobs_dedupe_idx`).\n\n- `apps/crawler/src/job_crawler/db.py`: `upsert_jobs(conn, jobs, owner_user_id=None)`; change `ON CONFLICT (source, external_id)` to `ON CONFLICT (source, external_id, coalesce(owner_user_id, 0))` and insert the owner; `start_run(conn, source, user_id=None, profile_id=None, trigger='schedule')`. Existing callers keep working (defaults). Update `tests/test_db.py`.\n- `apps/api/src/ujc_api/admin.py`: `python -m ujc_api.admin claim-legacy --email E` assigns all `user_id IS NULL` profiles/CVs to that user and sets `owner_user_id` for jobs with source in (linkedin, seek, arc, glassdoor) and no owner; prints counts; idempotent.\n- `apps/api/src/ujc_api/repos/visibility.py`: SQL fragment helper `visible_jobs(user_id | None)` = `owner_user_id IS NULL OR owner_user_id = :me`.\n\n## Acceptance criteria\n- [ ] Migration 008 applies on a DB with existing data (fixture with 001-007 + sample rows)\n- [ ] The same (source, external_id) can exist once public and once per owner; upsert dedupes within each owner (crawler test)\n- [ ] Existing crawler tests pass; `python -m job_crawler --dry-run` unchanged\n- [ ] `claim-legacy` assigns orphans and is idempotent (test)\n- [ ] Visibility helper excludes other users' owned jobs (test)\n\n## Dependencies\n- M1-02\n\n## Notes\nCoordinates with M1-07 (009) only through migration numbering; no shared files.\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-02"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M1-05",
+    "title": "[M1-05] Search profiles API (owner-scoped CRUD)",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "feature",
+      "area:api"
+    ],
+    "body": "## Description\nPort the validation in `apps/web/src/lib/profiles.ts` to Python.\n\n- `ujc_api/sources.py`: mirror of `packages/core/src/sources.ts` (id, label, kind, homepage) + a test that parses the TS file so the two stay in sync; candidate countries + accepted tokens mirrored from `packages/core/src/index.ts` (same sync test).\n- `ujc_api/schemas/profiles.py`: `ProfileIn` (name required, max 80; keywords required, max 300; up to 10 locations of max 60 chars; remoteOnly; sources must be known ids; candidateCountry in the country list or null, default = user's country). `ProfileOut` adds id, createdAt, updatedAt, lastRun summary (latest crawl_runs per source for the profile).\n- `ujc_api/repos/profiles.py`: every query filters on `user_id`.\n- `routers/profiles.py`: `GET/POST /api/profiles`, `GET/PATCH/DELETE /api/profiles/{id}`; max 20 per user (409 `limit_reached`).\n\n## Acceptance criteria\n- [ ] CRUD works for the owner; another user gets 404 on GET/PATCH/DELETE (one test each)\n- [ ] Validation errors return 400 with `fields`\n- [ ] Unknown source id rejected; TS/Python sync tests pass\n- [ ] Delete cascades profile_jobs and cv_matches for the profile and keeps jobs\n- [ ] Response JSON is camelCase\n\n## Dependencies\n- M1-04\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-04"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M1-06",
+    "title": "[M1-06] Jobs, profile results & sources read API",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "feature",
+      "area:api"
+    ],
+    "body": "## Description\nPort the SQL in `apps/web/src/lib/jobs.ts` (`listJobs`, `sourceStatuses`) to `ujc_api/repos/jobs.py`, adding the visibility rule and the pagination envelope.\n\n- `GET /api/jobs?q&source&remote&page` (optional auth): public catalogue + own jobs when signed in; FTS ranking with `websearch_to_tsquery('english', q)`.\n- `GET /api/jobs/{id}`: includes `description` (plain text); 404 if not visible.\n- `GET /api/profiles/{id}/jobs?q&source&remote&minScore&cvId&page`: the profile's rules (keywords, locations, remote, sources, linked `profile_jobs`, open_to vs candidate country with unknown kept), left join `cv_matches` for `cvId` (default: the user's latest ready CV, if the table has a `status` column; otherwise latest). Sort: score desc nulls last, ts_rank (+0.1 for linked jobs), date. Status filter and the `application` field are added by M4-05.\n- `GET /api/sources`: catalogue (id, label, kind, homepage, attribution text) + latest global run per source + total jobs.\n- DTO `Job` = packages/core `Job` shape (+ `description` on detail).\n\n## Acceptance criteria\n- [ ] Response shapes match ARCHITECTURE §5 and packages/core `Job` (snapshot test of JSON keys)\n- [ ] Signed-out `/api/jobs` never returns owned jobs; signed-in returns public + own only\n- [ ] Profile results honour locations, remoteOnly, sources and candidate country; tests ported from current web behaviour\n- [ ] Pagination: pageSize 50, correct total\n- [ ] `apps/api/scripts/bench_jobs.py` seeds 100k jobs; q queries use `jobs_search_idx` (EXPLAIN) and p95 is under 500 ms locally\n\n## Dependencies\n- M1-04\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-04"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M1-07",
+    "title": "[M1-07] Postgres task queue, worker process & scheduler",
+    "milestone": "M1 Backend API foundation",
+    "labels": [
+      "infra",
+      "area:api"
+    ],
+    "body": "## Description\nBackground jobs without extra infrastructure. Migration **`db/migrations/009_tasks.sql`** (ARCHITECTURE §4). New files only under `apps/api/src/ujc_api/tasks/` and `worker.py` (does not edit routers), so it runs in parallel with M1-02..M1-06.\n\n- `tasks/queue.py`: `enqueue(conn, kind, payload, user_id=None, dedupe_key=None, run_after=None) -> task_id` (returns the existing active task on dedupe conflict), `claim(conn, worker_id)` with `FOR UPDATE SKIP LOCKED`, `complete`, `fail` (backoff 30 s * 2^n until max_attempts), `set_progress`, `requeue_stale(older_than=30 min)`.\n- `tasks/registry.py`: `@handler(\"kind\")` decorator; handlers receive `(conn, task)`.\n- `tasks/scheduler.py`: every minute, enqueue due periodic tasks with dedupe keys: `global_crawl` daily 22:00 UTC (handler calls `job_crawler.cli.run_source` for each source + `profile_search.run` for all profiles), `purge` hourly (expired sessions/email tokens if the tables exist).\n- `worker.py`: `python -m ujc_api.worker [--once] [--concurrency N]`; graceful SIGTERM (stop claiming, finish the current task up to 60 s, else put it back to `queued`); also runs the scheduler loop (advisory lock so only one process schedules).\n- `GET /api/tasks/{id}` router is added by M3-05 (needs auth); not in this issue.\n\n## Acceptance criteria\n- [ ] Two workers never run the same task (concurrency test with two connections)\n- [ ] Dedupe: enqueuing an active dedupe_key returns the existing id\n- [ ] A failing task retries with backoff, then ends `failed` with the error after max_attempts\n- [ ] A stale running task is requeued\n- [ ] `--once` processes one task and exits (used by tests)\n- [ ] Scheduler enqueues exactly one `global_crawl` per day even when two processes tick every minute\n\n## Dependencies\n- M1-01\n\n## Parallel work\nLane `E`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-01"
+    ],
+    "parallel_group": "E"
+  },
+  {
+    "key": "M2-01",
+    "title": "[M2-01] Convert apps/web to a static-export SPA with typed API client and public jobs page",
+    "milestone": "M2 SPA",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nTurn the web app into a client-side SPA that talks only to the API (contract: ARCHITECTURE §3 and §5). Touch **only** `apps/web/**` and `packages/core/**` (no apps/api) so this runs in parallel with M1-01. First read `apps/web/node_modules/next/dist/docs/01-app/02-guides/static-exports.md` and `single-page-applications.md`.\n\n- `next.config.ts`: `output: 'export'`, `trailingSlash: true`, `images: { unoptimized: true }`; remove `cacheComponents`, `partialPrefetching` and the `.env.local` loader for DATABASE_URL.\n- `apps/web/package.json`: remove `postgres`, `server-only`; build script `next build` (no migrate); add `vitest`, `@testing-library/react`, `jsdom`; script `test`.\n- Delete `src/lib/db.ts`, `src/lib/jobs.ts`, `src/lib/profiles.ts`, `src/app/profiles/**` (rebuilt in M2-03), `src/app/api/health/route.ts`.\n- `packages/core/src/api.ts`: DTO types (`Page<T>`, `ApiErrorBody`, `User`, `SearchProfile`, `ProfileInput`, `SourceInfo`, `TaskStatus`, `JobDetail`), exported from the index.\n- `src/lib/api.ts`: `apiFetch<T>(path, init)` with base URL from `NEXT_PUBLIC_API_BASE_URL` (default ''), `credentials: 'include'`, CSRF header from the `ujc_csrf` cookie on unsafe methods, JSON parsing, `ApiError` (status, code, message, fields), pluggable 401 handler; typed wrappers `getJobs`, `getJob`, `getSources`.\n- `src/lib/use-api.ts`: minimal data hook (loading/error/data/reload), or TanStack Query; record the choice in ARCHITECTURE §3.\n- App shell `src/app/layout.tsx` (nav placeholders, footer with source attributions incl. \"Jobs by Adzuna\"); `src/app/page.tsx` client page: search box, source filter, remote toggle, pagination (state in URL via `useSearchParams` inside `<Suspense>`), `JobCard` list, source status strip, loading skeleton, empty and error states.\n- `src/app/jobs/view/page.tsx`: job detail by `?id=` (description rendered as text with line breaks).\n\n## Acceptance criteria\n- [ ] `pnpm --filter web build` produces `apps/web/out/` with no server functions; `pnpm -r typecheck` and `pnpm lint` pass\n- [ ] No import of `postgres`, `server-only`, Server Actions or `next/headers` remains in apps/web\n- [ ] Vitest: `apiFetch` adds the CSRF header only on unsafe methods, maps the error body to ApiError, calls the 401 handler; jobs page renders items from mocked fetch and shows empty/error states\n- [ ] With `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` the page calls `GET /api/jobs?...` and `GET /api/sources` (mocked fetch test)\n- [ ] `apps/web/README.md` documents the SPA dev command\n\n## Dependencies\n- none\n\n## Notes\nThe root README architecture section is updated later by M5-02 to avoid conflicts.\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md). **Start first**, in parallel with the other kickoff issue (M1-01 / M2-01).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [],
+    "parallel_group": "B",
+    "start_first": true
+  },
+  {
+    "key": "M2-02",
+    "title": "[M2-02] Auth screens, session context and route guard",
+    "milestone": "M2 SPA",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nBuild against the M1-02/M1-03 contract (mocked fetch in tests; the real API is not required to merge).\n\n- `src/lib/auth.tsx`: `AuthProvider` loading `GET /api/auth/me` once (this also sets the CSRF cookie), `useAuth()` {user, status, login, logout, register, refresh}; `RequireAuth` wrapper redirecting to `/login?next=` (relative same-origin `next` only).\n- Pages: `/signup` (email, password with strength hint, display name, terms + privacy checkboxes linking `/terms`, `/privacy`), `/login`, `/verify-email` (reads `?token=`), `/forgot-password`, `/reset-password` (`?token=`), placeholder `/privacy` and `/terms` (content owned by M5-04).\n- Nav shows Sign in / user menu (Settings, Log out); verify-email banner with a resend button when `emailVerified=false`.\n- Field errors from `error.fields`; 429 shows a retry countdown from `Retry-After`.\n\n## Acceptance criteria\n- [ ] Vitest: signup success redirects to `/onboarding`; field errors shown; login 401 shows a generic message; 429 countdown\n- [ ] `next` param rejects absolute/external URLs (test)\n- [ ] Protected page redirects to /login when `me` returns 401\n- [ ] Forms are accessible: labels, `aria-invalid`, focus moves to the first error\n- [ ] Static export build still passes\n\n## Dependencies\n- M2-01\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-01"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M2-03",
+    "title": "[M2-03] Search profiles screens and unified results page",
+    "milestone": "M2 SPA",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nContract: M1-05, M1-06, M3-05 (`POST /api/profiles/{id}/search`, `GET /api/tasks/{id}`, `GET /api/runs`).\n\n- `/profiles` list (name, keywords, last run, best score) with empty-state CTA; `/profiles/new` and `/profiles/edit?id=` form (port fields from the deleted `profile-form.tsx`; sources grouped by `SOURCES[*].kind`; keyword syntax help).\n- `/profiles/view?id=`: header chips + Edit + **Run search now** (task polling hook `src/lib/use-task.ts`: 2 s, backing off to 10 s, stops on done/failed), last run per source with errors, toolbar filters (q, sources, remote, minScore) synced to the URL, paginated `JobCard` list with `MatchBadge`, \"Search elsewhere\" deep links (`DEEP_LINK_SITES`), empty / partial-failure / runner-offline notices (E2E_FLOW §4).\n- Extend `packages/ui` `JobCard` with optional slots `actions`, `statusBadge`, `matchSummary` (no breaking change to existing props).\n\n## Acceptance criteria\n- [ ] Create redirects to the view page; edit and delete (confirm dialog) work against the mocked API\n- [ ] Run search: button disabled while running, progress shown, list reloads on done, partial-failure notice lists failing sources\n- [ ] Filters and page are in the URL and restored on reload\n- [ ] Client validation mirrors API limits (name 80, keywords 300, locations 10) with tests\n- [ ] Static export build passes; no dynamic route segments\n\n## Dependencies\n- M2-02\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-02"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M3-01",
+    "title": "[M3-01] Platform catalogue & connections API (encrypted credentials, Adzuna own key)",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "security",
+      "area:api",
+      "area:crawler"
+    ],
+    "body": "## Description\nMigration **`db/migrations/010_platform_connections.sql`** (ARCHITECTURE §4).\n\n- `ujc_api/crypto.py`: MultiFernet from `UJC_ENCRYPTION_KEYS` (comma-separated, first one encrypts), `encrypt_json`, `decrypt_json`; the app refuses to start in production without keys.\n- `ujc_api/platforms.py`: catalogue = `ujc_api/sources.py` + kinds `public | api_key | oauth | runner`; Upwork `available = UPWORK_ENABLED`.\n- `GET /api/platforms`: per platform `{id, label, kind, homepage, available, connectState: 'always_on'|'connected'|'not_connected'|'error'|'needs_attention', detail}` (runner states read from `runners.site_status` once M3-06 exists; guard on table existence).\n- `PUT /api/connections/adzuna {appId, appKey}`: verify with one Adzuna call (in `apps/crawler/src/job_crawler/sources/adzuna.py` add `verify_credentials(http, app_id, app_key) -> bool` and `search(http, keywords, country, app_id, app_key)`), store encrypted, return the masked key; `DELETE /api/connections/{platform}`.\n- `ujc_api/audit.py` placeholder `record(conn, user_id, action, meta)` that logs until M5-04 adds the table.\n\n## Acceptance criteria\n- [ ] The credentials column never contains plaintext (test decrypts and greps the raw bytes)\n- [ ] Key rotation: data encrypted with an old key decrypts after a new first key is added (test)\n- [ ] Invalid Adzuna key returns 422 `invalid_credentials` and stores nothing (Adzuna mocked with httpx MockTransport)\n- [ ] `GET /api/platforms` lists all 11 existing sources + upwork with the right kinds\n- [ ] Other users cannot see or delete my connection\n\n## Dependencies\n- M1-04\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-04"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M3-02",
+    "title": "[M3-02] Connections page (/connections): built-in, Adzuna, Upwork card, runner pairing, MCP tokens",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nUI for E2E_FLOW §5. Contract: M3-01, M3-06 (runner endpoints) and M3-08 (tokens; render that card only when `GET /api/tokens` is not 404).\n\n- Add `upwork` to `packages/core/src/sources.ts` (`kind: 'oauth'`, label \"Upwork\", homepage) and extend the `SourceMeta.kind` union; add Upwork to `DEEP_LINK_SITES` (`https://www.upwork.com/nx/search/jobs/?q=`).\n- `src/app/connections/page.tsx` + components in `src/components/connections/`: `BuiltInSourcesCard`; `AdzunaCard` (form, masked key, remove); `UpworkCard` (disabled state: \"Use Upwork in Claude\" guide with the official MCP URL `https://mcp.upwork.com/mcp` + deep link; enabled state: Connect navigates to `/api/connections/upwork/authorize`, status, Disconnect); `RunnerCard` (risk acknowledgement checkbox, pairing code + countdown + copy commands, polls `GET /api/runners` every 3 s while pairing, runner list with last seen/version, revoke, per-site status chips showing the login command); `McpTokensCard` (create token shown once, copy Claude config JSON, revoke).\n- Toast from `?upwork=connected|denied|error`.\n\n## Acceptance criteria\n- [ ] Every card state in E2E_FLOW §5 renders in Vitest with the mocked API\n- [ ] Pairing countdown expires and offers a new code\n- [ ] Secrets (Adzuna key, PAT) are never displayed again after save; PAT shown once with a copy button\n- [ ] Upwork guide names Upwork as the source and links its official docs\n- [ ] Static export build passes\n\n## Dependencies\n- M2-02\n- M3-01\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-02",
+      "M3-01"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M3-03",
+    "title": "[M3-03] Upwork GraphQL client library (fixture-tested, no API key needed)",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "area:crawler"
+    ],
+    "body": "## Description\nPure library in `apps/crawler/src/job_crawler/sources/upwork.py`, **not** registered in `SOURCES` (no daily crawl: Upwork API Terms §4.1 forbid continuous monitoring).\n\n- `UpworkClient(http, access_token)`: `search_jobs(expression, *, first=20, after=None, skill_expression=None, category_ids=None) -> UpworkPage`, calling `POST https://api.upwork.com/graphql` with `marketplaceJobPostingsSearch(marketPlaceJobFilter: {searchExpression_eq, skillExpression_eq, categoryIds_any, pagination_eq {after, first}}, searchType: ...)`. Keep the query text in `upwork_queries.py`; verify field and enum names against the official schema once the key is available.\n- Map edges to `UpworkJob` (pydantic: id/ciphertext, title, description truncated to 4k chars, url `https://www.upwork.com/jobs/~<ciphertext>`, created_at, job type, budget/hourly text, skills, client country, payment verified). Deliberately **not** `JobRecord`, so it cannot be upserted into `jobs` by accident.\n- OAuth helpers: `authorization_url(client_id, redirect_uri, state, code_challenge)`, `exchange_code(...)`, `refresh(...)`, PKCE `make_verifier()` / `challenge(verifier)`.\n- Errors: `UpworkAuthError` (401), `UpworkRateLimited(retry_after)` (429), `UpworkError` (GraphQL `errors`). One retry with backoff on 429/5xx.\n- Fixtures `tests/fixtures/upwork_search.json`, `upwork_errors.json` (hand-written from the docs); tests in `tests/test_upwork.py`.\n\n## Acceptance criteria\n- [ ] No network in tests (httpx MockTransport); ruff + pytest pass\n- [ ] Mapping handles missing budget/client fields\n- [ ] GraphQL `errors` raises UpworkError with the message; 429 raises UpworkRateLimited with retry_after\n- [ ] PKCE challenge matches the RFC 7636 test vector\n- [ ] Module docstring summarises the Terms constraints (no polling, 24 h cache, no AI use, attribution)\n\n## Dependencies\n- none\n\n## Parallel work\nLane `C`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [],
+    "parallel_group": "C"
+  },
+  {
+    "key": "M3-04",
+    "title": "[M3-04] Upwork OAuth connect + user-directed live search with 24 h cache (behind UPWORK_ENABLED)",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "security",
+      "area:api",
+      "area:web"
+    ],
+    "body": "## Description\nShips behind `UPWORK_ENABLED` (needs our approved Upwork API key; until then tests use mocks). Migration **`db/migrations/012_upwork_cache.sql`**.\n\nAPI (`routers/upwork.py`):\n- `GET /api/connections/upwork/authorize`: PKCE verifier + `state` bound to the session (short-lived server-side row), 302 to Upwork.\n- `GET /api/connections/upwork/callback?code&state`: validate state, exchange the code, store tokens encrypted in `platform_connections` (platform `upwork`), 302 to `/connections?upwork=connected` (or `denied` / `error`).\n- Refresh on demand when `expires_at` < now + 5 min; on refresh failure set status `error`.\n- `POST /api/upwork/search {q?, profileId?, cursor?}`: q defaults to the profile keywords (`plain_keywords`); cache key = sha256(user, normalised query, cursor); serve from cache while `expires_at > now()`, else call Upwork and store with `expires_at = fetched_at + 24h`. Rate limit 30/hour/user. Response `{items, nextCursor, fetchedAt, expiresAt, attribution: 'Upwork'}`.\n- `purge` task deletes expired cache rows; disconnect deletes tokens + cache.\n- Guard tests: no scheduler entry for Upwork; `jobs` never gets source `upwork`; match scoring rejects Upwork.\n\nWeb: `src/components/upwork/UpworkPanel.tsx` on `/profiles/view` (only when available + connected): \"Search Upwork now\", results with \"From Upwork\" attribution and expiry time; \"Save to tracker\" posts a snapshot to `POST /api/applications` when M4-05 is merged (hidden otherwise).\n\n## Acceptance criteria\n- [ ] Full OAuth flow tested with mocked Upwork endpoints, including state mismatch (400) and user denial\n- [ ] A second identical search within 24 h does not call Upwork; after expiry it does (fake clock)\n- [ ] Purge removes expired rows; disconnect removes tokens and cache\n- [ ] Flag off: endpoints 404 and the panel is hidden\n- [ ] Tokens never logged and stored encrypted\n- [ ] Panel visually separates Upwork results from other sources and shows attribution\n\n## Dependencies\n- M3-01\n- M3-03\n- M2-03\n\n## Notes\nBefore enabling in production, Tony obtains the API key and confirms the use case with Upwork (ARCHITECTURE §7 step 4).\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M3-01",
+      "M3-03",
+      "M2-03"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M3-05",
+    "title": "[M3-05] Per-user search runs: POST /api/profiles/{id}/search, task status, run history",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "area:api",
+      "area:crawler"
+    ],
+    "body": "## Description\n- Refactor `apps/crawler/src/job_crawler/profile_search.py` so one profile can be searched with explicit sources and Adzuna credentials: `run_profile(conn, http, profile, *, user_id, adzuna_creds=None, progress=None) -> ProfileSearchResult` (keep `run()` for the global daily path). The Remotive cap becomes a deployment-wide daily budget (`UJC_REMOTIVE_DAILY_CALLS`, default 4, counted from today's `crawl_runs`). Adzuna per-profile search uses the user's key if connected, else the operator key; countries derived from profile locations / candidate country.\n- Task handler `ujc_api/tasks/handlers/profile_search.py`: loads the profile, runs, writes `crawl_runs` with `user_id`, `profile_id`, `trigger='manual'`, updates `tasks.progress` per source.\n- `POST /api/profiles/{id}/search` returns 202 `{taskId}` (dedupe `profile_search:{id}`; 10/hour/user); if the user has an active runner and session sources selected, also inserts a `runner_requests` row (guard on table existence until M3-06 merges).\n- `GET /api/tasks/{id}` (owner only, 404 otherwise) and `GET /api/runs?profileId=`.\n- Scheduler: daily `profile_search` for every profile at 21:00 UTC (dedupe per profile per day).\n\n## Acceptance criteria\n- [ ] Handler test with mocked HTTP: jobs upserted and linked to the profile; crawl_runs rows carry user/profile/trigger\n- [ ] Remotive budget respected across users (test)\n- [ ] One failing source keeps the others' results and records the error\n- [ ] Double click returns the same taskId\n- [ ] Global `python -m job_crawler --profiles` still works (crawler tests)\n\n## Dependencies\n- M1-05\n- M1-07\n- M3-01\n\n## Parallel work\nLane `E`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-05",
+      "M1-07",
+      "M3-01"
+    ],
+    "parallel_group": "E"
+  },
+  {
+    "key": "M3-06",
+    "title": "[M3-06] Companion runner pairing & runner API",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "security",
+      "area:api"
+    ],
+    "body": "## Description\nMigration **`db/migrations/011_runners.sql`** (ARCHITECTURE §4). Server side of ARCHITECTURE §6.\n\n- User endpoints: `POST /api/runners/pairing-codes` (8 chars from an unambiguous alphabet, shown as `ABCD-EFGH`, hash stored, 10 min, max 5 active per user), `GET /api/runners`, `DELETE /api/runners/{id}` (sets revoked_at), `POST /api/profiles/{id}/runner-requests {sites?}`.\n- Runner endpoints (Bearer runner token; `auth/deps.py: current_runner`): `POST /api/runner/pair {code,name,version}` returns `{runnerId, token}` (32-byte token, hash stored; 5 attempts/min/IP); `GET /api/runner/assignments` returns `{profiles:[{id,name,keywords,locations,remoteOnly,sources,candidateCountry}], requests:[{id,profileId,sites}], minVersion}`; `POST /api/runner/heartbeat {version, siteStatus}`; `POST /api/runner/results {site, profileId, requestId?, jobs, error?}`.\n- Results: validate with `job_crawler.models.JobRecord`; `site` must be a session site; each job's `source == site` and URL host in the site allowlist (linkedin.com, seek.com.au / seek.co.nz, glassdoor.*, arc.dev); at most 500 jobs and 2 MB (413); drop `raw`; `upsert_jobs(owner_user_id=runner.user_id)`; `link_profile_jobs`; `crawl_runs` row with trigger `runner`; mark the request done. Rate limit 60/hour/runner.\n- Runner older than `minVersion` gets 426 `runner_outdated`.\n\n## Acceptance criteria\n- [ ] Pairing code is single-use and expires (tests); brute force is rate-limited\n- [ ] Revoked runner token gets 401\n- [ ] A runner only sees its owner's profiles and cannot call any session-auth endpoint (tests)\n- [ ] Foreign host, wrong source and oversize payloads are rejected\n- [ ] Uploaded jobs are visible only to the owner via `/api/profiles/{id}/jobs` and `/api/jobs`\n\n## Dependencies\n- M1-05\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-05"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M3-07",
+    "title": "[M3-07] Local companion runner CLI (job_crawler.runner) using the API instead of the DB",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "area:crawler"
+    ],
+    "body": "## Description\nClient side of ARCHITECTURE §6, reusing `job_crawler.session` (engine, sites, crawl_site). Contract-first: it can be built against the M3-06 spec with a fake API (httpx MockTransport) before M3-06 merges.\n\n- `apps/crawler/src/job_crawler/runner/__main__.py` + console script `job-crawler-runner` in pyproject: `pair CODE --server URL [--name]`, `login SITE` (reuses the session login), `run [--site ...] [--pages N] [--headless] [--interval HOURS]`, `status`, `forget` (deletes local config + browser profiles after confirmation).\n- Config `~/.unified-job-crawler/runner.json` (override with `UJC_RUNNER_CONFIG`), mode 0600, holds server URL, runner id and token. Never print the token.\n- `run`: heartbeat with per-site status (logged in / needs login via `is_blocked` on a cheap page), fetch assignments, crawl each (profile, site) with the existing pacing and page caps, POST results per (site, profile) in chunks of up to 500, report errors; `--interval` loops with jitter; 401 tells the user the runner was revoked; 426 tells them to upgrade.\n- No DATABASE_URL needed on the user's machine. `job_crawler.session crawl` keeps working for the operator (deprecation note in README).\n- README \"Companion runner\" section with install via `uvx --from \"git+https://github.com/NoatToan/job-seeking#subdirectory=apps/crawler\" ...` (browser extra) and the pairing steps.\n\n## Acceptance criteria\n- [ ] Unit tests with a fake API cover pair, run (results posted, chunking), 401 and 426\n- [ ] Config file created with 0600 permissions (POSIX test)\n- [ ] No cookies, HTML or screenshots are sent (test inspects request bodies)\n- [ ] ruff + pytest pass; Playwright is not needed for tests (session engine mocked)\n\n## Dependencies\n- M3-06\n\n## Parallel work\nLane `C`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M3-06"
+    ],
+    "parallel_group": "C"
+  },
+  {
+    "key": "M3-08",
+    "title": "[M3-08] Personal access tokens + ujc MCP server (apps/mcp) for the user's own Claude",
+    "milestone": "M3 Platforms (incl. Upwork & MCP)",
+    "labels": [
+      "feature",
+      "area:mcp",
+      "area:api"
+    ],
+    "body": "## Description\nLets a user's Claude search their unified results. Upwork itself is reached through Upwork's official MCP server, configured side by side (ARCHITECTURE D6/D7).\n\nAPI (new files only): migration **`db/migrations/016_personal_access_tokens.sql`**; `routers/tokens.py` `GET/POST/DELETE /api/tokens` (name; scopes from `jobs:read profiles:read applications:write`; expiry up to 365 days; token `ujc_pat_<random>` shown once, sha256 stored); `auth/deps.py` accepts `Authorization: Bearer ujc_pat_...` on endpoints that declare the scope; `last_used_at` updated.\n\nMCP (`apps/mcp`, uv project `ujc_mcp`, Python `mcp` SDK; check current docs with Context7 first: SDK v2 names the server class `MCPServer`, v1 `FastMCP`): stdio server configured by `UJC_API_URL` and `UJC_TOKEN`. Tools: `list_profiles()`, `search_jobs(profile_id?, query?, source?, remote_only?, min_score?, page?)`, `get_job(job_id)`, `list_applications(status?)`, `save_job(job_id, status='saved', note?)`, `update_application(application_id, status?, note?, next_action_at?)` (the last two need `applications:write` and M4-05; return a clear error otherwise). Results include source + URL for attribution. `apps/mcp/README.md`: Claude Desktop / Claude Code config with Upwork's official MCP (`https://mcp.upwork.com/mcp`) next to `ujc`.\n\n## Acceptance criteria\n- [ ] PAT auth works only for declared scopes; revoked/expired tokens get 401; CSRF not required for Bearer\n- [ ] MCP tools tested with an in-memory MCP client session against a mocked API\n- [ ] Token never logged; README explains least-privilege scopes\n- [ ] `uv run ruff check .` and `uv run pytest` pass in apps/mcp\n\n## Dependencies\n- M1-05\n- M1-06\n\n## Parallel work\nLane `C`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-05",
+      "M1-06"
+    ],
+    "parallel_group": "C"
+  },
+  {
+    "key": "M4-01",
+    "title": "[M4-01] Pluggable LLM provider (Anthropic API / claude CLI / fake)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:crawler"
+    ],
+    "body": "## Description\nRefactor `apps/crawler/src/job_crawler/matching/claude.py` into `job_crawler/llm/`:\n- `base.py`: `LlmProvider` protocol `structured(prompt, *, system, schema, files=None) -> dict`, `LlmError`, usage record (input/output tokens, duration).\n- `claude_cli.py`: the current `run_claude` behaviour, unchanged.\n- `anthropic_api.py`: official `anthropic` SDK (optional dependency group `api`), JSON-schema structured output (or forced tool use), PDFs/images as document/image blocks for OCR, retry on 429/529 with backoff, `max_tokens` cap. Look up current SDK usage and model ids (Context7 or the claude-api skill) before coding.\n- `fake.py`: canned JSON per schema; used by all tests.\n- `get_provider()` from `UJC_LLM_PROVIDER` (default `claude_cli` for the CLI; `anthropic` for the server) and `UJC_CLAUDE_MODEL`.\n- `matching/cv.py` and `matching/scorer.py` take a provider argument (default `get_provider()`); `python -m job_crawler.matching` unchanged for users.\n\n## Acceptance criteria\n- [ ] Existing matching tests pass using FakeProvider\n- [ ] Anthropic provider tested with a mocked HTTP transport (no real key in CI): schema parsing, retry on 429, error mapping\n- [ ] `ANTHROPIC_API_KEY` is read only from the environment and never logged\n- [ ] apps/crawler README documents providers and variables\n\n## Dependencies\n- none\n\n## Parallel work\nLane `C`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [],
+    "parallel_group": "C"
+  },
+  {
+    "key": "M4-02",
+    "title": "[M4-02] CV upload & background extraction API with AI consent",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "security",
+      "area:api"
+    ],
+    "body": "## Description\nMigration **`db/migrations/013_cv_lifecycle.sql`** (ARCHITECTURE §4).\n\n- `POST /api/cvs` multipart (`file`, `aiConsent=true` required, else 422 `consent_required`): size up to `UJC_CV_MAX_BYTES` (413 otherwise); type by magic bytes (`%PDF`, PNG, JPEG, WEBP; text/markdown by UTF-8 decode), not by extension; insert `cvs` row (status `uploaded`, sanitised filename, size, ai_consent_at); write the file to a private temp dir; enqueue `cv_extract`; 202 `{cvId, taskId}`. Limits: 10 uploads/day/user and `UJC_LLM_DAILY_CV_EXTRACTS_PER_USER`.\n- Handler `cv_extract`: `cv.extract_text` (+ OCR via the provider), then `cv.extract_profile`, then update text/extracted/status `ready`; on error status `failed` + a user-safe message; always delete the temp file (finally).\n- `GET /api/cvs` (no text), `GET /api/cvs/{id}` (extracted profile; `?includeText=true` for the owner), `DELETE /api/cvs/{id}` (cascades matches), `POST /api/cvs/{id}/retry`.\n\n## Acceptance criteria\n- [ ] The original file is never kept after the task (test asserts the temp dir is empty after success and failure)\n- [ ] Wrong type, too large and missing consent are rejected with the right codes\n- [ ] Extraction with FakeProvider ends `ready` with extracted fields; failure ends `failed`\n- [ ] Cross-user access returns 404\n- [ ] Quota exceeded returns 429 with the reset time\n\n## Dependencies\n- M1-04\n- M1-07\n- M4-01\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-04",
+      "M1-07",
+      "M4-01"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M4-03",
+    "title": "[M4-03] Match scoring task & API with daily quota",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:api",
+      "area:crawler"
+    ],
+    "body": "## Description\nMove the logic of `matching/__main__.py` into `job_crawler.matching.run_match(conn, profile, cv_row, provider, limit, preferences, progress)` (CLI keeps working) and call it from task `match_score`.\n\n- `POST /api/profiles/{id}/match {cvId, limit (max 60), preferences?}` returns 202 `{taskId}` (dedupe `match:{profile}:{cv}`); requires a `ready` CV with `ai_consent_at`.\n- Quota `UJC_LLM_DAILY_SCORES_PER_USER` = jobs sent to the LLM today (sum of `tasks.result.scored`); 429 `quota_exceeded` with `resetAt`.\n- Never send `source='upwork'` jobs (filter in `load_jobs` + assertion).\n- Set `cv_matches.profile_id`; reasons language from `users.locale` (Vietnamese if `vi`, else English; update `matching/prompts.py`).\n- Progress `{step:'scoring', done, total}` per batch; failed batches in `result.failedBatches`.\n\n## Acceptance criteria\n- [ ] End-to-end test with FakeProvider: scores stored and returned by `GET /api/profiles/{id}/jobs?cvId=`\n- [ ] Quota enforced across several tasks\n- [ ] Upwork jobs never reach the provider (spy provider test)\n- [ ] CLI `python -m job_crawler.matching` still works (existing tests)\n\n## Dependencies\n- M4-02\n- M1-05\n\n## Parallel work\nLane `E`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M4-02",
+      "M1-05"
+    ],
+    "parallel_group": "E"
+  },
+  {
+    "key": "M4-04",
+    "title": "[M4-04] CV management UI and scores on results (+ relevance feedback)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nContract: M4-02, M4-03.\n- `/cvs`: upload dropzone with the AI-consent checkbox (explains the transfer to Anthropic in the USA and retention; links `/privacy`), list with status chips (task polling), detail drawer (headline, seniority, skills, target titles), delete with confirm, retry on failed.\n- `/profiles/view`: CV selector + \"Score with CV\" (task progress, quota toast), `MatchBadge` + summary + missing skills on cards, sort by score, min-score filter enabled when a CV is selected.\n- Relevance thumbs up/down on cards stored in `localStorage` for now (PRD G2 metric; API later).\n\n## Acceptance criteria\n- [ ] Size/type validation mirrored client-side; server errors still displayed\n- [ ] Statuses move uploaded, extracting, ready/failed in tests with mocked task polling\n- [ ] Scores appear on cards after the match task completes (mocked)\n- [ ] Dropzone usable by keyboard; status changes announced (aria-live)\n\n## Dependencies\n- M2-03\n- M4-02\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-03",
+      "M4-02"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M4-05",
+    "title": "[M4-05] Application tracking API (applications + history)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:api"
+    ],
+    "body": "## Description\nMigration **`db/migrations/014_applications.sql`** (ARCHITECTURE §4).\n- `POST /api/applications` from `{jobId, status?}` (snapshot title/company/url/source from a visible job; 409 `already_tracked` with the existing id) or manual `{source:'manual'|'upwork', externalUrl, title, company?}` (http/https URL only).\n- `GET /api/applications?status&page`, `PATCH /api/applications/{id}` (status, notes up to 5000 chars, nextActionAt, cvId), `DELETE`, `GET /api/applications/{id}/events`.\n- Status change writes `application_events`; the first move to `applied` sets `applied_at`.\n- `/api/profiles/{id}/jobs` and `/api/jobs` items get `application: {id, status} | null`; profile results exclude `hidden` and accept a `status` filter.\n\n## Acceptance criteria\n- [ ] CRUD + events tested; cross-user 404\n- [ ] Snapshot survives job deletion (job_id SET NULL)\n- [ ] Hidden jobs disappear from profile results\n- [ ] Upwork snapshot entries can be created without a jobs row\n\n## Dependencies\n- M1-06\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-06"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M4-06",
+    "title": "[M4-06] Tracker UI (/tracker board + list, save actions on job cards)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\n- `/tracker`: board columns Saved, Applied, Interviewing, Offer (+ collapsible Rejected, Withdrawn); list view toggle; card drawer with notes (debounced autosave), next action date, CV used, history timeline; \"Add manually\" dialog.\n- Drag and drop (e.g. `@dnd-kit/core`) **and** a keyboard \"Move to...\" menu.\n- Job cards get Save / Applied / Hide actions and a status badge (optimistic update with rollback on error).\n\n## Acceptance criteria\n- [ ] Status change by drag and by keyboard both call PATCH and update the UI; rollback on API error (tests)\n- [ ] Manual entry validates the URL\n- [ ] Empty state and 409 'already tracked' handled\n- [ ] Tracker code is split so the `/` JS budget (PRD §6) holds\n\n## Dependencies\n- M2-03\n- M4-05\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-03",
+      "M4-05"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M4-07",
+    "title": "[M4-07] Onboarding wizard (/onboarding)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:web"
+    ],
+    "body": "## Description\nE2E_FLOW §3. Steps via `?step=1..5`: (1) country, timezone (default from `Intl.DateTimeFormat().resolvedOptions().timeZone`), language, saved with `PATCH /api/me/settings`; (2) CV upload (reuses the `/cvs` upload component; skippable); (3) first profile prefilled from the CV's target titles / top skills and country (reuses the profile form); (4) connections (reuses the cards; skippable); (5) run the first search and redirect to `/profiles/view?id=&task=`.\n- The step is derived from data + `localStorage` skip flags; signup redirects here; users with at least one profile skip onboarding.\n\n## Acceptance criteria\n- [ ] Refresh resumes at the right step\n- [ ] Steps 2 and 4 skippable; finishing lands on results with the search task running\n- [ ] Prefill uses extracted CV data when available (mocked)\n- [ ] Works at 360 px width\n\n## Dependencies\n- M4-04\n- M3-02\n\n## Parallel work\nLane `B`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M4-04",
+      "M3-02"
+    ],
+    "parallel_group": "B"
+  },
+  {
+    "key": "M4-08",
+    "title": "[M4-08] Daily digest email (scheduler, settings, one-click unsubscribe)",
+    "milestone": "M4 Matching & tracking",
+    "labels": [
+      "feature",
+      "area:api",
+      "area:web"
+    ],
+    "body": "## Description\nMigration **`db/migrations/015_digest.sql`** (ARCHITECTURE §4). E2E_FLOW §7.\n- Scheduler: every minute, enqueue `digest` for users whose local time (users.timezone) is at `digest_hour` (dedupe `digest:{user}:{local_date}`); optionally pre-run `profile_search` + `match_score` one hour earlier, within quota, for profiles with a ready CV.\n- Handler: needs a verified email + `digest_enabled`; collects jobs first seen since the last sent digest, visible to the user, not tracked/hidden, `source != 'upwork'`, score at least `digest_min_score` (or top FTS when no CV); at most 10; sends via Mailer with `List-Unsubscribe` (https URL with an `unsubscribe` email token) and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`; records `digest_deliveries`.\n- `POST /api/digest/unsubscribe {token}` (no auth); `PATCH /api/me/settings` accepts digestEnabled, digestHour, digestMinScore.\n- Web (new files): `src/app/settings/page.tsx` with account basics + \"Daily digest\" section (privacy section added by M5-04) and `src/app/unsubscribed/page.tsx`.\n\n## Acceptance criteria\n- [ ] Timezone math tested (Asia/Ho_Chi_Minh, Australia/Sydney across DST)\n- [ ] Exactly one digest per user per local day; nothing new means `skipped_empty` and no email\n- [ ] Upwork never included; unverified users skipped\n- [ ] Unsubscribe works once without login; invalid token returns 400\n\n## Dependencies\n- M1-03\n- M1-07\n- M4-03\n\n## Parallel work\nLane `E`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-03",
+      "M1-07",
+      "M4-03"
+    ],
+    "parallel_group": "E"
+  },
+  {
+    "key": "M5-01",
+    "title": "[M5-01] CI on pull requests: lint, typecheck, tests, build, migrations",
+    "milestone": "M5 Production hardening",
+    "labels": [
+      "infra",
+      "area:web",
+      "area:api",
+      "area:crawler",
+      "area:mcp"
+    ],
+    "body": "## Description\n`.github/workflows/ci.yml` on `pull_request` and push to `main` (do not change `daily-crawl.yml`):\n- Job `web`: `pnpm/action-setup` (version from the root `packageManager`), Node 22, `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm --filter web test` (when the script exists), `pnpm --filter web build`.\n- Job `python` (matrix over `apps/crawler`, `apps/api`, `apps/mcp`, skipping dirs that don't exist yet): `astral-sh/setup-uv`, `uv sync --locked`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest` with a `postgres:16` service and `TEST_DATABASE_URL`.\n- Job `migrations`: apply all migrations from scratch twice (idempotent) with `node scripts/migrate.mjs` (and `python -m ujc_api.migrate` once apps/api exists).\n- Job `secrets`: gitleaks. Concurrency group per ref with cancel-in-progress.\n- `.github/dependabot.yml` for npm (pnpm), uv/pip per app, and github-actions, weekly.\n\n## Acceptance criteria\n- [ ] Workflow passes on a PR touching only docs (jobs green or skipped correctly)\n- [ ] Fails when ruff/eslint/typecheck/tests fail (verified once on a throwaway branch, noted in the PR)\n- [ ] Postgres service used by the api tests\n- [ ] README lists the checks every PR must pass\n\n## Dependencies\n- none\n\n## Notes\nRecommended as the third issue, right after the two kickoff issues, so every later PR is checked.\n\n## Parallel work\nLane `D`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [],
+    "parallel_group": "D"
+  },
+  {
+    "key": "M5-02",
+    "title": "[M5-02] Docker images, compose stack with Caddy, and Playwright smoke test",
+    "milestone": "M5 Production hardening",
+    "labels": [
+      "infra",
+      "area:api",
+      "area:web"
+    ],
+    "body": "## Description\n- `apps/api/Dockerfile`: multi-stage, python:3.12-slim, uv, `uv sync --locked --no-dev`, non-root user, `HEALTHCHECK` on `/api/health`; one image runs `api`, `worker` and `migrate` by command. The build context includes `apps/crawler` (path dependency).\n- `apps/web/Dockerfile`: node:22 + pnpm build, then a `caddy:2` image serving `out/`.\n- `deploy/Caddyfile`: `/api/*` to api:8000; SPA static with `try_files {path} {path}/ /index.html`; security headers (CSP `default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'`, HSTS, nosniff, Referrer-Policy, Permissions-Policy); compression; request body limit 6 MB.\n- `deploy/docker-compose.yml`: postgres (dev profile), migrate (one-shot), api, worker, web; configuration from `deploy/.env` (git-ignored; committed `deploy/.env.example` lists names only).\n- `e2e/` Playwright workspace package: sign up, skip onboarding, create a profile, results page renders (worker with `UJC_LLM_PROVIDER=fake`; network crawling disabled via `UJC_OFFLINE=1`, which seeds fixture jobs).\n- CI job `e2e`: compose up, run Playwright, upload the trace on failure.\n- Update the root README (layout, develop, deploy; Vercel not used for now; plan to retire the daily-crawl workflow once the worker scheduler runs).\n\n## Acceptance criteria\n- [ ] `docker compose -f deploy/docker-compose.yml up --build` serves the app on http://localhost:8080 with working signup\n- [ ] Containers run as non-root; images contain no `.env` files\n- [ ] Security headers present (curl check in CI)\n- [ ] Playwright smoke passes in CI\n\n## Dependencies\n- M2-02\n- M1-07\n- M1-03\n\n## Parallel work\nLane `D`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M2-02",
+      "M1-07",
+      "M1-03"
+    ],
+    "parallel_group": "D"
+  },
+  {
+    "key": "M5-03",
+    "title": "[M5-03] Security hardening & observability",
+    "milestone": "M5 Production hardening",
+    "labels": [
+      "security",
+      "infra",
+      "area:api"
+    ],
+    "body": "## Description\n- Rate limits: apply ARCHITECTURE §9 to every listed endpoint from one config; 429 body includes `retryAfter`.\n- Request size limits per route; strict Pydantic models (`extra='forbid'`); job descriptions returned as plain text (HTML stripped server-side) to prevent stored XSS.\n- CI: `pip-audit` and `pnpm audit --prod` (fail on high), `bandit` for apps/api.\n- Optional Sentry (`SENTRY_DSN`) for api/worker with PII scrubbing (no emails, CV text or tokens); worker logs per task (kind, duration, outcome, LLM tokens).\n- `GET /api/ready` also reports worker heartbeat age (the worker writes a heartbeat every 30 s); 503 if older than 5 min.\n- Backups: `deploy/backup.sh` (pg_dump custom format, 14-day rotation) + `docs/ops/RUNBOOK.md` (restore drill, rotating `UJC_ENCRYPTION_KEYS`, incident response and 72 h breach notification).\n- PR description ticks the PRD §8 Security checklist with evidence.\n\n## Acceptance criteria\n- [ ] Every PRD §8 Security item has a test or documented evidence\n- [ ] A parametrized cross-user test covers every owner-scoped endpoint\n- [ ] Sentry events contain no PII (scrubber unit test)\n- [ ] Backup and restore verified locally and documented\n\n## Dependencies\n- M1-02\n- M5-02\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-02",
+      "M5-02"
+    ],
+    "parallel_group": "A"
+  },
+  {
+    "key": "M5-04",
+    "title": "[M5-04] Privacy & data rights: consents, export, account deletion, CV retention, legal pages",
+    "milestone": "M5 Production hardening",
+    "labels": [
+      "security",
+      "feature",
+      "docs",
+      "area:api",
+      "area:web"
+    ],
+    "body": "## Description\nMigration **`db/migrations/017_audit_privacy.sql`** (`audit_log`, `consents`). PRD §7: Vietnam PDP Law 91/2025/QH15 + Decree 356/2025/ND-CP, Australian Privacy Act (APPs).\n- Consents: record `terms`, `privacy` (at register), `ai_processing` (first CV upload) and `digest_email` (settings) with a version; `DELETE /api/me/consents/{purpose}` withdraws; withdrawing `ai_processing` deletes CV text/extracted data + matches and blocks scoring.\n- `GET /api/me/export` (JSON attachment; 3/day); `DELETE /api/me` (password + confirmation; cascade; best-effort Upwork token revoke; audit entry kept with user_id nulled).\n- `purge` task: CVs unused for `UJC_CV_RETENTION_DAYS` get an email notice 7 days before, then are deleted; expired sessions, tokens and Upwork cache are removed.\n- Audit log writes for the events in ARCHITECTURE §4 (replaces the `ujc_api/audit.py` placeholder).\n- Web: `/settings` Privacy section (export, withdraw AI consent, delete account); `/privacy` and `/terms` content (data collected, purposes, processors: hosting, Anthropic (USA), SMTP provider; cross-border transfer; retention; rights; contact; runner and Upwork notes).\n- `docs/ops/PRIVACY_OPERATIONS.md`: cross-border transfer impact assessment template (filed with the Ministry of Public Security, A05, within 60 days of the first transfer), record of processing, breach-response procedure (72 h).\n\n## Acceptance criteria\n- [ ] Deleting an account removes every row owned by the user (test enumerates all tables with user_id / owner_user_id)\n- [ ] Export contains all of the user's data and nothing from other users\n- [ ] Withdrawing AI consent removes CV text and blocks new match tasks\n- [ ] Retention purge tested with a fake clock\n- [ ] Privacy page reviewed by Tony before merge\n\n## Dependencies\n- M1-04\n- M4-02\n\n## Parallel work\nLane `A`: can run concurrently with issues in other lanes (see docs/product/README.md).\n\nRefs: docs/product/ARCHITECTURE.md, docs/product/PRD.md, docs/product/E2E_FLOW.md\n",
+    "depends_on": [
+      "M1-04",
+      "M4-02"
+    ],
+    "parallel_group": "A"
+  }
+]
