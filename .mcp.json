@@ -7,6 +7,10 @@
     "jobspy": {
       "command": "uvx",
       "args": ["jobspy-mcp"]
+    },
+    "upwork": {
+      "type": "http",
+      "url": "https://mcp.upwork.com/mcp"
     }
   }
 }

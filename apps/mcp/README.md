@@ -10,6 +10,7 @@ Registered in the repo-root `.mcp.json` together with [jobspy-mcp](https://githu
 | `search_arc` | Arc.dev | `__NEXT_DATA__` JSON in the server-rendered listing pages |
 | `search_freelance_jobs` | All three, contract only | Runs the three above in parallel |
 | `jobspy` → `search_jobs` | LinkedIn, Glassdoor, Indeed, Google Jobs | jobspy-mcp (`uvx jobspy-mcp`) |
+| `upwork` (official) | Upwork | Upwork's own MCP server `https://mcp.upwork.com/mcp` (OAuth sign-in) |
 
 ```bash
 uv sync
@@ -18,6 +19,17 @@ uv run pytest && uv run ruff check .
 
 Open Claude Code at the repo root, approve the two servers from `.mcp.json`, check with `/mcp`, then
 ask e.g. "tìm job contract React trên SEEK ở Sydney 7 ngày qua" or "search_freelance_jobs python".
+
+## Upwork (official MCP)
+
+`.mcp.json` also registers Upwork's official MCP server (Streamable HTTP, free). It signs in with your
+own Upwork account: in Claude Code run `/mcp`, pick `upwork` and finish the OAuth login in the browser.
+No API key or secret is stored in this repo.
+
+Use it only for your own on-demand searches. The Upwork API & MCP Terms forbid continuous
+monitoring/polling, caching Upwork content for more than 24 hours, and using Upwork content to train,
+ground or evaluate AI models. That's why Upwork jobs are never crawled into our database or scored
+against CVs (see `docs/product/ARCHITECTURE.md` §7).
 
 ## Caveats
 
