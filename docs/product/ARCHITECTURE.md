@@ -14,10 +14,11 @@ Status: proposed (BA, 2026-10-29). This document is the contract the implementat
 | D4 | **Same-origin deployment**. A reverse proxy (Caddy) serves the SPA at `/` and proxies `/api/*` to FastAPI. Sessions use an HttpOnly cookie plus a double-submit CSRF token. | Cookies stay first-party and CORS is not needed in production. Static export cannot set headers itself, so Caddy sets them. |
 | D5 | **Multi-user, single-person accounts.** Profiles, CVs, matches, applications, connections and runners are owned by a user. Public-source jobs are a shared catalogue. Jobs fetched with a user's own session or token are visible only to that user. | Several individuals can share one deployment without seeing each other's data, and we do not redistribute data obtained with someone's personal login. |
 | D6 | **Upwork**: (a) the user's own Claude talks to **Upwork's official MCP server** (`https://mcp.upwork.com/mcp`), and we only document and link it. (b) In the app, a **user-directed live search** goes through the official GraphQL API with the user's OAuth token. Results are cached at most 24h, user-scoped, never scored by Claude, never in digests, and never polled on a schedule. We do **not** build an Upwork-wrapping MCP server. | Upwork's API & MCP Terms forbid continuous monitoring (§4.1), bulk extraction (§3.5), caching beyond 24h (§8.3) and using Upwork content to ground or evaluate AI (§5.3). Upwork launched an official MCP server on 2026-08-10, so wrapping the API again would add nothing. |
-| D7 | **Our own MCP server** (`apps/mcp`, Python `mcp` SDK, stdio) exposes the user's *unified* job search, profiles and tracker through our REST API, authenticated with a personal access token. A user's Claude can then combine our MCP with Upwork's official MCP. | This meets "Upwork via MCP" plus "both our backend and the user's Claude can use it", within Upwork's terms. |
-| D8 | **Session platforms** (LinkedIn, Seek, Glassdoor, Arc) are crawled only by a **local companion runner** on the user's machine. It is paired to the account with a one-time code and uploads parsed jobs. Cookies and browser profiles never leave the machine. | This keeps the agreed constraints: no CAPTCHA bypass, no fingerprint spoofing, no server-side cookies. |
+| D7 | **One MCP package, `apps/mcp` (`job_search_mcp`, merged in #1).** It already gives Claude free, live, on-demand search on SEEK (its public JSON search API), We Work Remotely (RSS) and Arc (`__NEXT_DATA__`). `.mcp.json` registers it next to `jobspy-mcp` (LinkedIn/Glassdoor/Indeed) and Upwork's official MCP (#33). M3-08 adds the user's *own* data tools to the same package (profiles, unified results, tracker), calling our REST API with a personal access token. | Satisfies "Upwork via MCP" and lets the user's Claude and our backend reuse one set of source clients, without a second MCP package. |
+| D8 | **Session platforms** (LinkedIn, Glassdoor, Arc; Seek moves to its JSON search API, see D11) are crawled only by a **local companion runner** on the user's machine. It is paired to the account with a one-time code and uploads parsed jobs. Cookies and browser profiles never leave the machine. | This keeps the agreed constraints: no CAPTCHA bypass, no fingerprint spoofing, no server-side cookies. |
 | D9 | **Pluggable LLM provider**: `anthropic` (Anthropic API, server default), `claude_cli` (local `claude -p`, for dev and the runner), `fake` (tests). Each user has a daily scoring quota. | A Claude consumer subscription on a server must not be used to serve other users, and API keys give cost control and concurrency. |
 | D10 | **Work flow**: each GitHub issue gets a branch `feat/<key>-slug` and a PR with "Closes #n". **No Vercel deploy for now.** The Docker compose stack is the reference production target. | Tony's instruction. |
+| D11 | **MCP/API-first, crawl last** (idea from #1). Fetch order: (1) official or public JSON APIs and feeds, queried **on demand** when a user searches (SEEK JSON API, Himalayas/Remotive search, WWR RSS, ATS board APIs, Arc pages); (2) the small daily scheduled crawl, only for open feeds and ATS boards (polite, cached); (3) the local browser runner, only for sources with no API (LinkedIn/Glassdoor when the user is logged in). Source clients live in one shared module used by `apps/mcp`, `apps/crawler` and `apps/api` (M3-09). | Fewer requests to job sites ("no crawler spam"), fresher results, no browser needed for SEEK, and one parser per source instead of copies in two apps. |
 
 ## 2. Component view
 
@@ -35,7 +36,7 @@ flowchart LR
   subgraph UserMachine["User's own machine"]
     Runner["Companion runner\npython -m job_crawler.runner\nPlaywright + local browser profiles"]
     Claude["User's Claude (Desktop/Code)"]
-    UjcMcp["apps/mcp\nujc MCP server (stdio)"]
+    UjcMcp["apps/mcp\njob_search_mcp (stdio)"]
   end
   Public["Public sources\nWWR, Greenhouse, Lever, Ashby,\nHimalayas, Remotive, Adzuna"]
   Upwork["Upwork GraphQL API\napi.upwork.com/graphql"]
@@ -62,7 +63,7 @@ flowchart LR
 | `apps/web` | Next.js 16 SPA, `output: 'export'` | converted in M2-01 |
 | `apps/api` | FastAPI app `ujc_api` (routers, repos, auth, tasks, worker, migrate) | new in M1-01 |
 | `apps/crawler` | `job_crawler` library + CLIs (daily crawl, session, runner, matching, llm) | extended |
-| `apps/mcp` | `ujc_mcp` stdio MCP server over our REST API | new in M3-08 |
+| `apps/mcp` | `job_search_mcp` stdio MCP server: live free sources (SEEK, WWR, Arc) today; user data tools over our REST API in M3-08 | exists (#1) |
 | `packages/core` | TS types (API DTOs), source registry, country list | extended |
 | `packages/ui` | shared React components | extended |
 | `db/migrations` | SQL migrations (single schema) | 007+ added |
