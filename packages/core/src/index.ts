@@ -1,4 +1,5 @@
 export * from "./sources";
+export * from "./api";
 
 /** A job as the apps see it (one row of the jobs table). */
 export interface Job {
@@ -19,17 +20,6 @@ export interface Job {
   firstSeenAt: string;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
-}
-
-/** Latest crawl result per source. */
-export interface SourceStatus {
-  source: string;
-  status: "running" | "ok" | "error";
-  startedAt: string;
-  finishedAt: string | null;
-  jobsFound: number;
-  jobsNew: number;
-  total: number;
 }
 
 /**

@@ -1,15 +1,12 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
 import type { NextConfig } from "next";
 
-// Local dev: env lives in the repo root (shared with the Python crawler). Vercel injects it instead.
-const rootEnv = path.join(__dirname, "../../.env.local");
-if (!process.env.DATABASE_URL && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
-
+// Static-export SPA: no database access, no server code. All data comes from fetch calls to
+// apps/api (see docs/product/ARCHITECTURE.md §3). NEXT_PUBLIC_API_BASE_URL is read at build time.
 const nextConfig: NextConfig = {
+  output: "export",
+  trailingSlash: true,
+  images: { unoptimized: true },
   transpilePackages: ["@ujc/core", "@ujc/ui"],
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
