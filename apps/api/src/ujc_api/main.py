@@ -17,11 +17,19 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ujc_api.db import close_pool
 from ujc_api.logging import REQUEST_ID_HEADER, RequestIdMiddleware, configure_logging
 from ujc_api.migrate import pending_migrations
+from ujc_api.routers import auth as auth_router
+from ujc_api.routers import cvs as cvs_router
+from ujc_api.routers import feed as feed_router
+from ujc_api.routers import me as me_router
+from ujc_api.routers import search as search_router
 from ujc_api.settings import Settings, get_settings
 
 log = logging.getLogger(__name__)
 
-# Maps a response status code to the error-shape `code` (docs/product/ARCHITECTURE.md §5).
+# Maps a response status code to the error-shape `code` (docs/product/ARCHITECTURE.md §5). A
+# route that needs a more specific `code` (e.g. 401 `unauthorized`, 410 `code_expired`) raises
+# `HTTPException(status, detail={"code": ..., "message": ..., "fields": ...})` instead of a plain
+# string `detail`; see `_http_exception_handler` below.
 _STATUS_CODES = {
     400: "bad_request",
     401: "unauthenticated",
@@ -29,7 +37,9 @@ _STATUS_CODES = {
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
+    410: "gone",
     413: "payload_too_large",
+    415: "unsupported_media_type",
     422: "unprocessable",
     429: "rate_limited",
     500: "internal_error",
@@ -62,9 +72,19 @@ def _request_id(request: Request) -> str:
 
 
 async def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    code = _STATUS_CODES.get(exc.status_code, "error")
-    message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
-    response = JSONResponse(status_code=exc.status_code, content=_error_body(code, message))
+    fields: Mapping[str, str] | None = None
+    if isinstance(exc.detail, Mapping) and "code" in exc.detail:
+        # A route raised HTTPException(status, detail={"code": ..., "message": ..., "fields": ...})
+        # to pick a `code` more specific than the generic per-status-code mapping below.
+        code = str(exc.detail["code"])
+        message = str(exc.detail.get("message", ""))
+        fields = exc.detail.get("fields")
+    else:
+        code = _STATUS_CODES.get(exc.status_code, "error")
+        message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    response = JSONResponse(status_code=exc.status_code, content=_error_body(code, message, fields))
+    if exc.headers:
+        response.headers.update(exc.headers)
     response.headers[REQUEST_ID_HEADER] = _request_id(request)
     return response
 
@@ -122,6 +142,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Bound to this app instance's `settings`, not the process-wide cached singleton, so
         `create_app(settings=...)` fully controls what each route sees (tests rely on this)."""
         return settings
+
+    # Routers (ujc_api.deps.app_settings) read this off the request's app instance, for the same
+    # per-app-settings reason as `_app_settings` above.
+    app.state.settings = settings
+
+    app.include_router(auth_router.router)
+    app.include_router(me_router.router)
+    app.include_router(cvs_router.router)
+    app.include_router(feed_router.router)
+    app.include_router(search_router.router)
 
     @app.get("/api/health")
     def health() -> dict:
