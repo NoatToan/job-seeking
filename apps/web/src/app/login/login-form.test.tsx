@@ -57,16 +57,14 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
 
-    fireEvent.change(screen.getByLabelText("Email address"), {
+    fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-    await waitFor(
-      () => expect(screen.getByRole("group", { name: "6-digit code" })).toBeTruthy(),
-      { timeout: 5000 },
-    );
-    expect(screen.getByText(/Review mode code: 123456/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByLabelText("6-digit code")).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByText(/Preview mode: your code is/)).toBeTruthy();
+    expect(screen.getByText("123456")).toBeTruthy();
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/auth/otp");
@@ -89,23 +87,16 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
 
-    fireEvent.change(screen.getByLabelText("Email address"), {
+    fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(
-      () => expect(screen.getByRole("group", { name: "6-digit code" })).toBeTruthy(),
-      { timeout: 5000 },
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(screen.getByLabelText("6-digit code")).toBeTruthy(), { timeout: 5000 });
 
     // No devCode banner this time (production-like response).
-    expect(screen.queryByText(/Review mode code/)).toBeNull();
+    expect(screen.queryByText(/Preview mode/)).toBeNull();
 
-    for (let i = 0; i < 6; i++) {
-      fireEvent.change(screen.getByLabelText(`Digit ${i + 1} of 6`), {
-        target: { value: String(i) },
-      });
-    }
+    fireEvent.change(screen.getByLabelText("6-digit code"), { target: { value: "000000" } });
 
     await waitFor(
       () => expect(screen.getByRole("alert").textContent).toContain("isn't right"),
@@ -134,20 +125,13 @@ describe("LoginForm", () => {
 
     render(<LoginForm />);
 
-    fireEvent.change(screen.getByLabelText("Email address"), {
+    fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(
-      () => expect(screen.getByRole("group", { name: "6-digit code" })).toBeTruthy(),
-      { timeout: 5000 },
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(screen.getByLabelText("6-digit code")).toBeTruthy(), { timeout: 5000 });
 
-    for (let i = 0; i < 6; i++) {
-      fireEvent.change(screen.getByLabelText(`Digit ${i + 1} of 6`), {
-        target: { value: String(i) },
-      });
-    }
+    fireEvent.change(screen.getByLabelText("6-digit code"), { target: { value: "123456" } });
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/cv/"), { timeout: 5000 });
   });

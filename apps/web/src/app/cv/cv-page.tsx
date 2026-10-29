@@ -1,13 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DragEvent, KeyboardEvent } from "react";
+import type { DragEvent } from "react";
 import Link from "next/link";
 import type { Cv } from "@ujc/core";
 import { CANDIDATE_COUNTRIES } from "@ujc/core";
+import {
+  Badge,
+  Button,
+  buttonClasses,
+  ChevronRightIcon,
+  Chip,
+  cx,
+  DocumentIcon,
+  NavBar,
+  ProgressSteps,
+  Skeleton,
+  Spinner,
+  SpotIllustration,
+  TextField,
+  Toggle,
+  UploadIcon,
+  useToast,
+} from "@ujc/ui";
 import { ApiError, getCv, updatePreferences, uploadCv } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
+import { AccountMenu } from "@/app/nav";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt", ".md"];
@@ -22,21 +41,23 @@ const ACCEPTED_MIME = new Set([
 const ACCEPT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME].join(",");
 const WAITING_NOTE_MS = 20_000;
 const POLL_MS = 2_000;
+const ONBOARDING_STEPS = ["Sign in", "Your CV", "Keywords"];
 
 function validateFile(file: File): string | null {
-  if (file.size > MAX_BYTES) return "That file is larger than 5 MB.";
+  if (file.size > MAX_BYTES) return "That file is over 5 MB.";
   const dot = file.name.lastIndexOf(".");
   const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
   const mimeOk = file.type ? ACCEPTED_MIME.has(file.type) : false;
   const extOk = ACCEPTED_EXTENSIONS.includes(ext);
   if (!mimeOk && !extOk) {
-    return "Unsupported file type. Use PDF, PNG, JPG, WEBP, TXT or MD.";
+    return "We can read PDF, images, TXT or MD.";
   }
   return null;
 }
 
 function CvPageInner() {
   const { me, refresh } = useSession();
+  const toast = useToast();
   const [cv, setCv] = useState<Cv | null>(me?.latestCv ?? null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -45,16 +66,20 @@ function CvPageInner() {
 
   const [keywords, setKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [keywordInput, setKeywordInput] = useState("");
+  const [keywordError, setKeywordError] = useState<string | null>(null);
   const [remoteOnly, setRemoteOnly] = useState(me?.preferences.remoteOnly ?? false);
   const [candidateCountry, setCandidateCountry] = useState(me?.preferences.candidateCountry ?? "");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [savedNotice, setSavedNotice] = useState(false);
+  const [keywordsEverSaved, setKeywordsEverSaved] = useState((me?.preferences.keywords.length ?? 0) > 0);
 
   const seededCvIdRef = useRef<string | null>(null);
   const trackedCvIdRef = useRef<string | null>(null);
   const scanStartRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Captured once (not derived every render): whether this is the user's first time through
+  // onboarding, so the ProgressSteps stays stable even as `keywords` is edited.
+  const [isFirstRun] = useState((me?.preferences.keywords.length ?? 0) === 0);
 
   // Seed the keyword editor once per CV that finishes scanning (not on every poll tick).
   useEffect(() => {
@@ -123,26 +148,28 @@ function CvPageInner() {
     }
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     setDragActive(false);
     const file = e.dataTransfer.files?.[0];
     if (file) void handleFile(file);
   }
 
-  function handleDropzoneKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fileInputRef.current?.click();
-    }
-  }
-
   function addKeyword() {
     const value = keywordInput.trim();
-    if (!value || value.length > 40 || keywords.length >= 30) {
+    if (!value) {
       setKeywordInput("");
       return;
     }
+    if (value.length > 40) {
+      setKeywordError("Keywords can be up to 40 characters.");
+      return;
+    }
+    if (keywords.length >= 30) {
+      setKeywordError("You can add up to 30 keywords.");
+      return;
+    }
+    setKeywordError(null);
     if (keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
       setKeywordInput("");
       return;
@@ -158,7 +185,6 @@ function CvPageInner() {
   async function handleSave() {
     setSaving(true);
     setSaveError(null);
-    setSavedNotice(false);
     try {
       await updatePreferences({
         keywords,
@@ -166,8 +192,8 @@ function CvPageInner() {
         candidateCountry: candidateCountry || null,
       });
       await refresh();
-      setSavedNotice(true);
-      setTimeout(() => setSavedNotice(false), 2500);
+      setKeywordsEverSaved(true);
+      toast.show({ tone: "success", title: "Saved", message: "Saved. Here are your jobs." });
     } catch (err) {
       setSaveError(
         err instanceof ApiError ? err.message : "Could not save your preferences. Please try again.",
@@ -179,194 +205,210 @@ function CvPageInner() {
 
   const scanning = cv != null && (cv.status === "queued" || cv.status === "processing");
   const showDropzone = !cv || cv.status === "error";
+  const showProgressSteps = isFirstRun && !keywordsEverSaved;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8">
-      <header>
-        <h1 className="text-2xl font-bold">Your CV</h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+    <>
+      <NavBar title="My CV" trailing={<div className="md:hidden"><AccountMenu /></div>} />
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-16 sm:px-6">
+        {showProgressSteps ? (
+          <ProgressSteps label="Setup progress" steps={ONBOARDING_STEPS} current={cv?.status === "done" ? 2 : 1} />
+        ) : null}
+
+        <p className="text-body text-label-secondary">
           Upload your CV once — we scan it for skills and keywords, and match you to jobs automatically.
         </p>
-      </header>
 
-      {showDropzone ? (
-        <section className="flex flex-col gap-3">
-          {cv?.status === "error" ? (
-            <p
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
-            >
-              We couldn&apos;t scan that CV{cv.error ? `: ${cv.error}` : "."} Try uploading it again.
-            </p>
-          ) : null}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Upload your CV: drag and drop a file here, or press Enter to choose one"
-            onClick={() => fileInputRef.current?.click()}
-            onKeyDown={handleDropzoneKeyDown}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={handleDrop}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center text-sm transition-colors ${
-              dragActive
-                ? "border-zinc-500 bg-zinc-50 dark:bg-zinc-900"
-                : "border-zinc-300 dark:border-zinc-700"
-            }`}
-          >
-            <p className="font-medium">Drag &amp; drop your CV here</p>
-            <p className="text-zinc-500">
-              or click to choose a file — PDF, PNG, JPG, WEBP, TXT or MD, up to 5 MB
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPT_ATTR}
-              className="sr-only"
-              aria-hidden="true"
-              tabIndex={-1}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
-                e.target.value = "";
-              }}
-            />
-          </div>
-          {uploadError ? (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-              {uploadError}
-            </p>
-          ) : null}
-          {uploading ? <p className="text-sm text-zinc-500">Uploading…</p> : null}
-        </section>
-      ) : scanning ? (
-        <section className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="font-medium">Scanning your CV…</p>
-          <p className="text-sm text-zinc-500">
-            We&apos;re reading your CV and pulling out your skills and keywords. This usually takes
-            a minute.
-          </p>
-          {showWaitingNote ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              Still waiting for the scanner — it may be offline right now. Hang tight, this page
-              will update as soon as it picks up your CV.
-            </p>
-          ) : null}
-        </section>
-      ) : cv ? (
-        <section className="flex flex-col gap-5">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="font-semibold">{cv.profile?.headline ?? "Your profile"}</h2>
-            {cv.profile?.seniority ? (
-              <p className="text-sm text-zinc-500">{cv.profile.seniority}</p>
+        {showDropzone ? (
+          <div className="flex flex-col gap-3">
+            {cv?.status === "error" ? (
+              <div role="alert" className="flex flex-col gap-1 rounded-card bg-danger-soft px-4 py-3">
+                <p className="text-subheadline font-semibold text-danger-ink">We couldn&apos;t read this file</p>
+                <p className="text-footnote text-danger-ink">
+                  {cv.error ? cv.error : "If it's a photo or scan, try a clearer PDF."}
+                </p>
+              </div>
             ) : null}
-            {cv.profile?.summary ? (
-              <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{cv.profile.summary}</p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="keyword-input" className="text-sm font-medium">
-              Keywords
-            </label>
-            {keywords.length > 0 ? (
-              <ul className="flex flex-wrap gap-2">
-                {keywords.map((k) => (
-                  <li
-                    key={k}
-                    className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm dark:bg-zinc-800"
-                  >
-                    {k}
-                    <button
-                      type="button"
-                      onClick={() => removeKeyword(k)}
-                      aria-label={`Remove ${k}`}
-                      className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-zinc-500">No keywords yet — add some below.</p>
-            )}
-            <input
-              id="keyword-input"
-              value={keywordInput}
-              onChange={(e) => setKeywordInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addKeyword();
-                }
+            <label
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragActive(true);
               }}
-              placeholder="Add a keyword and press Enter"
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={remoteOnly}
-              onChange={(e) => setRemoteOnly(e.target.checked)}
-            />
-            Remote jobs only
-          </label>
-
-          <div className="flex flex-col gap-1">
-            <label htmlFor="candidate-country" className="text-sm font-medium">
-              I&apos;m based in
-            </label>
-            <select
-              id="candidate-country"
-              value={candidateCountry ?? ""}
-              onChange={(e) => setCandidateCountry(e.target.value)}
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              className={cx(
+                "flex cursor-pointer flex-col items-center gap-3 rounded-card border-2 border-dashed p-10 text-center shadow-card transition-colors duration-200 focus-within:ring-4 focus-within:ring-tint/20",
+                dragActive ? "border-tint bg-tint-soft" : "border-separator-opaque bg-grouped-secondary",
+              )}
             >
-              <option value="">Select a country…</option>
-              {CANDIDATE_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {saveError ? (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-              {saveError}
-            </p>
-          ) : null}
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={saving}
-              className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
-            {savedNotice ? (
-              <span role="status" className="text-sm text-emerald-600 dark:text-emerald-400">
-                Saved
+              <SpotIllustration name="cv" />
+              <div className="flex flex-col gap-1">
+                <p className="text-title3 text-label">Start with your CV</p>
+                <p className="max-w-xs text-body text-label-secondary">
+                  We&apos;ll pull out your skills and find jobs that fit.
+                </p>
+              </div>
+              <span className={buttonClasses({ variant: "tinted" })}>
+                <UploadIcon size={18} />
+                Upload CV
               </span>
+              <p className="text-footnote text-label-secondary">PDF, image, TXT or MD · up to 5 MB</p>
+              {uploading ? (
+                <p className="flex items-center gap-2 text-footnote text-label-secondary">
+                  <Spinner size={14} /> Uploading…
+                </p>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_ATTR}
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {uploadError ? (
+              <p role="alert" className="text-footnote text-danger-ink">
+                {uploadError}
+              </p>
             ) : null}
-            <Link
-              href="/"
-              className="ml-auto rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
-            >
-              See my jobs →
-            </Link>
           </div>
-        </section>
-      ) : null}
-    </main>
+        ) : scanning ? (
+          <div className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
+            <div className="flex items-start gap-3">
+              <span className="flex size-[29px] shrink-0 items-center justify-center rounded-icon bg-tint text-on-tint">
+                <DocumentIcon size={16} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-body font-medium text-label">{cv.filename}</p>
+                <p className="text-footnote text-label-secondary">Scanning your CV…</p>
+              </div>
+              {showWaitingNote ? (
+                <Badge tone="warning">Waiting for the scanner</Badge>
+              ) : cv.status === "processing" ? (
+                <Badge tone="tint" icon={<Spinner size={12} />}>
+                  Scanning
+                </Badge>
+              ) : (
+                <Badge>In queue</Badge>
+              )}
+            </div>
+            <Skeleton className="h-2 w-full animate-shimmer" />
+            <p className="text-footnote text-label-secondary">
+              {showWaitingNote
+                ? "Your CV is safe in the queue and will be read as soon as it's back."
+                : "Usually under a minute. You can leave this page."}
+            </p>
+          </div>
+        ) : cv ? (
+          <div className="flex flex-col gap-5 animate-pop-in">
+            <div className="rounded-card bg-grouped-secondary p-4 shadow-card">
+              <div className="flex items-center gap-2">
+                <h2 className="text-headline text-label">{cv.profile?.headline ?? "Your profile"}</h2>
+                <Badge tone="success">Ready</Badge>
+              </div>
+              {cv.profile?.seniority ? (
+                <p className="mt-0.5 text-footnote text-label-secondary">{cv.profile.seniority}</p>
+              ) : null}
+              {cv.profile?.summary ? (
+                <p className="mt-2 text-body text-label">{cv.profile.summary}</p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <h2 className="text-title2 text-label">Here&apos;s what we found</h2>
+              <p className="text-body text-label-secondary">Remove anything that doesn&apos;t fit, or add your own.</p>
+              {keywords.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {keywords.map((k) => (
+                    <Chip key={k} onRemove={() => removeKeyword(k)}>
+                      {k}
+                    </Chip>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-subheadline text-label-secondary">Add at least one keyword below.</p>
+              )}
+              <TextField
+                id="keyword-input"
+                label="Keywords"
+                value={keywordInput}
+                onChange={(e) => {
+                  setKeywordInput(e.target.value);
+                  setKeywordError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyword();
+                  }
+                }}
+                placeholder="Add a keyword and press Enter"
+                error={keywordError ?? undefined}
+              />
+            </div>
+
+            <section aria-label="Where you can work" className="flex flex-col gap-1.5">
+              <h3 className="px-1 text-footnote font-normal uppercase tracking-wide text-label-secondary">
+                Where you can work
+              </h3>
+              <div className="overflow-hidden rounded-card bg-grouped-secondary shadow-card">
+                <div className="flex min-h-11 items-center gap-3 px-4 py-2">
+                  <span className="flex-1 text-body text-label">Remote only</span>
+                  <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
+                </div>
+                <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
+                  <span className="flex-1 text-body text-label">I&apos;m based in</span>
+                  <select
+                    id="candidate-country"
+                    value={candidateCountry ?? ""}
+                    onChange={(e) => setCandidateCountry(e.target.value)}
+                    className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
+                  >
+                    <option value="">Select a country…</option>
+                    {CANDIDATE_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
+                </label>
+              </div>
+              <p className="px-4 text-footnote text-label-secondary">
+                We&apos;ll hide remote jobs that aren&apos;t open to where you are.
+              </p>
+            </section>
+
+            {saveError ? (
+              <p role="alert" className="text-footnote text-danger-ink">
+                {saveError}
+              </p>
+            ) : null}
+
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => void handleSave()}
+                loading={saving}
+                disabled={keywords.length === 0}
+              >
+                Save
+              </Button>
+              <Link
+                href="/"
+                className="ml-auto inline-flex h-11 items-center gap-1 rounded-control px-1 text-body font-semibold text-tint hover:underline focus-ring"
+              >
+                See my jobs
+                <ChevronRightIcon size={16} strokeWidth={2.25} />
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }
 

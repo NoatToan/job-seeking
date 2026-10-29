@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ToastProvider } from "@ujc/ui";
 
 const { useSessionMock, refreshMock, signOutMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
@@ -12,6 +13,14 @@ vi.mock("@/lib/session", () => ({
 }));
 
 import { CvPage } from "./cv-page";
+
+function renderCvPage() {
+  return render(
+    <ToastProvider>
+      <CvPage />
+    </ToastProvider>,
+  );
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -100,7 +109,7 @@ describe("CvPage", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<CvPage />);
+    renderCvPage();
 
     const file = new File(["dummy content"], "resume.pdf", { type: "application/pdf" });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
