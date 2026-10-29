@@ -1,0 +1,400 @@
+/*
+ * job-seeking design tokens ("Sunrise" Cupertino theme). Single source of truth.
+ * Spec and rationale: docs/design/DESIGN_SYSTEM.md. Contrast ratios for every pair are listed there.
+ *
+ * Import AFTER `@import "tailwindcss";` in the app stylesheet. Light/dark:
+ *   - follows `prefers-color-scheme` by default;
+ *   - `<html class="dark">` forces dark, `<html class="light">` forces light.
+ * Components never use raw colours: they use the semantic utilities generated below
+ * (bg-background, bg-grouped, text-label, text-label-secondary, border-separator, bg-tint, ...).
+ */
+
+/* `dark:` variant = .dark ancestor, OR system dark unless a .light ancestor opts out. */
+@custom-variant dark {
+  &:where(.dark, .dark *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not(.light, .light *)) {
+      @slot;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- runtime palette */
+:root {
+  color-scheme: light;
+
+  /* Backgrounds (systemBackground family, warmed 2-3% toward the tint) */
+  --ujc-background: #ffffff;
+  --ujc-background-secondary: #f4f2ef;
+  --ujc-background-tertiary: #ffffff;
+  --ujc-grouped: #f4f2ef;
+  --ujc-grouped-secondary: #ffffff;
+  --ujc-grouped-tertiary: #f4f2ef;
+
+  /* Labels */
+  --ujc-label: #1c1b1a;
+  --ujc-label-secondary: #5e5b57;
+  --ujc-label-tertiary: #6e6a65;
+  --ujc-label-quaternary: #a9a5a0;
+
+  /* Lines and fills */
+  --ujc-separator: rgb(60 52 44 / 0.2);
+  --ujc-separator-opaque: #dedad5;
+  --ujc-control-border: #8f8a84;
+  --ujc-fill: rgb(120 114 106 / 0.2);
+  --ujc-fill-secondary: rgb(120 114 106 / 0.16);
+  --ujc-fill-tertiary: rgb(120 114 106 / 0.1);
+
+  /* Tint: Sunrise */
+  --ujc-tint: #c2410c;
+  --ujc-tint-pressed: #a8380a;
+  --ujc-tint-ink: #9a3412;
+  --ujc-tint-vivid: #f76b1c;
+  --ujc-on-tint: #ffffff;
+
+  /* Semantic */
+  --ujc-success: #1a7f37;
+  --ujc-success-ink: #146c2e;
+  --ujc-warning: #a35c00;
+  --ujc-warning-ink: #8a4d00;
+  --ujc-danger: #d70015;
+  --ujc-danger-ink: #b00012;
+  --ujc-info: #0e7a86;
+  --ujc-info-ink: #0b656f;
+
+  /* Soft (tinted) backgrounds: 12% of the hue over the surface */
+  --ujc-soft: 12%;
+
+  /* Materials */
+  --ujc-material: rgb(255 255 255 / 0.72);
+  --ujc-material-thick: rgb(250 249 247 / 0.86);
+  --ujc-scrim: rgb(28 27 26 / 0.32);
+
+  /* Elevation (light mode uses soft warm shadows) */
+  --ujc-shadow-card: 0 1px 2px rgb(60 40 20 / 0.06), 0 1px 1px rgb(60 40 20 / 0.04);
+  --ujc-shadow-raised: 0 4px 12px rgb(60 40 20 / 0.08), 0 1px 3px rgb(60 40 20 / 0.06);
+  --ujc-shadow-overlay: 0 24px 48px rgb(40 24 10 / 0.18), 0 8px 16px rgb(40 24 10 / 0.08);
+
+  /* Hairline: 1 device pixel where possible */
+  --ujc-hairline: 1px;
+}
+
+@media (min-resolution: 2dppx) {
+  :root {
+    --ujc-hairline: 0.5px;
+  }
+}
+
+/* Dark palette, applied by class or by system preference. Keep both blocks identical. */
+.dark {
+  color-scheme: dark;
+  --ujc-background: #0e0d0c;
+  --ujc-background-secondary: #1c1b1a;
+  --ujc-background-tertiary: #2c2a28;
+  --ujc-grouped: #0e0d0c;
+  --ujc-grouped-secondary: #1c1b1a;
+  --ujc-grouped-tertiary: #2c2a28;
+  --ujc-label: #f5f4f2;
+  --ujc-label-secondary: #ada9a3;
+  --ujc-label-tertiary: #8a867f;
+  --ujc-label-quaternary: #5a5752;
+  --ujc-separator: rgb(255 248 240 / 0.14);
+  --ujc-separator-opaque: #3a3835;
+  --ujc-control-border: #75716b;
+  --ujc-fill: rgb(130 124 116 / 0.36);
+  --ujc-fill-secondary: rgb(130 124 116 / 0.3);
+  --ujc-fill-tertiary: rgb(130 124 116 / 0.22);
+  --ujc-tint: #ff8a50;
+  --ujc-tint-pressed: #ff9e6e;
+  --ujc-tint-ink: #ff8a50;
+  --ujc-tint-vivid: #ff8a50;
+  --ujc-on-tint: #1f0d02;
+  --ujc-success: #30d158;
+  --ujc-success-ink: #30d158;
+  --ujc-warning: #ffd60a;
+  --ujc-warning-ink: #ffd60a;
+  --ujc-danger: #ff6961;
+  --ujc-danger-ink: #ff6961;
+  --ujc-info: #40c8e0;
+  --ujc-info-ink: #40c8e0;
+  --ujc-soft: 18%;
+  --ujc-material: rgb(28 27 26 / 0.72);
+  --ujc-material-thick: rgb(22 21 20 / 0.86);
+  --ujc-scrim: rgb(0 0 0 / 0.5);
+  --ujc-shadow-card: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.08);
+  --ujc-shadow-raised: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.1), 0 8px 24px rgb(0 0 0 / 0.4);
+  --ujc-shadow-overlay: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.12), 0 24px 64px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --ujc-background: #0e0d0c;
+    --ujc-background-secondary: #1c1b1a;
+    --ujc-background-tertiary: #2c2a28;
+    --ujc-grouped: #0e0d0c;
+    --ujc-grouped-secondary: #1c1b1a;
+    --ujc-grouped-tertiary: #2c2a28;
+    --ujc-label: #f5f4f2;
+    --ujc-label-secondary: #ada9a3;
+    --ujc-label-tertiary: #8a867f;
+    --ujc-label-quaternary: #5a5752;
+    --ujc-separator: rgb(255 248 240 / 0.14);
+    --ujc-separator-opaque: #3a3835;
+    --ujc-control-border: #75716b;
+    --ujc-fill: rgb(130 124 116 / 0.36);
+    --ujc-fill-secondary: rgb(130 124 116 / 0.3);
+    --ujc-fill-tertiary: rgb(130 124 116 / 0.22);
+    --ujc-tint: #ff8a50;
+    --ujc-tint-pressed: #ff9e6e;
+    --ujc-tint-ink: #ff8a50;
+    --ujc-tint-vivid: #ff8a50;
+    --ujc-on-tint: #1f0d02;
+    --ujc-success: #30d158;
+    --ujc-success-ink: #30d158;
+    --ujc-warning: #ffd60a;
+    --ujc-warning-ink: #ffd60a;
+    --ujc-danger: #ff6961;
+    --ujc-danger-ink: #ff6961;
+    --ujc-info: #40c8e0;
+    --ujc-info-ink: #40c8e0;
+    --ujc-soft: 18%;
+    --ujc-material: rgb(28 27 26 / 0.72);
+    --ujc-material-thick: rgb(22 21 20 / 0.86);
+    --ujc-scrim: rgb(0 0 0 / 0.5);
+    --ujc-shadow-card: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.08);
+    --ujc-shadow-raised: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.1), 0 8px 24px rgb(0 0 0 / 0.4);
+    --ujc-shadow-overlay: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.12), 0 24px 64px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* ---------------------------------------------------------------- Tailwind theme */
+@theme inline {
+  --color-background: var(--ujc-background);
+  --color-background-secondary: var(--ujc-background-secondary);
+  --color-background-tertiary: var(--ujc-background-tertiary);
+  --color-grouped: var(--ujc-grouped);
+  --color-grouped-secondary: var(--ujc-grouped-secondary);
+  --color-grouped-tertiary: var(--ujc-grouped-tertiary);
+  --color-foreground: var(--ujc-label);
+  --color-label: var(--ujc-label);
+  --color-label-secondary: var(--ujc-label-secondary);
+  --color-label-tertiary: var(--ujc-label-tertiary);
+  --color-label-quaternary: var(--ujc-label-quaternary);
+  --color-separator: var(--ujc-separator);
+  --color-separator-opaque: var(--ujc-separator-opaque);
+  --color-control-border: var(--ujc-control-border);
+  --color-fill: var(--ujc-fill);
+  --color-fill-secondary: var(--ujc-fill-secondary);
+  --color-fill-tertiary: var(--ujc-fill-tertiary);
+  --color-tint: var(--ujc-tint);
+  --color-tint-pressed: var(--ujc-tint-pressed);
+  --color-tint-ink: var(--ujc-tint-ink);
+  --color-tint-vivid: var(--ujc-tint-vivid);
+  --color-tint-soft: color-mix(in srgb, var(--ujc-tint) var(--ujc-soft), transparent);
+  --color-on-tint: var(--ujc-on-tint);
+  --color-success: var(--ujc-success);
+  --color-success-ink: var(--ujc-success-ink);
+  --color-success-soft: color-mix(in srgb, var(--ujc-success) var(--ujc-soft), transparent);
+  --color-warning: var(--ujc-warning);
+  --color-warning-ink: var(--ujc-warning-ink);
+  --color-warning-soft: color-mix(in srgb, var(--ujc-warning) var(--ujc-soft), transparent);
+  --color-danger: var(--ujc-danger);
+  --color-danger-ink: var(--ujc-danger-ink);
+  --color-danger-soft: color-mix(in srgb, var(--ujc-danger) var(--ujc-soft), transparent);
+  --color-info: var(--ujc-info);
+  --color-info-ink: var(--ujc-info-ink);
+  --color-info-soft: color-mix(in srgb, var(--ujc-info) var(--ujc-soft), transparent);
+  --color-material: var(--ujc-material);
+  --color-material-thick: var(--ujc-material-thick);
+  --color-scrim: var(--ujc-scrim);
+
+  --shadow-card: var(--ujc-shadow-card);
+  --shadow-raised: var(--ujc-shadow-raised);
+  --shadow-overlay: var(--ujc-shadow-overlay);
+}
+
+@theme {
+  /* System font stack: SF on Apple devices, Inter / Segoe / Roboto elsewhere. Covers Vietnamese. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Dynamic-Type-like scale (compact/mobile values; desktop density overrides below) */
+  --text-large-title: 2.125rem; /* 34 */
+  --text-large-title--line-height: 1.2;
+  --text-large-title--letter-spacing: -0.022em;
+  --text-large-title--font-weight: 700;
+  --text-title1: 1.75rem; /* 28 */
+  --text-title1--line-height: 1.22;
+  --text-title1--letter-spacing: -0.02em;
+  --text-title1--font-weight: 700;
+  --text-title2: 1.375rem; /* 22 */
+  --text-title2--line-height: 1.27;
+  --text-title2--letter-spacing: -0.016em;
+  --text-title2--font-weight: 700;
+  --text-title3: 1.25rem; /* 20 */
+  --text-title3--line-height: 1.25;
+  --text-title3--letter-spacing: -0.012em;
+  --text-title3--font-weight: 600;
+  --text-headline: 1.0625rem; /* 17 */
+  --text-headline--line-height: 1.3;
+  --text-headline--letter-spacing: -0.01em;
+  --text-headline--font-weight: 600;
+  --text-body: 1.0625rem; /* 17 */
+  --text-body--line-height: 1.42;
+  --text-body--letter-spacing: -0.01em;
+  --text-callout: 1rem; /* 16 */
+  --text-callout--line-height: 1.38;
+  --text-callout--letter-spacing: -0.008em;
+  --text-subheadline: 0.9375rem; /* 15 */
+  --text-subheadline--line-height: 1.34;
+  --text-subheadline--letter-spacing: -0.006em;
+  --text-footnote: 0.8125rem; /* 13 */
+  --text-footnote--line-height: 1.38;
+  --text-footnote--letter-spacing: -0.002em;
+  --text-caption: 0.75rem; /* 12 */
+  --text-caption--line-height: 1.34;
+  --text-caption--letter-spacing: 0em;
+  /* Numeric count badges only (iOS badge). Never for words. */
+  --text-micro: 0.6875rem; /* 11 */
+  --text-micro--line-height: 1rem;
+  --text-micro--font-weight: 600;
+
+  /* Radii: continuous-corner feel */
+  --radius-icon: 7px;
+  --radius-control-sm: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-sheet: 20px;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-snappy: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  --animate-fade-in: ujc-fade-in 200ms var(--ease-standard) both;
+  --animate-sheet-up: ujc-sheet-up 350ms var(--ease-spring) both;
+  --animate-pop-in: ujc-pop-in 250ms var(--ease-spring) both;
+  --animate-toast-in: ujc-toast-in 300ms var(--ease-spring) both;
+  --animate-shimmer: ujc-shimmer 1.4s ease-in-out infinite;
+
+  @keyframes ujc-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ujc-sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes ujc-pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+  }
+  @keyframes ujc-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.98);
+    }
+  }
+  @keyframes ujc-shimmer {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+
+/* Desktop density: one step tighter, like macOS vs iOS. Large titles stay big. */
+@media (min-width: 64rem) {
+  :root {
+    --text-large-title: 2rem; /* 32 */
+    --text-title1: 1.625rem; /* 26 */
+    --text-title2: 1.3125rem; /* 21 */
+    --text-title3: 1.1875rem; /* 19 */
+    --text-headline: 0.9375rem; /* 15 */
+    --text-body: 0.9375rem; /* 15 */
+    --text-callout: 0.875rem; /* 14 */
+    --text-subheadline: 0.8125rem; /* 13 */
+    --text-footnote: 0.75rem; /* 12 */
+    --text-caption: 0.75rem; /* 12: never smaller */
+  }
+}
+
+/* ---------------------------------------------------------------- utilities */
+/* Translucent bars: navigation bar, tab bar, sidebar header. */
+@utility material-bar {
+  background-color: var(--ujc-material);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+@utility material-thick {
+  background-color: var(--ujc-material-thick);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  backdrop-filter: saturate(180%) blur(30px);
+}
+@utility hairline-b {
+  border-bottom: var(--ujc-hairline) solid var(--ujc-separator);
+}
+@utility hairline-t {
+  border-top: var(--ujc-hairline) solid var(--ujc-separator);
+}
+@utility hairline-r {
+  border-right: var(--ujc-hairline) solid var(--ujc-separator);
+}
+@utility hairline {
+  border: var(--ujc-hairline) solid var(--ujc-separator);
+}
+/* Standard focus ring: 2px tint, 2px offset (>= 3:1 against every surface). */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ujc-tint);
+    outline-offset: 2px;
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background-color: var(--ujc-background);
+    color: var(--ujc-label);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--ujc-tint) 28%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ujc-tint);
+    outline-offset: 2px;
+  }
+}
+
+/* Respect reduced motion everywhere: keep opacity fades, drop movement and loops. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
