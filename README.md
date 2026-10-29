@@ -17,6 +17,7 @@ Sources:
 |---|---|
 | `apps/web` | Next.js (App Router) web app, deployed to Vercel |
 | `apps/crawler` | Python crawler (uv, httpx, Playwright optional), run daily by GitHub Actions |
+| `apps/mcp` | MCP server for Claude Code: live job search on SEEK, We Work Remotely, Arc (plus `jobspy` for LinkedIn/Glassdoor via `.mcp.json`) |
 | `packages/core` | Shared TypeScript types + source registry (`SOURCES`) |
 | `packages/ui` | Shared React components (`JobCard`, `SourceBadge`), to be reused by the Expo app |
 | `db/migrations` | SQL migrations, the single schema for web and crawler |

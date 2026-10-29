@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "job-search": {
+      "command": "uv",
+      "args": ["run", "--quiet", "--directory", "apps/mcp", "job-search-mcp"]
+    },
+    "jobspy": {
+      "command": "uvx",
+      "args": ["jobspy-mcp"]
+    }
+  }
+}
