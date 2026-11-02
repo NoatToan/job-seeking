@@ -12,6 +12,13 @@ JOB_COLUMNS = (
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
 
+# `GET /api/jobs/{id}`: the `Job` columns plus `description` (packages/core `JobDetail`).
+JOB_DETAIL_COLUMNS = f"{JOB_COLUMNS}, description"
+
+# `GET /api/sources`: one row per `source`, the latest `crawl_runs` row for it (or NULLs if it
+# has none) and the total job count (see routers/jobs.py for the query).
+SOURCE_COLUMNS = "source, status, started_at, finished_at, jobs_found, jobs_new, total"
+
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
@@ -50,6 +57,29 @@ def job_dto(row: tuple) -> dict[str, Any]:
         "openTo": list(open_to) if open_to is not None else None,
         "postedAt": _iso(posted_at),
         "firstSeenAt": _iso(first_seen_at),
+    }
+
+
+def job_detail_dto(row: tuple) -> dict[str, Any]:
+    """Maps one row selected with `JOB_DETAIL_COLUMNS` to the `JobDetail` shape (packages/core):
+    the `Job` fields plus `description`."""
+    *job_row, description = row
+    dto = job_dto(tuple(job_row))
+    dto["description"] = description
+    return dto
+
+
+def source_dto(row: tuple) -> dict[str, Any]:
+    """Maps one row selected with `SOURCE_COLUMNS` to the `SourceInfo` shape (packages/core)."""
+    source, status, started_at, finished_at, jobs_found, jobs_new, total = row
+    return {
+        "source": source,
+        "status": status,
+        "startedAt": _iso(started_at),
+        "finishedAt": _iso(finished_at),
+        "jobsFound": int(jobs_found or 0),
+        "jobsNew": int(jobs_new or 0),
+        "total": int(total or 0),
     }
 
 
