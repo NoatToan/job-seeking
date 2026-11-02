@@ -106,7 +106,7 @@ describe("LoginForm", () => {
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it("redirects to /cv/ after a correct code when the user has no CV yet", async () => {
+  it("redirects to /onboarding/ after a correct code when the user hasn't onboarded yet", async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === "/api/auth/otp") {
         return Promise.resolve(jsonResponse(202, { sent: true, expiresInSec: 600 }));
@@ -118,7 +118,7 @@ describe("LoginForm", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     refreshMock.mockResolvedValue({
-      user: { id: "1", email: "person@example.com" },
+      user: { id: "1", email: "person@example.com", aiConsentAt: null, onboardedAt: null },
       preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
       latestCv: null,
     });
@@ -133,6 +133,41 @@ describe("LoginForm", () => {
 
     fireEvent.change(screen.getByLabelText("6-digit code"), { target: { value: "123456" } });
 
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/cv/"), { timeout: 5000 });
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/onboarding/"), { timeout: 5000 });
+  });
+
+  it("redirects to / after a correct code when the user has already onboarded", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === "/api/auth/otp") {
+        return Promise.resolve(jsonResponse(202, { sent: true, expiresInSec: 600 }));
+      }
+      if (url === "/api/auth/verify") {
+        return Promise.resolve(jsonResponse(200, { user: { id: "1", email: "person@example.com" } }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    refreshMock.mockResolvedValue({
+      user: {
+        id: "1",
+        email: "person@example.com",
+        aiConsentAt: "2026-01-01T00:00:00Z",
+        onboardedAt: "2026-01-01T00:00:00Z",
+      },
+      preferences: { keywords: ["react"], remoteOnly: false, candidateCountry: null },
+      latestCv: null,
+    });
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "person@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(screen.getByLabelText("6-digit code")).toBeTruthy(), { timeout: 5000 });
+
+    fireEvent.change(screen.getByLabelText("6-digit code"), { target: { value: "123456" } });
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"), { timeout: 5000 });
   });
 });

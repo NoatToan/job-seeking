@@ -33,7 +33,7 @@ describe("CvPage", () => {
   beforeEach(() => {
     useSessionMock.mockReturnValue({
       me: {
-        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z" },
+        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z", onboardedAt: "2026-01-01T00:00:00Z" },
         preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
         latestCv: null,
       },
@@ -165,7 +165,7 @@ describe("CvPage", () => {
   it("shows a consent card before the first upload, and hides it after agreeing", async () => {
     useSessionMock.mockReturnValue({
       me: {
-        user: { id: "1", email: "person@example.com", aiConsentAt: null },
+        user: { id: "1", email: "person@example.com", aiConsentAt: null, onboardedAt: null },
         preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
         latestCv: null,
       },

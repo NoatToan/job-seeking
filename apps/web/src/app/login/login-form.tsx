@@ -92,8 +92,8 @@ export function LoginForm() {
       const me = await refresh();
       if (next) {
         router.replace(next);
-      } else if (!me?.latestCv) {
-        router.replace("/cv/");
+      } else if (!me?.user.onboardedAt) {
+        router.replace("/onboarding/");
       } else {
         router.replace("/");
       }
