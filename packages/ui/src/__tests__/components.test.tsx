@@ -240,7 +240,26 @@ describe("badges and JobCard", () => {
     expect(screen.getByText("Greenhouse")).toBeTruthy();
     expect(screen.getByText("Remote · Worldwide")).toBeTruthy();
     expect(screen.getByText("Full-time")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Why this score" }));
     expect(screen.getByText(/GraphQL/)).toBeTruthy();
+  });
+
+  it("JobCard's \"Why this score\" section is collapsed by default and expands on click", () => {
+    render(<JobCard job={job} />);
+    expect(screen.queryByText("Strong React match")).toBeNull();
+    expect(screen.queryByText(/GraphQL/)).toBeNull();
+
+    const toggle = screen.getByRole("button", { name: "Why this score" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("Strong React match")).toBeTruthy();
+    expect(screen.getByText(/GraphQL/)).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Strong React match")).toBeNull();
   });
 
   it("ProgressSteps marks the current step", () => {

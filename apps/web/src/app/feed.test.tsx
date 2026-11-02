@@ -1,5 +1,6 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ToastProvider } from "@ujc/ui";
 
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
 
@@ -8,6 +9,14 @@ vi.mock("@/lib/session", () => ({
 }));
 
 import { Feed } from "./feed";
+
+function renderFeed() {
+  return render(
+    <ToastProvider>
+      <Feed />
+    </ToastProvider>,
+  );
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -89,7 +98,7 @@ describe("Feed", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<Feed />);
+    renderFeed();
 
     await waitFor(() => expect(screen.getByText("Job One")).toBeTruthy(), { timeout: 5000 });
     const feedCallsAfterPage1 = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/feed"));
@@ -131,8 +140,70 @@ describe("Feed", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<Feed />);
+    renderFeed();
 
     await waitFor(() => expect(screen.getByText(/No matches yet/)).toBeTruthy(), { timeout: 5000 });
+  });
+
+  it("flipping the Best matches toggle re-fetches the feed with sort=score", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/feed")) {
+        return Promise.resolve(
+          jsonResponse(200, { items: [job("1", "Job One")], nextCursor: null, keywords: ["react"] }),
+        );
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFeed();
+    await waitFor(() => expect(screen.getByText("Job One")).toBeTruthy(), { timeout: 5000 });
+
+    const feedCallsBefore = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/feed"));
+    expect(feedCallsBefore.every(([u]) => !(u as string).includes("sort="))).toBe(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("switch", { name: "Best matches" }));
+    });
+
+    await waitFor(() => {
+      const scoreCalls = fetchMock.mock.calls.filter(([u]) => (u as string).includes("sort=score"));
+      expect(scoreCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows a friendly message when Refresh scores hits the daily quota (429)", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/feed")) {
+        return Promise.resolve(jsonResponse(200, { items: [], nextCursor: null, keywords: ["react"] }));
+      }
+      if (url === "/api/matches/refresh" && (init?.method ?? "GET").toUpperCase() === "POST") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "quota_exceeded",
+                message: "Max 3 match refreshes per day. Try again tomorrow.",
+              },
+            }),
+            { status: 429, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.reject(new Error(`unexpected request ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderFeed();
+    await waitFor(() => expect(screen.getByText(/No matches yet/)).toBeTruthy(), { timeout: 5000 });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Refresh scores/ }));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Max 3 match refreshes per day. Try again tomorrow.")).toBeTruthy(),
+    );
+    expect(screen.getByText("Daily limit reached")).toBeTruthy();
   });
 });
