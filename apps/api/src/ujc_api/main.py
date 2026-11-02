@@ -22,15 +22,18 @@ from ujc_api.observability import init_sentry
 from ujc_api.rate_limit import RateLimitMiddleware
 from ujc_api.routers import applications as applications_router
 from ujc_api.routers import auth as auth_router
+from ujc_api.routers import connections as connections_router
 from ujc_api.routers import cvs as cvs_router
 from ujc_api.routers import feed as feed_router
 from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
+from ujc_api.routers import platforms as platforms_router
 from ujc_api.routers import runner as runner_router
 from ujc_api.routers import runners as runners_router
 from ujc_api.routers import search as search_router
 from ujc_api.routers import tokens as tokens_router
+from ujc_api.routers import upwork as upwork_router
 from ujc_api.security_headers import SecurityHeadersMiddleware
 from ujc_api.settings import Settings, get_settings
 
@@ -183,6 +186,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(runners_router.router)
     app.include_router(runner_router.router)
     app.include_router(tokens_router.router)
+    app.include_router(platforms_router.router)
+    app.include_router(connections_router.router)
+    app.include_router(upwork_router.router)
 
     @app.get("/api/health")
     def health() -> dict:

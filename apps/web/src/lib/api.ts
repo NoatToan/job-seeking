@@ -1,4 +1,5 @@
 import type {
+  AdzunaConnection,
   ApiErrorBody,
   Application,
   ApplicationEvent,
@@ -12,11 +13,13 @@ import type {
   MeResponse,
   Page,
   PersonalAccessToken,
+  Platform,
   Preferences,
   Runner,
   RunnerPairingCode,
   SourceInfo,
   TokenScope,
+  UpworkSearchPage,
 } from "@ujc/core";
 
 /**
@@ -382,4 +385,36 @@ export function createToken(input: CreateTokenInput): Promise<CreatedPersonalAcc
 /** `DELETE /api/tokens/{id}` — revokes a token; already-used copies stop working immediately. */
 export function revokeToken(id: string): Promise<void> {
   return apiFetch<void>(`/api/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// --- Connections (M3-01/M3-02/M3-04): platform catalogue, Adzuna key, Upwork OAuth. -------------
+
+/** `GET /api/platforms` — the connection catalogue for the signed-in user. */
+export function getPlatforms(): Promise<{ items: Platform[] }> {
+  return apiFetch<{ items: Platform[] }>("/api/platforms");
+}
+
+/** `PUT /api/connections/adzuna` — validated by one Adzuna call; stores the key encrypted. */
+export function connectAdzuna(appId: string, appKey: string): Promise<AdzunaConnection> {
+  return apiFetch<AdzunaConnection>("/api/connections/adzuna", {
+    method: "PUT",
+    body: { appId, appKey },
+  });
+}
+
+/** `DELETE /api/connections/{platform}` — disconnect (Upwork: also revokes the token). */
+export function disconnectPlatform(platform: string): Promise<void> {
+  return apiFetch<void>(`/api/connections/${encodeURIComponent(platform)}`, { method: "DELETE" });
+}
+
+/** Full-page navigation (not `fetch`) to the Upwork OAuth authorize redirect — the API sets the
+ * OAuth-state cookie and 302s to Upwork, so this cannot go through `apiFetch`. */
+export function upworkAuthorizeUrl(): string {
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/connections/upwork/authorize`;
+}
+
+/** `POST /api/upwork/search` — user-directed live search; 404s `not_enabled` when the flag/keys
+ * aren't set. Results are cached <=24h server-side and never merged into `Job`/`jobs`. */
+export function searchUpwork(q: string, cursor?: string): Promise<UpworkSearchPage> {
+  return apiFetch<UpworkSearchPage>("/api/upwork/search", { method: "POST", body: { q, cursor } });
 }

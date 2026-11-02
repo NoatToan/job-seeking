@@ -54,6 +54,10 @@ services:
       UJC_MAIL_FROM: ${UJC_MAIL_FROM:-}
       ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
       ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
+      UPWORK_ENABLED: ${UPWORK_ENABLED:-false}
+      UPWORK_CLIENT_ID: ${UPWORK_CLIENT_ID:-}
+      UPWORK_CLIENT_SECRET: ${UPWORK_CLIENT_SECRET:-}
+      UPWORK_REDIRECT_URI: ${UPWORK_REDIRECT_URI:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

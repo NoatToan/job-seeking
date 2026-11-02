@@ -37,11 +37,13 @@ export function sourceMeta(id: string): SourceMeta {
   return isSourceId(id) ? SOURCES[id] : { label: id, homepage: "", color: "#6b7280", kind: "feed" };
 }
 
-// Deep links to each site's own search for the same keywords.
+// Deep links to each site's own search for the same keywords. Upwork is here (not in `SOURCES`,
+// since Upwork results are never written to `jobs` — docs/product/ARCHITECTURE.md §7).
 export const DEEP_LINK_SITES = [
   { label: "LinkedIn", search: (q: string) => `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}` },
   { label: "Seek", search: (q: string) => `https://au.seek.com/jobs?keywords=${encodeURIComponent(q)}` },
   { label: "Glassdoor", search: (q: string) => `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encodeURIComponent(q)}` },
   { label: "Arc", search: (q: string) => `https://arc.dev/remote-jobs?search=${encodeURIComponent(q)}` },
   { label: "YC Work at a Startup", search: (q: string) => `https://www.workatastartup.com/jobs?query=${encodeURIComponent(q)}` },
+  { label: "Upwork", search: (q: string) => `https://www.upwork.com/nx/search/jobs/?q=${encodeURIComponent(q)}` },
 ] as const;

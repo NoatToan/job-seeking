@@ -12,3 +12,4 @@ pypdf>=5.0
 python-dotenv>=1.0
 mcp>=2
 sentry-sdk[fastapi]>=2.0
+cryptography>=43

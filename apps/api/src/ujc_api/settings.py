@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     # Optional error reporting (docs/product/SECURITY.md); unset = Sentry is never initialised.
     sentry_dsn: str | None = None
 
+    # Upwork OAuth connect + user-directed live search (M3-04). Disabled until Tony obtains an
+    # approved Upwork API key (docs/product/ARCHITECTURE.md §7); every `/api/connections/upwork/*`
+    # and `/api/upwork/*` route 404s `not_enabled` unless this is true *and* the client
+    # id/secret are set.
+    upwork_enabled: bool = False
+    upwork_client_id: str | None = None
+    upwork_client_secret: str | None = None
+    upwork_redirect_uri: str | None = None
+
+    def upwork_available(self) -> bool:
+        return bool(self.upwork_enabled and self.upwork_client_id and self.upwork_client_secret)
+
     def otp_review_allowlist(self) -> frozenset[str]:
         return frozenset(
             e.strip().lower() for e in self.ujc_otp_review_allowlist.split(",") if e.strip()

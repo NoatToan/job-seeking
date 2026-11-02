@@ -65,7 +65,10 @@ function RunnerSection() {
   const runners = (data?.items ?? []).filter((r) => !r.revokedAt);
 
   return (
-    <section className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
+    <section
+      id="runner"
+      className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card"
+    >
       <div className="flex flex-col gap-1">
         <h2 className="text-headline text-label">Local runner</h2>
         <p className="text-body text-label-secondary">
