@@ -20,6 +20,7 @@ from ujc_api.migrate import pending_migrations
 from ujc_api.routers import auth as auth_router
 from ujc_api.routers import cvs as cvs_router
 from ujc_api.routers import feed as feed_router
+from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import me as me_router
 from ujc_api.routers import search as search_router
 from ujc_api.settings import Settings, get_settings
@@ -151,6 +152,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(me_router.router)
     app.include_router(cvs_router.router)
     app.include_router(feed_router.router)
+    app.include_router(jobs_router.router)
     app.include_router(search_router.router)
 
     @app.get("/api/health")

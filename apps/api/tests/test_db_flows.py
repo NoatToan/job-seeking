@@ -224,6 +224,75 @@ def test_cv_detail_is_owner_scoped(client: TestClient):
     assert client.get("/api/cvs/999999999").status_code == 404
 
 
+def test_get_job_returns_description_and_404s_when_missing(
+    client: TestClient, migrated_database_url: str
+):
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        row = conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company, description)"
+            " VALUES ('weworkremotely', 'detail-1', 'https://example.test/detail-1',"
+            " 'Senior Engineer', 'Acme', 'Full description here') RETURNING id"
+        ).fetchone()
+        job_id = row[0]
+
+    _sign_in(client, "jobviewer@example.com")
+
+    found = client.get(f"/api/jobs/{job_id}")
+    assert found.status_code == 200, found.text
+    body = found.json()
+    assert body["id"] == str(job_id)
+    assert body["title"] == "Senior Engineer"
+    assert body["description"] == "Full description here"
+
+    missing = client.get("/api/jobs/999999999")
+    assert missing.status_code == 404
+    assert missing.json()["error"]["code"] == "not_found"
+
+
+def test_get_job_requires_a_session(client: TestClient):
+    resp = client.get("/api/jobs/1")
+    assert resp.status_code == 401
+
+
+def test_get_job_rejects_a_non_numeric_id(client: TestClient):
+    _sign_in(client, "jobidvalidation@example.com")
+    resp = client.get("/api/jobs/not-a-number")
+    assert resp.status_code in (400, 404, 422)
+
+
+def test_get_sources_is_public_and_merges_runs_with_job_counts(
+    client: TestClient, migrated_database_url: str
+):
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company)"
+            " VALUES ('sources-test-a', 'x1', 'https://example.test/x1', 'Role', 'Acme')"
+        )
+        conn.execute(
+            "INSERT INTO crawl_runs (source, status, jobs_found, jobs_new, finished_at)"
+            " VALUES ('sources-test-a', 'ok', 1, 1, now())"
+        )
+        # A source with jobs but no crawl run must still show up.
+        conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company)"
+            " VALUES ('sources-test-b', 'y1', 'https://example.test/y1', 'Role', 'Acme')"
+        )
+
+    resp = client.get("/api/sources")
+    assert resp.status_code == 200, resp.text
+    by_source = {s["source"]: s for s in resp.json()}
+
+    a = by_source["sources-test-a"]
+    assert a["status"] == "ok"
+    assert a["jobsFound"] == 1
+    assert a["jobsNew"] == 1
+    assert a["total"] == 1
+
+    b = by_source["sources-test-b"]
+    assert b["total"] == 1
+    assert b["startedAt"] is not None
+
+
 def test_put_preferences_updates_and_validates(client: TestClient):
     csrf = _sign_in(client, "prefsuser@example.com")
     resp = client.put(

@@ -90,6 +90,80 @@ class FakeOtpConn:
         raise AssertionError(f"FakeOtpConn: unexpected SQL: {sql!r}")
 
 
+class FakeJobsConn:
+    """Enough of `psycopg.Connection` for `ujc_api.routers.jobs`: `jobs` and `crawl_runs` as
+    in-memory lists, matched against the exact SQL `routers/jobs.py` issues."""
+
+    def __init__(self, jobs: list[dict] | None = None, crawl_runs: list[dict] | None = None):
+        self.jobs = jobs or []
+        self.crawl_runs = crawl_runs or []
+
+    def execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        params = params or ()
+
+        if s.startswith("SELECT") and "FROM jobs WHERE id = %s" in s:
+            (job_id,) = params
+            for job in self.jobs:
+                if job["id"] == job_id:
+                    return _Result(
+                        (
+                            job["id"],
+                            job["source"],
+                            job["url"],
+                            job.get("apply_url"),
+                            job["title"],
+                            job["company"],
+                            job.get("location"),
+                            job.get("remote", False),
+                            job.get("employment_type"),
+                            job.get("salary_text"),
+                            job.get("tags", []),
+                            job.get("open_to"),
+                            job.get("posted_at"),
+                            job["first_seen_at"],
+                            job.get("description"),
+                        )
+                    )
+            return _Result(None)
+
+        if s.startswith("WITH job_counts AS"):
+            totals: dict[str, int] = {}
+            last_seen: dict[str, object] = {}
+            for job in self.jobs:
+                totals[job["source"]] = totals.get(job["source"], 0) + 1
+                seen = job["first_seen_at"]
+                if job["source"] not in last_seen or seen > last_seen[job["source"]]:
+                    last_seen[job["source"]] = seen
+
+            latest: dict[str, dict] = {}
+            for run in sorted(self.crawl_runs, key=lambda r: r["started_at"]):
+                latest[run["source"]] = run
+
+            sources = sorted(set(totals) | set(latest))
+            rows = []
+            for source in sources:
+                run = latest.get(source)
+                total = totals.get(source, 0)
+                if run is not None:
+                    rows.append(
+                        (
+                            source,
+                            run["status"],
+                            run["started_at"],
+                            run.get("finished_at"),
+                            run.get("jobs_found", total),
+                            run.get("jobs_new", 0),
+                            total,
+                        )
+                    )
+                else:
+                    rows.append((source, "ok", last_seen[source], None, total, 0, total))
+            return _Result(rows=rows)
+
+        raise AssertionError(f"FakeJobsConn: unexpected SQL: {sql!r}")
+
+
 class FakeWorkerConn:
     """Enough of `psycopg.Connection` for `ujc_api.worker`: `tasks`, `user_cvs` and
     `user_preferences` as in-memory dicts, matched against the exact SQL `worker.py` issues."""
