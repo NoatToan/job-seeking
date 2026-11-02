@@ -62,3 +62,14 @@ def _reset_ip_rate_limiter() -> Iterator[None]:
     otp.ip_rate_limiter.reset()
     yield
     otp.ip_rate_limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_generic_rate_limiters() -> Iterator[None]:
+    """Same reasoning as `_reset_ip_rate_limiter`, for the generic per-IP unsafe-method and
+    per-user live-search limiters added in `ujc_api.rate_limit`."""
+    from ujc_api.rate_limit import reset_rate_limiters
+
+    reset_rate_limiters()
+    yield
+    reset_rate_limiters()

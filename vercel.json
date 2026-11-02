@@ -3,19 +3,45 @@
     {
       "src": "apps/web/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "out" }
+      "config": {
+        "distDir": "out"
+      }
     },
     {
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "includeFiles": ["apps/api/src/**", "apps/crawler/src/**", "apps/mcp/src/**", "db/migrations/**"]
+        "includeFiles": [
+          "apps/api/src/**",
+          "apps/crawler/src/**",
+          "apps/mcp/src/**",
+          "db/migrations/**"
+        ]
       }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.py" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/apps/web/$1" }
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+      },
+      "continue": true
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/apps/web/$1"
+    }
   ]
 }
