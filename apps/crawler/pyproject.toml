@@ -18,6 +18,9 @@ dependencies = [
 browser = [
     "playwright>=1.45",
 ]
+api = [
+    "anthropic>=0.69",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
