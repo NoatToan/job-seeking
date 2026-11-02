@@ -4,8 +4,9 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from job_crawler.matching.claude import ClaudeError, run_claude
+from job_crawler.matching.claude import ClaudeError
 from job_crawler.matching.prompts import MATCH_SCHEMA, MATCH_SYSTEM
+from job_crawler.matching.provider import LLMProvider, get_provider
 
 MAX_JD_CHARS = 6000
 
@@ -75,10 +76,15 @@ def parse_results(out: dict[str, Any], jobs: list[StoredJob]) -> list[MatchResul
 
 
 def score_jobs(
-    profile: dict[str, Any], preferences: str, jobs: list[StoredJob]
+    profile: dict[str, Any],
+    preferences: str,
+    jobs: list[StoredJob],
+    provider: LLMProvider | None = None,
 ) -> list[MatchResult]:
+    provider = provider or get_provider()
     prompt = candidate_block(profile, preferences) + "\n\n" + "\n\n".join(map(job_block, jobs))
-    results = parse_results(run_claude(prompt, system=MATCH_SYSTEM, schema=MATCH_SCHEMA), jobs)
+    out = provider.run(prompt, system=MATCH_SYSTEM, schema=MATCH_SCHEMA)
+    results = parse_results(out, jobs)
     if not results:
         raise ClaudeError("match response had no usable results")
     return results

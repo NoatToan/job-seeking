@@ -1,7 +1,11 @@
 """Worker task processing against FakeWorkerConn + a fake extractor (no `claude` CLI, no DB)."""
 
+from datetime import UTC, datetime
+
 from fakes import FakeWorkerConn
+from job_crawler.matching.claude import ClaudeError
 from job_crawler.matching.cv import CvText
+from job_crawler.matching.scorer import MatchResult
 
 from ujc_api import worker
 
@@ -159,3 +163,117 @@ def test_requeues_stale_running_tasks():
     )
     assert conn.tasks[1]["status"] == "done"
     assert conn.tasks[1]["locked_by"] == "w2"
+
+
+def test_cv_extract_success_enqueues_a_match_score_task():
+    conn, profile = _make_conn()
+    worker.run_once(
+        conn, worker="w1", extract_text_fn=_fake_text, extract_profile_fn=lambda t: profile
+    )
+    match_tasks = [t for t in conn.tasks.values() if t["kind"] == "match_score"]
+    assert len(match_tasks) == 1
+    assert match_tasks[0]["payload"] == {"user_id": 10}
+    assert match_tasks[0]["status"] == "queued"
+
+
+def _job_row(job_id: int, **kw) -> dict:
+    base = dict(
+        title="Senior Backend Engineer",
+        company="Acme",
+        location="Worldwide",
+        remote=True,
+        open_to=["WORLDWIDE"],
+        salary_text=None,
+        employment_type="Full Time",
+        tags=["Python"],
+        description="Build backend services in Python.",
+    )
+    return {"id": job_id, **{**base, **kw}}
+
+
+def _cv_profile_row(cv_id: int, user_id: int, *, status="done", profile=None) -> dict:
+    return {
+        "id": cv_id,
+        "user_id": user_id,
+        "status": status,
+        "profile": profile or {"skills": ["Python"], "search_keywords": ["python"]},
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+    }
+
+
+def test_match_score_scores_prefiltered_jobs_and_replaces_user_matches():
+    conn = FakeWorkerConn()
+    conn.tasks[1] = {
+        "id": 1,
+        "kind": "match_score",
+        "payload": {"user_id": 10},
+        "status": "queued",
+        "attempts": 0,
+        "locked_by": None,
+        "error": None,
+    }
+    conn.user_cvs[1] = _cv_profile_row(1, 10)
+    conn.jobs[1] = _job_row(1)
+    conn.jobs[2] = _job_row(2, title="Marketing Manager", tags=["Marketing"], description="")
+    conn.user_matches[(10, 99)] = {
+        "cv_id": 1,
+        "score": 10,
+        "summary": "stale",
+        "reasons": [],
+        "missing_skills": [],
+    }
+
+    def fake_score_jobs(profile, preferences, jobs):
+        return [
+            MatchResult(
+                job_id=j.id, score=90, summary="great fit", reasons=["a"], missing_skills=[]
+            )
+            for j in jobs
+        ]
+
+    assert worker.run_once(conn, worker="w1", score_jobs_fn=fake_score_jobs)
+    assert conn.tasks[1]["status"] == "done"
+    assert (10, 99) not in conn.user_matches  # stale match replaced
+    assert conn.user_matches[(10, 1)]["score"] == 90
+    assert (10, 2) not in conn.user_matches  # filtered out by the keyword prefilter
+
+
+def test_match_score_is_a_noop_without_a_done_cv():
+    conn = FakeWorkerConn()
+    conn.tasks[1] = {
+        "id": 1,
+        "kind": "match_score",
+        "payload": {"user_id": 10},
+        "status": "queued",
+        "attempts": 0,
+        "locked_by": None,
+        "error": None,
+    }
+    conn.user_cvs[1] = _cv_profile_row(1, 10, status="processing")
+    conn.jobs[1] = _job_row(1)
+
+    assert worker.run_once(conn, worker="w1", score_jobs_fn=lambda *a: [])
+    assert conn.tasks[1]["status"] == "done"
+    assert conn.user_matches == {}
+
+
+def test_match_score_batch_failure_is_not_fatal():
+    conn = FakeWorkerConn()
+    conn.tasks[1] = {
+        "id": 1,
+        "kind": "match_score",
+        "payload": {"user_id": 10},
+        "status": "queued",
+        "attempts": 0,
+        "locked_by": None,
+        "error": None,
+    }
+    conn.user_cvs[1] = _cv_profile_row(1, 10)
+    conn.jobs[1] = _job_row(1)
+
+    def boom(profile, preferences, jobs):
+        raise ClaudeError("claude -p failed")
+
+    assert worker.run_once(conn, worker="w1", score_jobs_fn=boom)
+    assert conn.tasks[1]["status"] == "done"  # a failed batch doesn't fail the whole task
+    assert conn.user_matches == {}

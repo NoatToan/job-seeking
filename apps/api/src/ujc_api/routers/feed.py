@@ -16,6 +16,20 @@ router = APIRouter(prefix="/api/feed", tags=["feed"])
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 50
+MAX_SCORE_SORT_LIMIT = 50
+
+
+def _job_dto_with_match(row: tuple) -> dict[str, Any]:
+    """`row` is a `JOB_COLUMNS` row plus `(score, summary, missing_skills)` from a `user_matches`
+    LEFT JOIN. `match` is `None` when this job has no score for the current user yet."""
+    *job_row, score, summary, missing_skills = row
+    dto = job_dto(tuple(job_row))
+    dto["match"] = (
+        {"score": score, "summary": summary, "missingSkills": list(missing_skills or [])}
+        if score is not None
+        else None
+    )
+    return dto
 
 
 def _accepted_tokens(candidate_country: str | None) -> list[str]:
@@ -38,13 +52,15 @@ def get_feed(
     limit: int = Query(default=DEFAULT_LIMIT),
     q: str | None = Query(default=None),
     source: str | None = Query(default=None),
+    sort: str | None = Query(default=None),
     user: AuthedUser = Depends(current_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     limit = max(1, min(limit, MAX_LIMIT))
+    by_score = sort == "score"
 
     cursor_state: tuple[datetime, int] | None = None
-    if cursor:
+    if cursor and not by_score:
         try:
             cursor_state = decode_feed_cursor(cursor)
         except InvalidCursor as exc:
@@ -61,51 +77,59 @@ def get_feed(
     candidate_country: str | None = prefs_row[2] if prefs_row else None
 
     clauses: list[str] = []
-    params: list[Any] = []
+    where_params: list[Any] = []
 
     if keywords:
         tsquery = " || ".join(["websearch_to_tsquery('english', %s)"] * len(keywords))
         clauses.append(f"search @@ ({tsquery})")
-        params.extend(keywords)
+        where_params.extend(keywords)
 
     if remote_only:
         clauses.append("remote = true")
 
     clauses.append("(NOT remote OR open_to IS NULL OR open_to && %s)")
-    params.append(_accepted_tokens(candidate_country))
+    where_params.append(_accepted_tokens(candidate_country))
 
     if q:
         clauses.append("search @@ websearch_to_tsquery('english', %s)")
-        params.append(q)
+        where_params.append(q)
 
     if source:
         clauses.append("source = %s")
-        params.append(source)
+        where_params.append(source)
 
     if cursor_state:
         cursor_t, cursor_i = cursor_state
         clauses.append("(coalesce(posted_at, first_seen_at), id) < (%s, %s)")
-        params.append(cursor_t)
-        params.append(cursor_i)
+        where_params.append(cursor_t)
+        where_params.append(cursor_i)
+
+    if by_score:
+        clauses.append("um.score IS NOT NULL")
 
     where = " AND ".join(clauses) if clauses else "TRUE"
-    sql = (
-        f"SELECT {JOB_COLUMNS} FROM jobs WHERE {where}"
-        " ORDER BY coalesce(posted_at, first_seen_at) DESC, id DESC LIMIT %s"
+    select = f"SELECT {JOB_COLUMNS}, um.score, um.summary, um.missing_skills FROM jobs"
+    join = "LEFT JOIN user_matches um ON um.user_id = %s AND um.job_id = jobs.id"
+    order = (
+        "um.score DESC, jobs.id DESC"
+        if by_score
+        else "coalesce(posted_at, first_seen_at) DESC, jobs.id DESC"
     )
-    params.append(limit + 1)
+    page_limit = min(limit, MAX_SCORE_SORT_LIMIT) if by_score else limit + 1
+    sql = f"{select} {join} WHERE {where} ORDER BY {order} LIMIT %s"
+    params = [user.id, *where_params, page_limit]
 
     rows = conn.execute(sql, params).fetchall()
-    has_more = len(rows) > limit
+    has_more = not by_score and len(rows) > limit
     page = rows[:limit]
 
     next_cursor = None
     if has_more and page:
-        ts, job_id = _sort_key(page[-1])
+        ts, job_id = _sort_key(tuple(page[-1][:-3]))
         next_cursor = encode_feed_cursor(ts, job_id)
 
     return {
-        "items": [job_dto(r) for r in page],
+        "items": [_job_dto_with_match(r) for r in page],
         "nextCursor": next_cursor,
         "keywords": keywords,
     }

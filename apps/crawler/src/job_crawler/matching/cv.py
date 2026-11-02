@@ -7,8 +7,8 @@ from typing import Any
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
-from job_crawler.matching.claude import run_claude
 from job_crawler.matching.prompts import CV_PROFILE_SCHEMA, CV_SYSTEM, OCR_SCHEMA, OCR_SYSTEM
+from job_crawler.matching.provider import LLMProvider, get_provider
 
 MAX_CV_CHARS = 30_000
 MIN_TEXT_CHARS_PER_PAGE = 200
@@ -37,14 +37,15 @@ def pdf_text(path: Path) -> tuple[str, bool]:
     return text, scanned
 
 
-def ocr(path: Path) -> str:
-    out = run_claude(
+def ocr(path: Path, provider: LLMProvider | None = None) -> str:
+    provider = provider or get_provider()
+    out = provider.run(
         f"Transcribe the file {path.name}.", system=OCR_SYSTEM, schema=OCR_SCHEMA, files=[path]
     )
     return str(out.get("text", "")).strip()
 
 
-def extract_text(path: Path) -> CvText:
+def extract_text(path: Path, provider: LLMProvider | None = None) -> CvText:
     suffix = path.suffix.lower()
     if suffix in TEXTS:
         return CvText(path.read_text(encoding="utf-8", errors="replace").strip(), False)
@@ -54,11 +55,12 @@ def extract_text(path: Path) -> CvText:
             return CvText(text, False)
     elif suffix not in IMAGES:
         raise UnsupportedFileError("Supported: PDF, PNG, JPG, WEBP, GIF, TXT, MD")
-    return CvText(ocr(path), True)
+    return CvText(ocr(path, provider), True)
 
 
-def extract_profile(text: str) -> dict[str, Any]:
-    profile = run_claude(
+def extract_profile(text: str, provider: LLMProvider | None = None) -> dict[str, Any]:
+    provider = provider or get_provider()
+    profile = provider.run(
         f"<cv>\n{text[:MAX_CV_CHARS]}\n</cv>", system=CV_SYSTEM, schema=CV_PROFILE_SCHEMA
     )
     profile["search_keywords"] = [

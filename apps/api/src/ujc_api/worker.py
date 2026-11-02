@@ -18,6 +18,9 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+from job_crawler import eligibility
+from job_crawler.matching import prefilter, scorer
+from job_crawler.matching.claude import ClaudeError
 from job_crawler.matching.cv import CvText, extract_profile, extract_text
 from psycopg.types.json import Jsonb
 
@@ -31,8 +34,16 @@ MAX_KEYWORDS = 30
 MAX_SKILLS_IN_KEYWORDS = 8
 ERROR_MAX_LEN = 2000
 
+# match_score (M4-03): how many of the user's newest feed-eligible jobs to consider at all, how
+# many of those (after the cheap keyword prefilter) to actually send to the LLM, and the batch
+# size per LLM call (same batch size as job_crawler.matching.__main__).
+FEED_CANDIDATES_LIMIT = 300
+MATCH_PREFILTER_LIMIT = 24
+MATCH_BATCH_SIZE = 8
+
 ExtractTextFn = Callable[[Path], CvText]
 ExtractProfileFn = Callable[[str], dict[str, Any]]
+ScoreJobsFn = Callable[[dict[str, Any], str, list[scorer.StoredJob]], list[scorer.MatchResult]]
 
 CLAIM_SQL = """
 UPDATE tasks SET status='running', locked_by=%(worker)s, locked_at=now(), attempts=attempts+1
@@ -162,6 +173,12 @@ def process_cv_extract(
             (cv_text.text, Jsonb(profile), keywords, cv_id),
         )
         _seed_preferences_if_empty(conn, user_id, keywords, profile)
+        # Keep this user's match scores fresh once a new/updated CV is ready (doesn't count
+        # against the POST /api/matches/refresh daily quota — see routers/matches.py).
+        conn.execute(
+            "INSERT INTO tasks (kind, payload) VALUES ('match_score', %s)",
+            (Jsonb({"user_id": user_id}),),
+        )
 
 
 def _update_cv_after_failure(
@@ -177,12 +194,100 @@ def _update_cv_after_failure(
     )
 
 
+def _accepted_tokens(candidate_country: str | None) -> list[str]:
+    """Same remote-eligibility rule as `GET /api/feed` (routers/feed.py `_accepted_tokens`)."""
+    if not candidate_country:
+        return [eligibility.WORLDWIDE]
+    regions = eligibility.COUNTRY_REGIONS.get(candidate_country, [])
+    return [eligibility.WORLDWIDE, candidate_country, *regions]
+
+
+def _load_feed_candidates(conn: psycopg.Connection, user_id: int) -> list[scorer.StoredJob]:
+    """The user's newest feed-eligible jobs: same keyword/remote/eligibility filters as
+    `GET /api/feed` (no `q`/`source`/cursor), capped at `FEED_CANDIDATES_LIMIT`, for the cheap
+    keyword prefilter (`job_crawler.matching.prefilter`) to pick from."""
+    prefs_row = conn.execute(
+        "SELECT keywords, remote_only, candidate_country FROM user_preferences WHERE user_id = %s",
+        (user_id,),
+    ).fetchone()
+    keywords: list[str] = list(prefs_row[0]) if prefs_row else []
+    remote_only: bool = bool(prefs_row[1]) if prefs_row else False
+    candidate_country: str | None = prefs_row[2] if prefs_row else None
+
+    clauses: list[str] = []
+    params: list[Any] = []
+    if keywords:
+        tsquery = " || ".join(["websearch_to_tsquery('english', %s)"] * len(keywords))
+        clauses.append(f"search @@ ({tsquery})")
+        params.extend(keywords)
+    if remote_only:
+        clauses.append("remote = true")
+    clauses.append("(NOT remote OR open_to IS NULL OR open_to && %s)")
+    params.append(_accepted_tokens(candidate_country))
+
+    where = " AND ".join(clauses)
+    rows = conn.execute(
+        "SELECT id, title, company, location, remote, open_to, salary_text, employment_type,"
+        f" tags, coalesce(description, '') FROM jobs WHERE {where}"
+        " ORDER BY coalesce(posted_at, first_seen_at) DESC, id DESC LIMIT %s",
+        [*params, FEED_CANDIDATES_LIMIT],
+    ).fetchall()
+    return [scorer.StoredJob(*r) for r in rows]
+
+
+def process_match_score(
+    conn: psycopg.Connection,
+    payload: dict[str, Any],
+    *,
+    score_jobs_fn: ScoreJobsFn = scorer.score_jobs,
+) -> None:
+    """`match_score`: take the user's latest `done` CV profile, prefilter their feed candidates
+    by keyword (`job_crawler.matching.prefilter.top_candidates`, limit 24), score the best ones
+    with the LLM in batches of 8, and replace `user_matches` wholesale with the results. A no-op
+    if the user has no `done` CV yet."""
+    user_id = payload["user_id"]
+    cv_row = conn.execute(
+        "SELECT id, profile FROM user_cvs WHERE user_id = %s AND status = 'done'"
+        " ORDER BY created_at DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    if cv_row is None:
+        return
+    cv_id, profile = cv_row
+
+    jobs = _load_feed_candidates(conn, user_id)
+    picked_jobs = [
+        j for j, _ in prefilter.top_candidates(profile, jobs, limit=MATCH_PREFILTER_LIMIT)
+    ]
+
+    results: list[scorer.MatchResult] = []
+    for i in range(0, len(picked_jobs), MATCH_BATCH_SIZE):
+        batch = picked_jobs[i : i + MATCH_BATCH_SIZE]
+        try:
+            results += score_jobs_fn(profile, "", batch)
+        except ClaudeError as exc:
+            log.warning(
+                "match_score user %s batch %d failed: %s", user_id, i // MATCH_BATCH_SIZE, exc
+            )
+
+    with conn.transaction():
+        conn.execute("DELETE FROM user_matches WHERE user_id = %s", (user_id,))
+        for r in results:
+            conn.execute(
+                "INSERT INTO user_matches"
+                " (user_id, cv_id, job_id, score, summary, reasons, missing_skills)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (user_id, cv_id, r.job_id, r.score, r.summary, r.reasons, r.missing_skills),
+            )
+
+
 def run_once(
     conn: psycopg.Connection,
     *,
     worker: str,
     extract_text_fn: ExtractTextFn = extract_text,
     extract_profile_fn: ExtractProfileFn = extract_profile,
+    score_jobs_fn: ScoreJobsFn = scorer.score_jobs,
 ) -> bool:
     """Requeues stale tasks, claims at most one, and processes it. Returns whether a task was
     claimed (False means the queue was empty, i.e. the caller should sleep before polling again).
@@ -201,6 +306,8 @@ def run_once(
                 extract_text_fn=extract_text_fn,
                 extract_profile_fn=extract_profile_fn,
             )
+        elif kind == "match_score":
+            process_match_score(conn, payload, score_jobs_fn=score_jobs_fn)
         else:
             raise ValueError(f"unknown task kind: {kind!r}")
     except Exception as exc:  # noqa: BLE001 - this is the top-level per-task error boundary
