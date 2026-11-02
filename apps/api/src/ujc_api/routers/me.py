@@ -52,6 +52,11 @@ def _ai_consent_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
     return row[0] if row else None
 
 
+def _onboarded_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
+    row = conn.execute("SELECT onboarded_at FROM users WHERE id = %s", (user_id,)).fetchone()
+    return row[0] if row else None
+
+
 @router.get("")
 def get_me(
     user: AuthedUser = Depends(current_user), conn: psycopg.Connection = Depends(get_conn)
@@ -61,6 +66,7 @@ def get_me(
             "id": str(user.id),
             "email": user.email,
             "aiConsentAt": _iso(_ai_consent_at(conn, user.id)),
+            "onboardedAt": _iso(_onboarded_at(conn, user.id)),
         },
         "preferences": _preferences(conn, user.id),
         "latestCv": _latest_cv(conn, user.id),
@@ -124,6 +130,16 @@ def post_consent(
     """Records consent to send CV text to the LLM provider (Claude), gating `POST /api/cvs`."""
     conn.execute("UPDATE users SET ai_consent_at = now() WHERE id = %s", (user.id,))
     return {"aiConsentAt": _iso(_ai_consent_at(conn, user.id))}
+
+
+@router.post("/onboarded", dependencies=[Depends(require_csrf)])
+def post_onboarded(
+    user: AuthedUser = Depends(current_user), conn: psycopg.Connection = Depends(get_conn)
+) -> dict:
+    """Marks the onboarding wizard (`/onboarding/`, M4-07) as finished, so a later login goes
+    straight to the feed instead of back through onboarding."""
+    conn.execute("UPDATE users SET onboarded_at = now() WHERE id = %s", (user.id,))
+    return {"onboardedAt": _iso(_onboarded_at(conn, user.id))}
 
 
 def _export_application(row: tuple) -> dict:

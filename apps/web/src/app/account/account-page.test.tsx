@@ -24,7 +24,7 @@ describe("AccountPage", () => {
   beforeEach(() => {
     useSessionMock.mockReturnValue({
       me: {
-        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z" },
+        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z", onboardedAt: "2026-01-01T00:00:00Z" },
         preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
         latestCv: null,
       },

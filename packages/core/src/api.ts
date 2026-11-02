@@ -110,9 +110,11 @@ export interface Preferences {
 }
 
 /** `GET /api/me`. `aiConsentAt` is set once the user agrees to send CV text to the LLM
- * provider (`POST /api/me/consent`); `POST /api/cvs` 409s `consent_required` until then. */
+ * provider (`POST /api/me/consent`); `POST /api/cvs` 409s `consent_required` until then.
+ * `onboardedAt` is set once the onboarding wizard (`POST /api/me/onboarded`) finishes; a
+ * signed-in user with `onboardedAt: null` is sent to `/onboarding/`. */
 export interface MeResponse {
-  user: { id: string; email: string; aiConsentAt: string | null };
+  user: { id: string; email: string; aiConsentAt: string | null; onboardedAt: string | null };
   preferences: Preferences;
   latestCv: Cv | null;
 }

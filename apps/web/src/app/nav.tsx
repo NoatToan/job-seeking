@@ -122,7 +122,8 @@ function Footer() {
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading } = useSession();
   const pathname = usePathname() ?? "/";
-  const bareRoute = pathname.startsWith("/login") || pathname.startsWith("/design");
+  const bareRoute =
+    pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
   const showChrome = Boolean(me) && !loading && !bareRoute;
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own

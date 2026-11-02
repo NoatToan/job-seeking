@@ -194,6 +194,12 @@ export function giveAiConsent(): Promise<{ aiConsentAt: string }> {
   });
 }
 
+/** `POST /api/me/onboarded` — marks the onboarding wizard (`/onboarding/`) as finished, so a
+ * later login goes straight to the feed instead of back through onboarding. */
+export function markOnboarded(): Promise<{ onboardedAt: string }> {
+  return apiFetch<{ onboardedAt: string }>("/api/me/onboarded", { method: "POST" });
+}
+
 /** `GET /api/me/export` — downloads the signed-in user's data as a JSON `Blob`. */
 export async function exportMyData(): Promise<Blob> {
   const headers = new Headers();
