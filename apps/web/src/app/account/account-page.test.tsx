@@ -48,6 +48,9 @@ describe("AccountPage", () => {
       if (url === "/api/me" && method === "DELETE") {
         return Promise.resolve(new Response(null, { status: 204 }));
       }
+      if (url === "/api/runners" && method === "GET") {
+        return Promise.resolve(jsonResponse(200, { items: [] }));
+      }
       return Promise.reject(new Error(`unexpected request ${method} ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -94,6 +97,9 @@ describe("AccountPage", () => {
       if (url === "/api/me/export") {
         return Promise.resolve(jsonResponse(200, { user: { email: "person@example.com" } }));
       }
+      if (url === "/api/runners") {
+        return Promise.resolve(jsonResponse(200, { items: [] }));
+      }
       return Promise.reject(new Error(`unexpected request ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -110,5 +116,52 @@ describe("AccountPage", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/me/export", expect.anything());
     expect(createObjectURLSpy).toHaveBeenCalled();
+  });
+
+  it("creates a pairing code, lists a paired runner, and revokes it", async () => {
+    let runners = [
+      { id: "7", name: "Tony's MacBook", createdAt: "2026-01-01T00:00:00Z", lastSeenAt: null, revokedAt: null },
+    ];
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/runners" && method === "GET") {
+        return Promise.resolve(jsonResponse(200, { items: runners }));
+      }
+      if (url === "/api/runners/pairing-code" && method === "POST") {
+        return Promise.resolve(
+          jsonResponse(200, { code: "ABCD-EFGH", expiresAt: "2026-01-01T00:10:00Z" }),
+        );
+      }
+      if (url === "/api/runners/7" && method === "DELETE") {
+        runners = [];
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.reject(new Error(`unexpected request ${method} ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ToastProvider>
+        <AccountPage />
+      </ToastProvider>,
+    );
+
+    expect(await screen.findByText("Tony's MacBook")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add a local runner" }));
+    });
+    expect(await screen.findByText("ABCD-EFGH")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Revoke" }));
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/runners/7",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    await act(async () => {});
+    expect(screen.queryByText("Tony's MacBook")).toBeNull();
   });
 });
