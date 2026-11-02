@@ -14,5 +14,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: false,
     include: ["src/**/*.test.{ts,tsx}"],
+    // Several tests wait up to 5 s for async UI; under a cold, parallel `pnpm -r test` run the
+    // default 5 s per-test budget was too tight and made feed.test.tsx flaky.
+    testTimeout: 15_000,
   },
 });
