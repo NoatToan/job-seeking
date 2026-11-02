@@ -13,6 +13,7 @@ import {
   Chip,
   cx,
   DocumentIcon,
+  IconButton,
   NavBar,
   ProgressSteps,
   Skeleton,
@@ -20,13 +21,41 @@ import {
   SpotIllustration,
   TextField,
   Toggle,
+  TrashIcon,
   UploadIcon,
   useToast,
 } from "@ujc/ui";
-import { ApiError, getCv, giveAiConsent, updatePreferences, uploadCv } from "@/lib/api";
+import {
+  ApiError,
+  deleteCv,
+  getCv,
+  giveAiConsent,
+  listCvs,
+  updatePreferences,
+  uploadCv,
+} from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
+import { useApi } from "@/lib/use-api";
 import { AccountMenu } from "@/app/nav";
+
+/** Status chip for a row in the CV list (docs/product issue M4-04 flow-v2 adaptation). */
+function cvStatusBadge(status: Cv["status"]) {
+  switch (status) {
+    case "done":
+      return <Badge tone="success">Ready</Badge>;
+    case "error":
+      return <Badge tone="danger">Failed</Badge>;
+    case "processing":
+      return (
+        <Badge tone="tint" icon={<Spinner size={12} />}>
+          Scanning
+        </Badge>
+      );
+    default:
+      return <Badge>In queue</Badge>;
+  }
+}
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt", ".md"];
@@ -77,6 +106,13 @@ function CvPageInner() {
   const [consenting, setConsenting] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
 
+  // "Your CVs" management list (M4-04): every CV the user has uploaded, with status + delete.
+  const cvsApi = useApi(() => listCvs(), []);
+  const [cvItems, setCvItems] = useState<Cv[]>([]);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const uploadAnotherInputRef = useRef<HTMLInputElement | null>(null);
+
   const seededCvIdRef = useRef<string | null>(null);
   const trackedCvIdRef = useRef<string | null>(null);
   const scanStartRef = useRef<number | null>(null);
@@ -92,6 +128,42 @@ function CvPageInner() {
       setKeywords(cv.keywords);
     }
   }, [cv]);
+
+  // Seeds `cvItems` from the one-shot `GET /api/cvs` list; subsequent changes (delete, the sync
+  // effect below) update `cvItems` directly rather than refetching.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (cvsApi.data) setCvItems(cvsApi.data.items);
+  }, [cvsApi.data]);
+
+  // Keeps the actively-tracked CV (uploaded just now, or polled above) in sync with the list,
+  // so a fresh upload or a status change (queued -> done) shows up without a refetch.
+  useEffect(() => {
+    if (!cv) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCvItems((prev) =>
+      prev.some((c) => c.id === cv.id) ? prev.map((c) => (c.id === cv.id ? cv : c)) : [cv, ...prev],
+    );
+  }, [cv]);
+
+  async function handleDeleteCv(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteCv(id);
+      setCvItems((prev) => prev.filter((c) => c.id !== id));
+      if (cv?.id === id) setCv(null);
+      toast.show({ tone: "success", title: "CV deleted", message: "Removed from your account." });
+    } catch (err) {
+      toast.show({
+        tone: "error",
+        title: "Couldn't delete this CV",
+        message: err instanceof ApiError ? err.message : "Please try again.",
+      });
+    } finally {
+      setDeletingId(null);
+      setConfirmingDeleteId(null);
+    }
+  }
 
   // Poll a queued/processing CV every 2s until it's done or errors; stop on unmount.
   useEffect(() => {
@@ -449,6 +521,75 @@ function CvPageInner() {
               </Link>
             </div>
           </div>
+        ) : null}
+
+        {cvItems.length > 0 ? (
+          <section aria-label="Your CVs" className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-title3 text-label">Your CVs</h2>
+              <button
+                type="button"
+                onClick={() => uploadAnotherInputRef.current?.click()}
+                className={buttonClasses({ variant: "plain", size: "sm" })}
+              >
+                <UploadIcon size={16} />
+                Upload another
+              </button>
+              <input
+                ref={uploadAnotherInputRef}
+                type="file"
+                accept={ACCEPT_ATTR}
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            <ul aria-live="polite" className="flex flex-col gap-2">
+              {cvItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-card bg-grouped-secondary p-3 shadow-card"
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-icon bg-fill-tertiary text-label-secondary">
+                    <DocumentIcon size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-body font-medium text-label">{item.filename}</p>
+                    <p className="text-footnote text-label-secondary">
+                      Uploaded {new Date(item.createdAt).toLocaleDateString("en-AU")}
+                    </p>
+                  </div>
+                  {cvStatusBadge(item.status)}
+                  {confirmingDeleteId === item.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        loading={deletingId === item.id}
+                        onClick={() => void handleDeleteCv(item.id)}
+                      >
+                        Confirm
+                      </Button>
+                      <Button variant="plain" size="sm" onClick={() => setConfirmingDeleteId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <IconButton
+                      label={`Delete ${item.filename}`}
+                      icon={<TrashIcon size={16} />}
+                      variant="plain"
+                      size="sm"
+                      onClick={() => setConfirmingDeleteId(item.id)}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
       </div>
     </>

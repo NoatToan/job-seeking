@@ -14,8 +14,10 @@ import {
   RefreshIcon,
   SearchField,
   Spinner,
+  Toggle,
+  useToast,
 } from "@ujc/ui";
-import { getFeed } from "@/lib/api";
+import { ApiError, getFeed, refreshMatches } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
@@ -39,10 +41,13 @@ function greeting(): string {
 
 function FeedInner() {
   const { me } = useSession();
+  const toast = useToast();
   const [draftQ, setDraftQ] = useState("");
   const [q, setQ] = useState("");
   const [source, setSource] = useState("");
+  const [bestMatches, setBestMatches] = useState(false);
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Debounced filter, per SCREENS.md §4 ("SearchField (q, debounced 300 ms)").
   useEffect(() => {
@@ -52,15 +57,44 @@ function FeedInner() {
 
   const fetchPage = useCallback(
     (cursor: string | undefined) =>
-      getFeed({ cursor, q: q || undefined, source: source || undefined }),
-    [q, source],
+      getFeed({
+        cursor,
+        q: q || undefined,
+        source: source || undefined,
+        sort: bestMatches ? "score" : undefined,
+      }),
+    [q, source, bestMatches],
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
   const { items, nextCursor, loading, error, initialized, loadMore, retry } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [q, source], onPage);
+  >(fetchPage, [q, source, bestMatches], onPage);
+
+  async function handleRefreshScores() {
+    setRefreshing(true);
+    try {
+      await refreshMatches();
+      toast.show({
+        tone: "success",
+        title: "Refreshing your scores",
+        message: "We're rescoring your feed against your CV — check back in a minute.",
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        toast.show({ tone: "error", title: "Daily limit reached", message: err.message });
+      } else {
+        toast.show({
+          tone: "error",
+          title: "Couldn't refresh scores",
+          message: err instanceof ApiError ? err.message : "Please try again.",
+        });
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const title = me ? `${greeting()}, ${firstName(me.user.email)}` : "Feed";
 
@@ -79,6 +113,21 @@ function FeedInner() {
           <Link href="/cv/" aria-label="Edit keywords" className="rounded-control-sm text-subheadline font-medium text-tint hover:underline focus-ring">
             Edit
           </Link>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-subheadline text-label-secondary">
+            <Toggle label="Best matches" checked={bestMatches} onChange={setBestMatches} />
+            Best matches
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleRefreshScores()}
+            disabled={refreshing}
+            className={buttonClasses({ variant: "gray", size: "sm", className: "disabled:opacity-40" })}
+          >
+            {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
+            Refresh scores
+          </button>
         </div>
         <SearchField value={draftQ} onChange={setDraftQ} label="Filter your feed" placeholder="Filter your feed" />
         <div role="group" aria-label="Filter by source" className="flex flex-wrap gap-2">

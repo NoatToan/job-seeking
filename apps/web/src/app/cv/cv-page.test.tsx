@@ -63,6 +63,9 @@ describe("CvPage", () => {
     };
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/cvs" && method === "GET") {
+        return Promise.resolve(jsonResponse(200, { items: [] }));
+      }
       if (url === "/api/cvs" && method === "POST") {
         return Promise.resolve(
           jsonResponse(202, {
@@ -174,6 +177,9 @@ describe("CvPage", () => {
 
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/cvs" && method === "GET") {
+        return Promise.resolve(jsonResponse(200, { items: [] }));
+      }
       if (url === "/api/me/consent" && method === "POST") {
         return Promise.resolve(jsonResponse(200, { aiConsentAt: "2026-01-01T00:00:00Z" }));
       }
@@ -196,5 +202,70 @@ describe("CvPage", () => {
     expect(consentCall).toBeTruthy();
     const [, consentInit] = consentCall as [string, RequestInit];
     expect(JSON.parse(consentInit.body as string)).toEqual({ aiProcessing: true });
+  });
+
+  it("lists every uploaded CV with status + upload date, and deletes one after confirming", async () => {
+    useSessionMock.mockReturnValue({
+      me: {
+        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z" },
+        preferences: { keywords: ["react"], remoteOnly: false, candidateCountry: null },
+        latestCv: null,
+      },
+      loading: false,
+      error: null,
+      refresh: refreshMock,
+      signOut: signOutMock,
+    });
+
+    let cvsDeleted = false;
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/cvs" && method === "GET") {
+        return Promise.resolve(
+          jsonResponse(200, {
+            items: cvsDeleted
+              ? []
+              : [
+                  {
+                    id: "9",
+                    filename: "old-resume.pdf",
+                    status: "done",
+                    error: null,
+                    keywords: ["react"],
+                    profile: null,
+                    createdAt: "2026-01-02T00:00:00Z",
+                    processedAt: "2026-01-02T00:05:00Z",
+                  },
+                ],
+          }),
+        );
+      }
+      if (url === "/api/cvs/9" && method === "DELETE") {
+        cvsDeleted = true;
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.reject(new Error(`unexpected request ${method} ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderCvPage();
+
+    await screen.findByText("old-resume.pdf");
+    expect(screen.getByText(/^Uploaded /)).toBeTruthy();
+    expect(screen.getByText("Ready")).toBeTruthy();
+
+    // First click asks for confirmation rather than deleting immediately.
+    fireEvent.click(screen.getByRole("button", { name: "Delete old-resume.pdf" }));
+    expect(fetchMock.mock.calls.some(([u, i]) => u === "/api/cvs/9" && (i as RequestInit)?.method === "DELETE")).toBe(false);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    });
+
+    const deleteCall = fetchMock.mock.calls.find(
+      ([u, i]) => u === "/api/cvs/9" && (i as RequestInit | undefined)?.method === "DELETE",
+    );
+    expect(deleteCall).toBeTruthy();
+    expect(screen.queryByText("old-resume.pdf")).toBeNull();
   });
 });

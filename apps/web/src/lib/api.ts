@@ -252,11 +252,21 @@ export interface FeedFilters {
   limit?: number;
   q?: string;
   source?: string;
+  /** `"score"` sorts by CV match score (best matches first) instead of newest-first. */
+  sort?: "score";
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */
 export function getFeed(filters: FeedFilters = {}): Promise<FeedPage> {
   return apiFetch<FeedPage>(`/api/feed${buildQuery(filters)}`);
+}
+
+/**
+ * `POST /api/matches/refresh` — queues a `match_score` task that rescans the user's feed against
+ * their latest CV. Rate-limited to 3/day; a 429 `quota_exceeded` means try again tomorrow.
+ */
+export function refreshMatches(): Promise<{ taskId: string }> {
+  return apiFetch<{ taskId: string }>("/api/matches/refresh", { method: "POST" });
 }
 
 export interface LiveSearchFilters {

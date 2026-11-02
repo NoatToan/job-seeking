@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { openToLabel } from "@ujc/core";
@@ -41,6 +44,7 @@ export interface JobCardProps {
  * The title links to the original posting (new tab); the source badge is always visible.
  */
 export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, status, className }: JobCardProps) {
+  const [scoreExpanded, setScoreExpanded] = useState(false);
   const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
   const openTo = openToLabel(job.openTo);
   const employment = employmentLabel(job.employmentType);
@@ -93,11 +97,29 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
 
       {job.match ? (
         <div className="flex flex-col gap-1.5">
-          <p className="text-callout text-label">{job.match.summary}</p>
-          {job.match.missingSkills.length ? (
-            <p className="text-footnote text-label-secondary">
-              <span className="font-medium">Skills to brush up:</span> {job.match.missingSkills.slice(0, 4).join(", ")}
-            </p>
+          <button
+            type="button"
+            aria-expanded={scoreExpanded}
+            onClick={() => setScoreExpanded((prev) => !prev)}
+            className="inline-flex w-fit items-center gap-1 rounded-control-sm text-subheadline font-medium text-tint hover:underline focus-ring"
+          >
+            Why this score
+            <ChevronRightIcon
+              size={14}
+              strokeWidth={2.25}
+              aria-hidden
+              className={cx("transition-transform duration-200", scoreExpanded && "rotate-90")}
+            />
+          </button>
+          {scoreExpanded ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-callout text-label">{job.match.summary}</p>
+              {job.match.missingSkills.length ? (
+                <p className="text-footnote text-label-secondary">
+                  <span className="font-medium">Skills to brush up:</span> {job.match.missingSkills.slice(0, 4).join(", ")}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
