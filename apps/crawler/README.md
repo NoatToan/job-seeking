@@ -67,6 +67,28 @@ uv run python -m job_crawler.matching --profile 7 --cv ~/cv.pdf --limit 24 \
 Reads the CV (PDF text layer, or Claude OCR for scans/images; TXT/MD as is), extracts a profile
 with Claude, prefilters the profile's jobs by keywords, and asks Claude to score the best ones
 (0-100, reasons in Vietnamese). Results are stored in `cvs` / `cv_matches` and the profile page
-sorts by score. Claude runs through the local `claude -p` CLI (your Claude subscription, no API
-key); set `UJC_CLAUDE_MODEL` to change the model. The CV text is personal data: it is deleted with
-its search profile. Ported from the jobflow POC (`poc_job_crawler`).
+sorts by score. The CV text is personal data: it is deleted with its search profile. Ported from
+the jobflow POC (`poc_job_crawler`).
+
+### LLM provider (`job_crawler.matching.provider`)
+
+`UJC_LLM_PROVIDER` picks how matching calls Claude:
+
+- `claude_cli` (default): the local `claude -p` CLI, your own Claude subscription, no API key;
+  set `UJC_CLAUDE_MODEL` to change the model.
+- `anthropic`: the official `anthropic` SDK directly (server-side, no Claude Code login needed).
+  `uv sync --extra api` to install it. Reads `ANTHROPIC_API_KEY` from the environment (never
+  logged) and `UJC_ANTHROPIC_MODEL` for the model (default `claude-sonnet-5`); structured output
+  is a single forced tool call, so results come back as a validated dict with no JSON-in-text
+  parsing; PDFs/images passed as `files` go as base64 `document`/`image` blocks.
+- `fake`: deterministic, no network — what every test uses.
+
+## Upwork (`job_crawler.sources.upwork`, M3-03)
+
+A GraphQL client library against `https://api.upwork.com/graphql`, deliberately **not**
+registered in `SOURCES` — Upwork's API & MCP Terms forbid continuous monitoring, so it is only
+ever called from a user-directed search (M3-04), never a daily crawl. See the module docstring
+and `docs/product/ARCHITECTURE.md` §7 for the Terms constraints this is built around. No API key
+is needed yet: `tests/test_upwork.py` runs entirely against recorded, hand-written fixture JSON
+(`tests/fixtures/upwork_search.json`, `upwork_errors.json`) — field/enum names are unverified
+against the live schema until the key application is approved.

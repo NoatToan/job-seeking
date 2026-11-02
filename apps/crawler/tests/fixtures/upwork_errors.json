@@ -1,0 +1,8 @@
+{
+  "_synthetic_fixture_notice": "Hand-written from Upwork's publicly documented GraphQL error shape, NOT real API data.",
+  "graphql_error": {
+    "errors": [
+      { "message": "marketPlaceJobFilter.searchExpression_eq: value is required" }
+    ]
+  }
+}

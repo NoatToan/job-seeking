@@ -1,0 +1,45 @@
+{
+  "_synthetic_fixture_notice": "Hand-written from Upwork's publicly documented GraphQL schema shape, NOT real API data. See docs/product/ARCHITECTURE.md §7 and job_crawler/sources/upwork_queries.py — field/enum names are unverified against the live schema.",
+  "data": {
+    "marketplaceJobPostingsSearch": {
+      "totalCount": 2,
+      "edges": [
+        {
+          "node": {
+            "id": "1709879999999999999",
+            "ciphertext": "021abcdef0123456789",
+            "title": "Senior React Native Developer",
+            "description": "<p>Build a <strong>mobile app</strong> for a logistics startup.</p>",
+            "createdDateTime": "2026-10-20T10:00:00Z",
+            "jobType": "HOURLY",
+            "hourlyBudgetMin": { "rawValue": "30", "currency": "USD" },
+            "hourlyBudgetMax": { "rawValue": "60", "currency": "USD" },
+            "fixedPriceAmount": null,
+            "skills": [{ "name": "React Native" }, { "name": "TypeScript" }],
+            "client": {
+              "paymentVerified": true,
+              "totalHires": 14,
+              "location": { "country": "United States" }
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "1709880000000000000",
+            "ciphertext": "021fedcba9876543210",
+            "title": "Data entry helper",
+            "description": null,
+            "createdDateTime": "2026-10-19T08:30:00Z",
+            "jobType": "FIXED",
+            "hourlyBudgetMin": null,
+            "hourlyBudgetMax": null,
+            "fixedPriceAmount": null,
+            "skills": [],
+            "client": null
+          }
+        }
+      ],
+      "pageInfo": { "hasNextPage": true, "endCursor": "cursor_abc123" }
+    }
+  }
+}
