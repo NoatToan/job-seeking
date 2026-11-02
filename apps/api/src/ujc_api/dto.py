@@ -12,6 +12,12 @@ JOB_COLUMNS = (
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
 
+APPLICATION_COLUMNS = (
+    "id, job_id, job_snapshot, status, note, next_action_at, created_at, updated_at"
+)
+
+APPLICATION_EVENT_COLUMNS = "id, from_status, to_status, note, created_at"
+
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
@@ -76,4 +82,32 @@ def cv_dto(row: tuple) -> dict[str, Any]:
         "profile": cv_profile_dto(profile),
         "createdAt": _iso(created_at),
         "processedAt": _iso(processed_at),
+    }
+
+
+def application_dto(row: tuple) -> dict[str, Any]:
+    """Maps one row selected with `APPLICATION_COLUMNS` to the `Application` shape
+    (packages/core). `job_snapshot` is stored as jsonb and comes back already decoded."""
+    id_, job_id, job_snapshot, status, note, next_action_at, created_at, updated_at = row
+    return {
+        "id": str(id_),
+        "jobId": str(job_id) if job_id is not None else None,
+        "job": job_snapshot or None,
+        "status": status,
+        "note": note,
+        "nextActionAt": _iso(next_action_at),
+        "createdAt": _iso(created_at),
+        "updatedAt": _iso(updated_at),
+    }
+
+
+def application_event_dto(row: tuple) -> dict[str, Any]:
+    """Maps one row selected with `APPLICATION_EVENT_COLUMNS` to the `ApplicationEvent` shape."""
+    id_, from_status, to_status, note, created_at = row
+    return {
+        "id": str(id_),
+        "fromStatus": from_status,
+        "toStatus": to_status,
+        "note": note,
+        "createdAt": _iso(created_at),
     }

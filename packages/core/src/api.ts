@@ -123,6 +123,45 @@ export interface FeedPage {
   keywords: string[];
 }
 
+/** Lifecycle of a tracked application (`applications.status`, docs/product/ARCHITECTURE.md). */
+export type ApplicationStatus =
+  | "saved"
+  | "applied"
+  | "interviewing"
+  | "offer"
+  | "rejected"
+  | "withdrawn";
+
+/** A snapshot of the job as it looked when the application was created, so the card survives
+ * the source `Job` row being deleted (`applications.job_snapshot`). */
+export interface ApplicationJobSnapshot {
+  title: string;
+  company: string | null;
+  url: string;
+  source: string;
+}
+
+/** A tracked application (`GET/POST /api/applications`, `PATCH/DELETE /api/applications/{id}`). */
+export interface Application {
+  id: string;
+  jobId: string | null;
+  job: ApplicationJobSnapshot | null;
+  status: ApplicationStatus;
+  note: string | null;
+  nextActionAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One status-change entry (`GET /api/applications/{id}/events`). */
+export interface ApplicationEvent {
+  id: string;
+  fromStatus: ApplicationStatus | null;
+  toStatus: ApplicationStatus;
+  note: string | null;
+  createdAt: string;
+}
+
 /** One source's result for a page of `GET /api/search/live` (`sources[]`). */
 export interface LiveSourceStatus {
   id: string;
