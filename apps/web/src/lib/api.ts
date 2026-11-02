@@ -1,5 +1,8 @@
 import type {
   ApiErrorBody,
+  Application,
+  ApplicationEvent,
+  ApplicationStatus,
   Cv,
   FeedPage,
   Job,
@@ -228,5 +231,53 @@ export function liveSearch(filters: LiveSearchFilters): Promise<LiveSearchPage> 
   const { sources, ...rest } = filters;
   return apiFetch<LiveSearchPage>(
     `/api/search/live${buildQuery({ ...rest, sources: sources.join(",") })}`,
+  );
+}
+
+// --- Tracker (M4-05/M4-06): applications + status history. ---------------------------------
+
+/** `GET /api/applications` — the signed-in user's tracked applications, newest-updated first. */
+export function listApplications(status?: ApplicationStatus): Promise<{ items: Application[] }> {
+  return apiFetch<{ items: Application[] }>(`/api/applications${buildQuery({ status })}`);
+}
+
+/**
+ * `POST /api/applications` — track a job. Idempotent: tracking an already-tracked job returns
+ * the existing application (200) instead of erroring.
+ */
+export function saveApplication(
+  jobId: string,
+  status?: ApplicationStatus,
+  note?: string,
+): Promise<Application> {
+  return apiFetch<Application>("/api/applications", {
+    method: "POST",
+    body: { jobId, status, note },
+  });
+}
+
+export interface ApplicationPatch {
+  status?: ApplicationStatus;
+  note?: string | null;
+  nextActionAt?: string | null;
+}
+
+/** `PATCH /api/applications/{id}` — update status, note and/or next action date. */
+export function updateApplication(id: string, patch: ApplicationPatch): Promise<Application> {
+  return apiFetch<Application>(`/api/applications/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: patch,
+  });
+}
+
+/** `DELETE /api/applications/{id}`. */
+export function deleteApplication(id: string): Promise<void> {
+  return apiFetch<void>(`/api/applications/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/** `GET /api/applications/{id}/events` — the status-change history, newest first. */
+export function listApplicationEvents(id: string): Promise<{ items: ApplicationEvent[] }> {
+  return apiFetch<{ items: ApplicationEvent[] }>(
+    `/api/applications/${encodeURIComponent(id)}/events`,
   );
 }

@@ -12,6 +12,7 @@ import {
   cx,
   DocumentIcon,
   GroupedList,
+  KanbanIcon,
   ListRow,
   SearchIcon,
   Sheet,
@@ -24,11 +25,13 @@ import { useSession } from "@/lib/session";
 const NAV_ITEMS: NavItem[] = [
   { key: "feed", label: "Feed", href: "/", icon: <BriefcaseIcon size={22} /> },
   { key: "search", label: "Live search", href: "/search/", icon: <SearchIcon size={22} /> },
+  { key: "tracker", label: "Tracker", href: "/tracker/", icon: <KanbanIcon size={22} /> },
   { key: "cv", label: "My CV", href: "/cv/", icon: <DocumentIcon size={22} /> },
 ];
 
 function activeKeyFor(pathname: string): string {
   if (pathname.startsWith("/search")) return "search";
+  if (pathname.startsWith("/tracker")) return "tracker";
   if (pathname.startsWith("/cv")) return "cv";
   if (pathname === "/") return "feed";
   return "";

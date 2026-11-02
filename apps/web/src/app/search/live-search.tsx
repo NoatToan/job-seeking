@@ -20,6 +20,7 @@ import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
 import { AccountMenu } from "@/app/nav";
+import { SaveJobButton } from "@/app/save-job-button";
 
 // Live-search source ids, per docs/product/FLOW_V2.md §4 (`sources=seek,himalayas,remotive,wwr,arc`).
 // Distinct from packages/core's SOURCES catalogue (which covers the daily-crawl feed sources).
@@ -188,7 +189,11 @@ function LiveSearchInner() {
         ) : (
           <div className="flex flex-col gap-3">
             {items.map((job) => (
-              <JobCard key={`${job.source}-${job.id}`} job={job} />
+              <JobCard
+                key={`${job.source}-${job.id}`}
+                job={job}
+                actions={<SaveJobButton jobId={job.id} />}
+              />
             ))}
           </div>
         )}
