@@ -51,7 +51,14 @@ def test_otp_verify_me_flow(client: TestClient):
     assert me.status_code == 200
     body = me.json()
     assert body["user"]["email"] == email
-    assert body["preferences"] == {"keywords": [], "remoteOnly": False, "candidateCountry": None}
+    assert body["preferences"] == {
+        "keywords": [],
+        "remoteOnly": False,
+        "candidateCountry": None,
+        "digestEnabled": True,
+        "digestHour": 7,
+        "digestTz": "Asia/Ho_Chi_Minh",
+    }
     assert body["latestCv"] is None
 
     # logout needs CSRF
@@ -314,10 +321,55 @@ def test_put_preferences_updates_and_validates(client: TestClient):
     )
     assert resp.status_code == 200
     assert resp.json()["preferences"]["keywords"] == ["python", "react"]
+    # Omitted digest fields (M4-08) default rather than erroring, for older/simpler clients.
+    assert resp.json()["preferences"]["digestEnabled"] is True
+    assert resp.json()["preferences"]["digestHour"] == 7
+    assert resp.json()["preferences"]["digestTz"] == "Asia/Ho_Chi_Minh"
 
     me = client.get("/api/me")
     assert me.json()["preferences"]["remoteOnly"] is True
     assert me.json()["preferences"]["candidateCountry"] == "VN"
+
+    digest_resp = client.put(
+        "/api/me/preferences",
+        json={
+            "keywords": ["python"],
+            "remoteOnly": False,
+            "candidateCountry": None,
+            "digestEnabled": False,
+            "digestHour": 20,
+            "digestTz": "Australia/Sydney",
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert digest_resp.status_code == 200, digest_resp.text
+    assert digest_resp.json()["preferences"]["digestEnabled"] is False
+    assert digest_resp.json()["preferences"]["digestHour"] == 20
+    assert digest_resp.json()["preferences"]["digestTz"] == "Australia/Sydney"
+
+    bad_hour = client.put(
+        "/api/me/preferences",
+        json={
+            "keywords": ["python"],
+            "remoteOnly": False,
+            "candidateCountry": None,
+            "digestHour": 24,
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert bad_hour.status_code == 400
+
+    bad_tz = client.put(
+        "/api/me/preferences",
+        json={
+            "keywords": ["python"],
+            "remoteOnly": False,
+            "candidateCountry": None,
+            "digestTz": "Not/A_Zone",
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert bad_tz.status_code == 400
 
     too_many_body = {
         "keywords": [f"k{i}" for i in range(31)],

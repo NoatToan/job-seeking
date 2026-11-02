@@ -3,6 +3,7 @@
 
 import json
 from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -24,18 +25,33 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
 
+_DEFAULT_DIGEST_HOUR = 7
+_DEFAULT_DIGEST_TZ = "Asia/Ho_Chi_Minh"
+
+
 def _preferences(conn: psycopg.Connection, user_id: int) -> dict:
     row = conn.execute(
-        "SELECT keywords, remote_only, candidate_country FROM user_preferences WHERE user_id = %s",
+        "SELECT keywords, remote_only, candidate_country,"
+        " digest_enabled, digest_hour, digest_tz FROM user_preferences WHERE user_id = %s",
         (user_id,),
     ).fetchone()
     if row is None:
-        return {"keywords": [], "remoteOnly": False, "candidateCountry": None}
-    keywords, remote_only, candidate_country = row
+        return {
+            "keywords": [],
+            "remoteOnly": False,
+            "candidateCountry": None,
+            "digestEnabled": True,
+            "digestHour": _DEFAULT_DIGEST_HOUR,
+            "digestTz": _DEFAULT_DIGEST_TZ,
+        }
+    keywords, remote_only, candidate_country, digest_enabled, digest_hour, digest_tz = row
     return {
         "keywords": list(keywords or []),
         "remoteOnly": bool(remote_only),
         "candidateCountry": candidate_country,
+        "digestEnabled": bool(digest_enabled),
+        "digestHour": digest_hour,
+        "digestTz": digest_tz,
     }
 
 
@@ -78,6 +94,11 @@ class PreferencesRequest(BaseModel):
     keywords: list[str]
     remoteOnly: bool  # noqa: N815 - camelCase matches the wire contract
     candidateCountry: str | None  # noqa: N815 - camelCase matches the wire contract
+    # Daily digest (M4-08). Optional so older/simpler clients can still PUT the base three
+    # fields; a user with no row yet gets the same defaults `_preferences` returns.
+    digestEnabled: bool = True  # noqa: N815 - camelCase matches the wire contract
+    digestHour: int = _DEFAULT_DIGEST_HOUR  # noqa: N815 - camelCase matches the wire contract
+    digestTz: str = _DEFAULT_DIGEST_TZ  # noqa: N815 - camelCase matches the wire contract
 
     @field_validator("keywords")
     @classmethod
@@ -90,6 +111,22 @@ class PreferencesRequest(BaseModel):
                 raise ValueError(f"each keyword must be 1-{MAX_KEYWORD_LEN} characters")
         return cleaned
 
+    @field_validator("digestHour")
+    @classmethod
+    def _digest_hour(cls, v: int) -> int:
+        if not 0 <= v <= 23:
+            raise ValueError("digestHour must be between 0 and 23")
+        return v
+
+    @field_validator("digestTz")
+    @classmethod
+    def _digest_tz(cls, v: str) -> str:
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("digestTz must be a valid IANA timezone name") from exc
+        return v
+
 
 @router.put("/preferences", dependencies=[Depends(require_csrf)])
 def put_preferences(
@@ -99,14 +136,26 @@ def put_preferences(
 ) -> dict:
     conn.execute(
         "INSERT INTO user_preferences"
-        " (user_id, keywords, remote_only, candidate_country, updated_at)"
-        " VALUES (%s, %s, %s, %s, now())"
+        " (user_id, keywords, remote_only, candidate_country,"
+        "  digest_enabled, digest_hour, digest_tz, updated_at)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, now())"
         " ON CONFLICT (user_id) DO UPDATE SET"
         "   keywords = EXCLUDED.keywords,"
         "   remote_only = EXCLUDED.remote_only,"
         "   candidate_country = EXCLUDED.candidate_country,"
+        "   digest_enabled = EXCLUDED.digest_enabled,"
+        "   digest_hour = EXCLUDED.digest_hour,"
+        "   digest_tz = EXCLUDED.digest_tz,"
         "   updated_at = now()",
-        (user.id, body.keywords, body.remoteOnly, body.candidateCountry),
+        (
+            user.id,
+            body.keywords,
+            body.remoteOnly,
+            body.candidateCountry,
+            body.digestEnabled,
+            body.digestHour,
+            body.digestTz,
+        ),
     )
     return {"preferences": _preferences(conn, user.id)}
 

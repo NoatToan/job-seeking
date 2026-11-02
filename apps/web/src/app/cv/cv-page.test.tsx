@@ -159,6 +159,74 @@ describe("CvPage", () => {
       keywords: ["node", "typescript"],
       remoteOnly: false,
       candidateCountry: null,
+      digestEnabled: true,
+      digestHour: 7,
+      digestTz: "Asia/Ho_Chi_Minh",
+    });
+  });
+
+  it("lets the user turn off the daily digest and change the send hour", async () => {
+    useSessionMock.mockReturnValue({
+      me: {
+        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z" },
+        preferences: {
+          keywords: ["react"],
+          remoteOnly: false,
+          candidateCountry: null,
+          digestEnabled: true,
+          digestHour: 7,
+          digestTz: "Asia/Ho_Chi_Minh",
+        },
+        latestCv: {
+          id: "9",
+          filename: "resume.pdf",
+          status: "done",
+          error: null,
+          keywords: ["react"],
+          profile: { headline: "Frontend Engineer", seniority: "Senior", skills: [], summary: "" },
+          createdAt: new Date().toISOString(),
+          processedAt: new Date().toISOString(),
+        },
+      },
+      loading: false,
+      error: null,
+      refresh: refreshMock,
+      signOut: signOutMock,
+    });
+
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/cvs" && method === "GET") {
+        return Promise.resolve(jsonResponse(200, { items: [] }));
+      }
+      if (url === "/api/me/preferences" && method === "PUT") {
+        return Promise.resolve(jsonResponse(200, { preferences: JSON.parse(init!.body as string) }));
+      }
+      return Promise.reject(new Error(`unexpected request ${method} ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderCvPage();
+
+    expect(screen.getByText("Send around")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Email me new matches"));
+    expect(screen.queryByText("Send around")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
+
+    const prefCall = fetchMock.mock.calls.find(([u]) => u === "/api/me/preferences");
+    expect(prefCall).toBeTruthy();
+    const [, prefInit] = prefCall as [string, RequestInit];
+    expect(JSON.parse(prefInit.body as string)).toEqual({
+      keywords: ["react"],
+      remoteOnly: false,
+      candidateCountry: null,
+      digestEnabled: false,
+      digestHour: 7,
+      digestTz: "Asia/Ho_Chi_Minh",
     });
   });
 

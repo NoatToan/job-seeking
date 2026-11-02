@@ -5,12 +5,12 @@ from typing import Any
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
-from job_crawler import eligibility
 
 from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
 from ujc_api.dto import JOB_COLUMNS, job_dto
+from ujc_api.feed_query import feed_filter_clauses
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
 
@@ -30,15 +30,6 @@ def _job_dto_with_match(row: tuple) -> dict[str, Any]:
         else None
     )
     return dto
-
-
-def _accepted_tokens(candidate_country: str | None) -> list[str]:
-    """Open-to tokens that make a remote job eligible for this candidate (or just WORLDWIDE when
-    they haven't set a country)."""
-    if not candidate_country:
-        return [eligibility.WORLDWIDE]
-    regions = eligibility.COUNTRY_REGIONS.get(candidate_country, [])
-    return [eligibility.WORLDWIDE, candidate_country, *regions]
 
 
 def _sort_key(row: tuple) -> tuple[datetime, int]:
@@ -76,19 +67,7 @@ def get_feed(
     remote_only: bool = bool(prefs_row[1]) if prefs_row else False
     candidate_country: str | None = prefs_row[2] if prefs_row else None
 
-    clauses: list[str] = []
-    where_params: list[Any] = []
-
-    if keywords:
-        tsquery = " || ".join(["websearch_to_tsquery('english', %s)"] * len(keywords))
-        clauses.append(f"search @@ ({tsquery})")
-        where_params.extend(keywords)
-
-    if remote_only:
-        clauses.append("remote = true")
-
-    clauses.append("(NOT remote OR open_to IS NULL OR open_to && %s)")
-    where_params.append(_accepted_tokens(candidate_country))
+    clauses, where_params = feed_filter_clauses(keywords, remote_only, candidate_country)
 
     if q:
         clauses.append("search @@ websearch_to_tsquery('english', %s)")

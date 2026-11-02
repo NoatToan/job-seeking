@@ -1,0 +1,44 @@
+name: Daily digest
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly — digest_hour is a user-local hour, see ujc_api.digest
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Log what would be sent without sending or saving"
+        type: boolean
+        default: false
+
+concurrency:
+  group: digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run digest
+        if: ${{ secrets.DATABASE_URL != '' && secrets.UJC_SECRET_KEY != '' }}
+        run: uv run python -m ujc_api.digest run ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          UJC_SECRET_KEY: ${{ secrets.UJC_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          UJC_PUBLIC_URL: ${{ vars.UJC_PUBLIC_URL }}
+          UJC_ENV: production
+
+      - name: Skipped — missing DATABASE_URL / UJC_SECRET_KEY secret
+        if: ${{ secrets.DATABASE_URL == '' || secrets.UJC_SECRET_KEY == '' }}
+        run: echo "DATABASE_URL and/or UJC_SECRET_KEY repo secrets are not set; skipping this run."

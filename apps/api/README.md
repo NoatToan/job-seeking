@@ -36,8 +36,9 @@ database and that every migration has been applied. OpenAPI docs (`/api/docs`,
 | `UJC_SECRET_KEY` | **required outside `development`/`test`** | HMAC key for OTP code hashes and the CSRF token. In `development`/`test` a fixed insecure default is used (with a logged warning) if unset; outside those, startup fails without a real value |
 | `UJC_OTP_REVIEW_MODE` | no (default `false`) | `true` returns the OTP code as `devCode` in `POST /api/auth/otp`'s response instead of emailing it. Only for an access-protected preview deployment, never production |
 | `UJC_OTP_REVIEW_ALLOWLIST` | no (default empty) | Comma-separated emails (case-insensitive). When review mode is on **and** this is non-empty, only these addresses get `devCode`; every other email is sent via Resend if `RESEND_API_KEY` is set, or rejected with `403 not_invited`. Leave empty only for a non-public preview — set this before exposing a review build publicly |
-| `RESEND_API_KEY` | no | [Resend](https://resend.com) API key. When set, OTP emails are sent for real via Resend's HTTP API (takes priority over review mode, except for allowlisted addresses — see above) |
-| `UJC_MAIL_FROM` | no (default `Job Seeking <onboarding@resend.dev>`) | `From` address for OTP emails sent via Resend |
+| `RESEND_API_KEY` | no | [Resend](https://resend.com) API key. When set, OTP and daily-digest emails are sent for real via Resend's HTTP API (takes priority over review mode, except for allowlisted addresses — see above). Without it, `ujc_api.digest` logs "would send" and never actually emails |
+| `UJC_MAIL_FROM` | no (default `Job Seeking <onboarding@resend.dev>`) | `From` address for OTP and digest emails sent via Resend |
+| `UJC_PUBLIC_URL` | no (default `http://localhost:3000`) | Absolute origin used in digest email links (see more / change settings / unsubscribe), since those are read outside a browser tab. No trailing slash |
 | `UJC_CLAUDE_MODEL`, `UJC_CLAUDE_BIN`, `UJC_CLAUDE_TIMEOUT_S` | no | Read directly by `job_crawler.matching.claude` (the host worker's `claude -p` wrapper); see that module for defaults |
 
 ## API endpoints
@@ -51,12 +52,13 @@ All responses are JSON; errors are `{error:{code,message,fields?}}`. See
 | `POST /api/auth/verify` | – | `{email, code}` -> `{user}` + `Set-Cookie: ujc_session`, `ujc_csrf` |
 | `POST /api/auth/logout` | session + CSRF | Clears cookies and the session row |
 | `GET /api/me` | session | User, preferences, latest CV |
-| `PUT /api/me/preferences` | session + CSRF | Keywords (≤30, ≤40 chars each), remote-only, candidate country |
+| `PUT /api/me/preferences` | session + CSRF | Keywords (≤30, ≤40 chars each), remote-only, candidate country, digest enabled/hour/timezone |
 | `POST /api/cvs` | session + CSRF | multipart `file` (pdf/png/jpg/jpeg/webp/gif/txt/md, ≤5 MB) -> `202` queued |
 | `GET /api/cvs` / `GET /api/cvs/{id}` | session | Owner-scoped (404 otherwise) |
 | `DELETE /api/cvs/{id}` | session + CSRF | Owner-scoped |
 | `GET /api/feed` | session | Keyset-paginated jobs matching the user's keywords (or newest, if none), filtered by remote-only/eligibility |
 | `GET /api/search/live` | session | Live query across seek/himalayas/remotive/wwr/arc, merged, de-duplicated, upserted into `jobs` |
+| `GET /api/digest/unsubscribe?u=&t=` | – (stateless token) | One-click digest unsubscribe; `400 invalid_token` if `t` doesn't verify |
 
 CSRF: double-submit — send header `X-CSRF-Token` equal to the readable `ujc_csrf` cookie on
 every `POST`/`PUT`/`PATCH`/`DELETE` to a session-authenticated route (the SPA's API client does
@@ -110,6 +112,30 @@ apps/api/scripts/worker-service.sh uninstall
 
 Logs go to `~/Library/Logs/job-seeking/worker.log`. On Linux, run the same command
 (`uv run python -m ujc_api.worker`) as a systemd user service with `Restart=always`.
+
+## Daily digest (M4-08)
+
+`ujc_api.digest` sends each user at most one email per local day, once their `digest_hour`
+(local to their `digest_tz`) has passed: new jobs since their last digest that match their feed
+keywords/remote/eligibility filters (same rule as `GET /api/feed`), ranked by match score when
+they have one, capped at 10, Upwork always excluded.
+
+```bash
+uv run python -m ujc_api.digest run             # send to every due user
+uv run python -m ujc_api.digest run --dry-run   # log who/how many, send nothing, save nothing
+uv run python -m ujc_api.digest run --user person@example.com   # only this user (still gated by their digest hour)
+```
+
+Run it **hourly** (`digest_hour` is a user-local hour, not a minute, so hourly is enough
+precision) — `.github/workflows/digest.yml` does this in CI (needs the `DATABASE_URL` and
+`UJC_SECRET_KEY` repo secrets, `RESEND_API_KEY` optional; the workflow skips gracefully if the
+required secrets aren't set). To run it elsewhere instead: a `cron` entry
+(`0 * * * * cd apps/api && uv run python -m ujc_api.digest run`) or a launchd/systemd timer next
+to the host worker.
+
+Unsubscribe is stateless — `GET /api/digest/unsubscribe?u={id}&t={token}` where `token` is
+`HMAC(UJC_SECRET_KEY, "{id}|digest")` — so there's no token table, and the link in every digest
+email's `List-Unsubscribe` header works without a session.
 
 ## Test
 

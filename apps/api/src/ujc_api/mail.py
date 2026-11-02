@@ -1,10 +1,10 @@
-"""OTP email delivery: Resend's HTTP API when configured, a `devCode` in review mode otherwise.
-
-Never logs the OTP code itself (see `deliver_otp`/`_send_via_resend`: the code only ever appears
-inside the request body sent to Resend, or in the `devCode` the caller returns to the client).
+"""Mail delivery: Resend's HTTP API when configured. `deliver_otp` falls back to a `devCode` in
+review mode; `deliver_digest` (M4-08) falls back to logging "would send" (never logs job
+content, just the count — see its docstring).
 """
 
 import logging
+from typing import Any
 
 import httpx
 
@@ -78,3 +78,86 @@ def deliver_otp(settings: Settings, email: str, code: str) -> str | None:
     if settings.ujc_otp_review_mode:
         return code
     raise MailNotConfigured()
+
+
+def _digest_subject(job_count: int) -> str:
+    noun = "match" if job_count == 1 else "matches"
+    return f"{job_count} new job {noun} for you"
+
+
+def _job_line(job: dict[str, Any]) -> str:
+    score = job.get("score")
+    score_suffix = f" — {score}% match" if score is not None else ""
+    source = job.get("source") or "source unknown"
+    return f"{job['title']} at {job['company']} ({source}){score_suffix}\n{job['url']}"
+
+
+def _digest_text(jobs: list[dict[str, Any]], app_url: str, unsubscribe_url: str) -> str:
+    body = "\n\n".join(_job_line(j) for j in jobs)
+    return (
+        "Your daily job digest:\n\n"
+        f"{body}\n\n"
+        f"See more and change your digest settings: {app_url}/cv/\n"
+        f"Unsubscribe from the daily digest: {unsubscribe_url}\n"
+    )
+
+
+def _digest_html(jobs: list[dict[str, Any]], app_url: str, unsubscribe_url: str) -> str:
+    items = "".join(
+        "<li>"
+        f'<a href="{j["url"]}">{j["title"]}</a> at {j["company"]}'
+        f' <span style="color:#8e8e93">({j.get("source") or "source unknown"})</span>'
+        + (f" &mdash; {j['score']}% match" if j.get("score") is not None else "")
+        + "</li>"
+        for j in jobs
+    )
+    return (
+        "<p>Your daily job digest:</p>"
+        f"<ul>{items}</ul>"
+        f'<p><a href="{app_url}/cv/">See more and change your digest settings</a></p>'
+        '<p style="color:#8e8e93;font-size:12px">'
+        f'<a href="{unsubscribe_url}">Unsubscribe</a> from the daily digest.</p>'
+    )
+
+
+def deliver_digest(
+    settings: Settings,
+    email: str,
+    jobs: list[dict[str, Any]],
+    *,
+    unsubscribe_url: str,
+    app_url: str,
+) -> bool:
+    """Sends the daily digest via Resend when `RESEND_API_KEY` is set. Otherwise logs that a
+    digest *would* be sent (count only — never job titles, urls or any other content) and
+    returns `False`, so `ujc_api.digest.run_digest` still records `last_digest_at` (one digest
+    attempt per user per local day, whether or not a mailer is configured).
+
+    Returns `True` iff an email was actually sent via Resend.
+    """
+    if not settings.resend_api_key:
+        log.info("digest: would send to %s (%d job(s)) — RESEND_API_KEY not set", email, len(jobs))
+        return False
+
+    subject = _digest_subject(len(jobs))
+    text = _digest_text(jobs, app_url, unsubscribe_url)
+    html = _digest_html(jobs, app_url, unsubscribe_url)
+    try:
+        resp = httpx.post(
+            RESEND_URL,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json={
+                "from": settings.ujc_mail_from,
+                "to": [email],
+                "subject": subject,
+                "html": html,
+                "text": text,
+                "headers": {"List-Unsubscribe": f"<{unsubscribe_url}>"},
+            },
+            timeout=_TIMEOUT_S,
+        )
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        log.warning("digest: Resend delivery failed: %s", type(exc).__name__)
+        raise MailDeliveryFailed("could not send the digest email") from exc
+    return True
