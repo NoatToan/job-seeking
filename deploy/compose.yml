@@ -1,0 +1,85 @@
+# Self-hosted reference stack (docs/product/ARCHITECTURE.md §11). Run from the repo root:
+#   docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+#
+# DATABASE_URL (set in deploy/.env, see deploy/.env.example) must point at the "postgres"
+# service, e.g. postgresql://ujc:<same password as POSTGRES_PASSWORD>@postgres:5432/job_unified_matching
+#
+# The worker (CV scanning) is deliberately NOT a service here: it needs the `claude` CLI logged
+# in with a Claude Code / Claude subscription, which cannot run unattended in a container. Run it
+# on a host machine against this stack's Postgres — see deploy/README.md.
+name: job-seeking
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ujc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-job_unified_matching}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-ujc} -d $${POSTGRES_DB:-job_unified_matching}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    command: ["uv", "run", "python", "-m", "ujc_api.migrate"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/.env, host "postgres"}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in deploy/.env, host "postgres"}
+      UJC_ENV: production
+      UJC_SECRET_KEY: ${UJC_SECRET_KEY:?set UJC_SECRET_KEY in deploy/.env}
+      UJC_LOG_LEVEL: ${UJC_LOG_LEVEL:-INFO}
+      UJC_OTP_REVIEW_MODE: ${UJC_OTP_REVIEW_MODE:-false}
+      UJC_OTP_REVIEW_ALLOWLIST: ${UJC_OTP_REVIEW_ALLOWLIST:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      UJC_MAIL_FROM: ${UJC_MAIL_FROM:-}
+      ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
+      ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "uv", "run", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/api/health', timeout=2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [internal]
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+    networks: [internal]
+
+volumes:
+  pgdata:
+
+networks:
+  internal:

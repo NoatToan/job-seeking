@@ -67,7 +67,7 @@ flowchart LR
 | `packages/core` | TS types (API DTOs), source registry, country list | extended |
 | `packages/ui` | shared React components | extended |
 | `db/migrations` | SQL migrations (single schema) | 007+ added |
-| `deploy/` | `Caddyfile`, `docker-compose.yml`, Dockerfiles | new in M5-02 |
+| `deploy/` | `Caddyfile`, `compose.yml`, `api.Dockerfile`, `web.Dockerfile`, `.env.example`, `README.md` | new in M5-02 |
 
 ### `apps/api` internal layout
 
@@ -606,14 +606,18 @@ Copy `.env.example` (updated by each issue that adds a variable). Never commit r
 
 ## 11. Deployment (reference, no Vercel for now)
 
-`deploy/docker-compose.yml` (M5-02) runs these services:
-- `postgres` (16, volume, local dev only; production points `DATABASE_URL` at the managed or shared instance);
-- `migrate` (one-shot `python -m ujc_api.migrate`);
-- `api` (uvicorn, 2 workers, non-root);
-- `worker`;
-- `web` (Caddy serving `apps/web/out` and proxying `/api`).
+`deploy/compose.yml` (M5-02) runs these services:
+- `postgres` (17, volume, healthcheck; local dev or small self-hosted deployments — a managed
+  instance can be used instead by pointing `DATABASE_URL` at it and dropping this service);
+- `migrate` (one-shot `python -m ujc_api.migrate`, `api` only starts once it exits 0);
+- `api` (uvicorn, non-root, healthcheck against `/api/health`);
+- `web` (Caddy serving the `apps/web` static export and reverse-proxying `/api/*` to `api`).
 
-Health checks call `/api/ready`. Backups use `pg_dump` daily with 14-day retention, plus a documented restore drill.
+The **worker** is not a compose service: it runs `claude -p` (a logged-in Claude Code CLI session,
+not an API key) and so must run on a host machine, pointed at the compose stack's Postgres — see
+`deploy/README.md`. Env is supplied via `deploy/.env` (`deploy/.env.example` lists names only;
+gitignored). Backups use `pg_dump` daily with 14-day retention, plus a documented restore drill
+(`deploy/README.md`).
 The GitHub Actions `daily-crawl.yml` stays until the worker's `global_crawl` runs in a real deployment, and is
 then reduced to `workflow_dispatch` only.
 
