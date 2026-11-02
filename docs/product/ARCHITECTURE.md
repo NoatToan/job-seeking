@@ -572,7 +572,11 @@ class LlmProvider(Protocol):
   - forgot-password 3/hour per email;
   - CV upload 10/day per user;
   - runner results 60/hour;
-  - Upwork search 30/hour per user.
+  - Upwork search 30/hour per user;
+  - generic backstop: 120/min per IP on every unsafe method (`ujc_api.rate_limit.RateLimitMiddleware`),
+    live search (`GET /api/search/live`) 30/min per user — see `docs/product/SECURITY.md` §2.
+- Security headers (`ujc_api.security_headers`, `vercel.json`, `deploy/Caddyfile`), request body
+  size caps (`ujc_api.body_limit`), and the full threat model are in `docs/product/SECURITY.md`.
 - Credentials at rest (Upwork tokens, Adzuna keys): `cryptography` MultiFernet with `UJC_ENCRYPTION_KEYS`
   (comma-separated, newest first) for rotation.
 - Ownership enforced in SQL: every repo function takes `user_id` and filters on it. Tests assert that user B gets

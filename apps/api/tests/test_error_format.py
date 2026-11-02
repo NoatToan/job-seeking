@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -38,6 +40,30 @@ def test_unhandled_exception_returns_500_without_a_stack_trace():
     assert "some internal detail" not in resp.text
     assert "Traceback" not in resp.text
     assert "X-Request-ID" in resp.headers
+
+
+def test_unhandled_exception_is_logged_with_the_same_request_id_as_the_response(caplog):
+    """docs/product/SECURITY.md: an unhandled exception must be correlatable to its response
+    purely from the structured logs, via `request_id`."""
+    boom_app = FastAPI()
+    register_exception_handlers(boom_app)
+    boom_app.add_middleware(RequestIdMiddleware)
+
+    @boom_app.get("/boom")
+    def boom() -> None:
+        raise ValueError("boom")
+
+    with (
+        caplog.at_level(logging.ERROR, logger="ujc_api.main"),
+        TestClient(boom_app, raise_server_exceptions=False) as client,
+    ):
+        resp = client.get("/boom", headers={"X-Request-ID": "fixed-test-id"})
+
+    assert resp.status_code == 500
+    assert resp.headers["X-Request-ID"] == "fixed-test-id"
+    records = [r for r in caplog.records if r.name == "ujc_api.main"]
+    assert records, "expected the unhandled exception to be logged"
+    assert records[-1].request_id == "fixed-test-id"
 
 
 def test_validation_error_returns_400_with_fields():

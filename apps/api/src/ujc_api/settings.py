@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     ujc_mail_from: str = "Job Seeking <onboarding@resend.dev>"
 
+    # Optional error reporting (docs/product/SECURITY.md); unset = Sentry is never initialised.
+    sentry_dsn: str | None = None
+
     def otp_review_allowlist(self) -> frozenset[str]:
         return frozenset(
             e.strip().lower() for e in self.ujc_otp_review_allowlist.split(",") if e.strip()

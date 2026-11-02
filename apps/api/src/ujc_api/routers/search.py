@@ -15,11 +15,24 @@ from ujc_api.cursor import (
 from ujc_api.db import get_conn
 from ujc_api.dto import JOB_COLUMNS, job_dto
 from ujc_api.jobs_upsert import upsert_jobs_get_ids
+from ujc_api.rate_limit import LIVE_SEARCH_WINDOW_SECONDS, live_search_limiter
 from ujc_api.search_sources import merge_live_search
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 DEFAULT_LIMIT = 20
+
+
+def _rate_limited_live_search_user(user: AuthedUser = Depends(current_user)) -> AuthedUser:
+    """30/min per user (docs/product/SECURITY.md): `live_search` fans out to live third-party
+    sources, far more expensive per call than a normal read."""
+    if not live_search_limiter.allow(str(user.id)):
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "rate_limited", "message": "Too many searches, try again later"},
+            headers={"Retry-After": str(int(LIVE_SEARCH_WINDOW_SECONDS))},
+        )
+    return user
 
 
 def _write_and_fetch_rows(conn: psycopg.Connection, records: list[JobRecord]) -> list[tuple]:
@@ -47,7 +60,7 @@ async def live_search(
     q: str = Query(default=""),
     sources: str = Query(default=",".join(SEARCH_SOURCE_IDS)),
     cursor: str | None = Query(default=None),
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(_rate_limited_live_search_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     requested = [s.strip() for s in sources.split(",") if s.strip()]

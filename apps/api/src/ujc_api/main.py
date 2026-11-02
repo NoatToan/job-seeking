@@ -14,9 +14,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from ujc_api.body_limit import BodySizeLimitMiddleware
 from ujc_api.db import close_pool
 from ujc_api.logging import REQUEST_ID_HEADER, RequestIdMiddleware, configure_logging
 from ujc_api.migrate import pending_migrations
+from ujc_api.observability import init_sentry
+from ujc_api.rate_limit import RateLimitMiddleware
 from ujc_api.routers import applications as applications_router
 from ujc_api.routers import auth as auth_router
 from ujc_api.routers import cvs as cvs_router
@@ -25,6 +28,7 @@ from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
 from ujc_api.routers import search as search_router
+from ujc_api.security_headers import SecurityHeadersMiddleware
 from ujc_api.settings import Settings, get_settings
 
 log = logging.getLogger(__name__)
@@ -106,10 +110,17 @@ async def _validation_exception_handler(
 
 
 async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    log.exception("unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
+    request_id = _request_id(request)
+    log.exception(
+        "unhandled exception on %s %s",
+        request.method,
+        request.url.path,
+        exc_info=exc,
+        extra={"request_id": request_id},
+    )
     body = _error_body("internal_error", "Internal server error")
     response = JSONResponse(status_code=500, content=body)
-    response.headers[REQUEST_ID_HEADER] = _request_id(request)
+    response.headers[REQUEST_ID_HEADER] = request_id
     return response
 
 
@@ -128,6 +139,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.ujc_log_level)
+    init_sentry(settings)
 
     docs_enabled = settings.ujc_env != "production"
     app = FastAPI(
@@ -139,6 +151,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=_lifespan,
     )
     register_exception_handlers(app)
+    # Registration order matters: each `add_middleware` call wraps *outside* the previous ones,
+    # so the last one added sees every response first. Body/rate limiting go innermost (closest
+    # to routing) so a short-circuited 413/429 still passes through the header-setting
+    # middlewares on its way back out; RequestIdMiddleware stays outermost, unchanged.
+    app.add_middleware(BodySizeLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIdMiddleware)
 
     def _app_settings() -> Settings:
