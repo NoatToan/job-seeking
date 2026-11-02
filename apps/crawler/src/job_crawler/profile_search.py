@@ -1,4 +1,4 @@
-"""Keyword search per saved search profile, on APIs that support it (Himalayas, Remotive).
+"""Keyword search per saved search profile, on APIs that support it (SEEK, Himalayas, Remotive).
 
 The generic daily crawl only sees each source's latest jobs. This asks the APIs for the profile's
 own keywords, so a niche search ("next.js") gets every matching job, and links what each search
@@ -12,13 +12,23 @@ from job_crawler import db
 from job_crawler.http import HttpClient
 from job_crawler.models import JobRecord
 from job_crawler.session.sites import SearchProfile, plain_keywords
-from job_crawler.sources import himalayas, remotive
+from job_crawler.sources import himalayas, remotive, seek
 
 log = logging.getLogger(__name__)
 
 HIMALAYAS_SEARCH_URL = "https://himalayas.app/jobs/api/search"
 HIMALAYAS_MAX_PAGES = 5  # 20 jobs a page
 REMOTIVE_MAX_PROFILES = 4  # Remotive asks for only a few calls a day
+SEEK_PAGES_PER_PROFILE = 1  # polite: at most one page of SEEK's JSON API per profile per run
+
+
+def seek_search(http: HttpClient, keywords: str) -> list[JobRecord]:
+    jobs: list[JobRecord] = []
+    for page in range(1, SEEK_PAGES_PER_PROFILE + 1):
+        if page > 1:
+            http.pause()
+        jobs.extend(seek.search(http, keywords, page=page))
+    return jobs
 
 
 def himalayas_search(http: HttpClient, keywords: str) -> list[JobRecord]:
@@ -37,6 +47,7 @@ def himalayas_search(http: HttpClient, keywords: str) -> list[JobRecord]:
 
 
 SEARCHES: dict[str, Callable[[HttpClient, str], list[JobRecord]]] = {
+    seek.SOURCE: seek_search,
     himalayas.SOURCE: himalayas_search,
     remotive.SOURCE: remotive.search,
 }

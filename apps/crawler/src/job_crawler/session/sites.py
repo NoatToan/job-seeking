@@ -119,62 +119,6 @@ def parse_linkedin(html: str) -> list[JobRecord]:
     return list(jobs.values())
 
 
-# --- Seek -------------------------------------------------------------------------------------
-
-SEEK = "seek"
-SEEK_BASE = "https://au.seek.com"  # moved from www.seek.com.au (redirects) in 2026
-
-
-def _slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-
-
-def seek_search_url(profile: SearchProfile, location: str | None, page: int) -> str:
-    path = f"/{quote(_slug(plain_keywords(profile.keywords)))}-jobs"
-    if location:
-        path += f"/in-{quote(_slug(location))}"
-    params = {"daterange": "1", "sortmode": "ListedDate", "page": str(page + 1)}
-    if profile.remote_only:
-        params["where"] = "Remote"  # Seek's work-from-home filter is a location term
-    return SEEK_BASE + path + "?" + urlencode(params)
-
-
-def parse_seek(html: str) -> list[JobRecord]:
-    soup = BeautifulSoup(html, "html.parser")
-    jobs: dict[str, JobRecord] = {}
-    for card in soup.select("article[data-job-id], [data-card-type='JobCard'][data-job-id]"):
-        job_id = str(card.get("data-job-id") or "")
-        title_link = card.select_one("a[data-automation='jobTitle']")
-        if not job_id.isdigit() or not title_link or job_id in jobs:
-            continue
-        location = (
-            ", ".join(
-                t for t in (_text(n) for n in card.select("[data-automation='jobLocation']")) if t
-            )
-            or None
-        )
-        work_type = _text(card.select_one("[data-automation='jobWorkType']"))
-        url = urljoin(SEEK_BASE, f"/job/{job_id}")
-        jobs[job_id] = JobRecord(
-            source=SEEK,
-            external_id=job_id,
-            url=url,
-            apply_url=f"{url}/apply",
-            title=_text(title_link) or "",
-            company=_text(card.select_one("[data-automation='jobCompany']"))
-            or "Private advertiser",
-            location=location,
-            remote=any(
-                w in f"{location} {work_type}".lower() for w in ("remote", "work from home")
-            ),
-            employment_type=work_type,
-            salary_text=_text(card.select_one("[data-automation='jobSalary']")),
-            description=_text(card.select_one("[data-automation='jobShortDescription']")),
-            raw={"card_text": _text(card)},
-        )
-    return [j for j in jobs.values() if j.title]
-
-
 # --- Arc.dev (public pages, all remote; data is in the Next.js page JSON) ---------------------
 
 ARC = "arc"
@@ -394,14 +338,6 @@ SITES: dict[str, Site] = {
         parse=parse_linkedin,
         block_markers=("/checkpoint", "/authwall", "/login", "/uas/login"),
         result_selector="[data-occludable-job-id], [data-entity-urn*='jobPosting']",
-    ),
-    SEEK: Site(
-        id=SEEK,
-        login_url=f"{SEEK_BASE}/oauth/login",
-        search_url=seek_search_url,
-        parse=parse_seek,
-        block_markers=("/challenge", "captcha"),
-        result_selector="article[data-job-id], [data-automation='searchResults']",
     ),
     ARC: Site(
         id=ARC,

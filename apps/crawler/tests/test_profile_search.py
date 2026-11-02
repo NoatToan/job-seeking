@@ -3,7 +3,7 @@ import httpx
 from job_crawler import profile_search
 from job_crawler.http import HttpClient
 from job_crawler.session.sites import SearchProfile
-from job_crawler.sources import remotive
+from job_crawler.sources import remotive, seek
 
 REMOTIVE_PAYLOAD = {
     "jobs": [
@@ -63,6 +63,32 @@ def test_himalayas_search_paginates_until_total():
     assert len(jobs) == 45
     assert calls == [("next.js", 1), ("next.js", 2), ("next.js", 3)]
     assert jobs[0].location == "Vietnam"
+
+
+def test_seek_search_fetches_one_page_per_profile():
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(int(request.url.params["page"]))
+        return httpx.Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": 1,
+                        "title": "Next.js dev",
+                        "companyName": "Co",
+                        "locations": [{"label": "Remote"}],
+                    }
+                ]
+            },
+        )
+
+    http = HttpClient(transport=httpx.MockTransport(handler), board_delay=0)
+    jobs = profile_search.seek_search(http, "next.js")
+    assert calls == [1]  # one SEEK page per profile per run
+    assert [j.external_id for j in jobs] == ["1"]
+    assert seek.SOURCE in profile_search.SEARCHES
 
 
 def test_wanted_respects_profile_sources():

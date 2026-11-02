@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28",
     "mcp>=2",
+    "job_crawler",
 ]
 
 [project.scripts]
@@ -14,6 +15,9 @@ job-search-mcp = "job_search_mcp:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.uv.sources]
+job_crawler = { path = "../crawler", editable = true }
 
 [build-system]
 requires = ["hatchling"]

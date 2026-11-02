@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 
+from job_crawler.http import HttpClient
 from job_crawler.models import Board, SkipSource
-from job_crawler.sources import adzuna, ashby, greenhouse, himalayas, lever, weworkremotely
+from job_crawler.sources import adzuna, ashby, greenhouse, himalayas, lever, seek, weworkremotely
 
 WWR_FEED = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -309,6 +311,62 @@ def test_adzuna_parse():
     assert other.employment_type is None
     assert other.salary_text is None
     assert other.tags == []
+
+
+# Shape trimmed from a live SEEK response (Oct 2026); also used by apps/mcp's seek tests.
+SEEK_PAYLOAD = {
+    "totalCount": 1,
+    "data": [
+        {
+            "id": 95374556,
+            "title": "React & React Native Developer",
+            "advertiser": {"description": "PRA"},
+            "locations": [{"label": "Richmond, Melbourne VIC"}],
+            "workTypes": ["Contract/Temp"],
+            "workArrangements": {
+                "data": [{"id": "3", "label": {"text": "Remote"}}],
+                "displayText": "Remote",
+            },
+            "salaryLabel": "$800/Per Day",
+            "listingDate": "2026-10-20T04:28:25Z",
+            "teaser": "Build <b>mobile</b> apps &amp; web",
+        },
+        {"id": 2, "title": None},
+    ],
+}
+
+
+def test_seek_params_map_filters_to_seek_ids():
+    params = seek.search_params("react", "Sydney NSW", "contract", True, 7, "nz", 500, page=2)
+    assert params["siteKey"] == "NZ-Main"
+    assert params["worktype"] == 244
+    assert params["workarrangement"] == 3
+    assert params["daterange"] == 7
+    assert params["pageSize"] == 100
+    assert params["page"] == 2
+
+
+def test_seek_parse():
+    [job] = seek.parse(SEEK_PAYLOAD)
+    assert job.source == "seek" and job.external_id == "95374556"
+    assert job.company == "PRA"
+    assert job.location == "Richmond, Melbourne VIC"
+    assert job.remote is True
+    assert job.employment_type == "Contract/Temp"
+    assert job.salary_text == "$800/Per Day"
+    assert job.description == "Build mobile apps & web"
+    assert job.url == "https://www.seek.com.au/job/95374556"
+    assert job.posted_at is not None and job.posted_at.year == 2026
+
+
+def test_seek_search_single_page():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["page"] == "1"
+        return httpx.Response(200, json=SEEK_PAYLOAD)
+
+    http = HttpClient(transport=httpx.MockTransport(handler), board_delay=0)
+    jobs = seek.search(http, "react native")
+    assert [j.external_id for j in jobs] == ["95374556"]
 
 
 class _NoHttp:
