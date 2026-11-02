@@ -109,6 +109,11 @@ def test_cv_extract_then_refresh_produces_scored_matches_on_the_feed(
     job_id = _insert_job(migrated_database_url, "match-1")
     csrf = _sign_in(client, migrated_database_url, "matcher@example.com")
     user_id = _user_id(migrated_database_url, "matcher@example.com")
+    # CV upload requires AI-processing consent since M5-04 (#55).
+    consent = client.post(
+        "/api/me/consent", json={"aiProcessing": True}, headers={"X-CSRF-Token": csrf}
+    )
+    assert consent.status_code in (200, 204), consent.text
 
     resp = client.post(
         "/api/cvs",
