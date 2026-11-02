@@ -57,7 +57,8 @@ runbook.
   response may contain user-specific data).
 - **Static SPA** (`vercel.json` `headers`, mirroring `deploy/Caddyfile` for the Docker deploy so
   both paths behave the same):
-  - `Content-Security-Policy: default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'`
+  - `Content-Security-Policy: default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`
+    - `'unsafe-inline'` for scripts is required: the Next.js static export inlines its RSC bootstrap (`self.__next_f.push(...)`) and a static host cannot add per-request nonces. Tracked as an open item (hash-based CSP generated at build time).
     — same-origin only (the SPA calls the API same-origin in production); `'unsafe-inline'` on
     `style-src` only (Tailwind's generated stylesheet is same-origin; inline styles come from
     React/Next's own runtime). No nonce: static export (`output: 'export'`) can't run a
