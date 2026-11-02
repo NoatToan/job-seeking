@@ -102,11 +102,18 @@ export interface Cv {
   processedAt: string | null;
 }
 
-/** The user's search preferences (`GET /api/me`, `PUT /api/me/preferences`). */
+/** The user's search preferences (`GET /api/me`, `PUT /api/me/preferences`). `digestHour` is a
+ * local hour (0-23) in `digestTz` (IANA name, e.g. "Asia/Ho_Chi_Minh") — see M4-08. The digest
+ * fields are optional here (rather than always present) so existing `PUT` callers that only
+ * manage keywords/remoteOnly/candidateCountry don't have to change; the API defaults any that
+ * are omitted on write, and always includes all three on `GET /api/me`. */
 export interface Preferences {
   keywords: string[];
   remoteOnly: boolean;
   candidateCountry: string | null;
+  digestEnabled?: boolean;
+  digestHour?: number;
+  digestTz?: string;
 }
 
 /** `GET /api/me`. `aiConsentAt` is set once the user agrees to send CV text to the LLM

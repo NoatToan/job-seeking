@@ -83,10 +83,19 @@ class Settings(BaseSettings):
     def upwork_available(self) -> bool:
         return bool(self.upwork_enabled and self.upwork_client_id and self.upwork_client_secret)
 
+    # Absolute origin used in email links (digest "see more"/unsubscribe) since those are read
+    # outside a browser tab and so can't rely on a relative URL. No trailing slash.
+    ujc_public_url: str = "http://localhost:3000"
+
     def otp_review_allowlist(self) -> frozenset[str]:
         return frozenset(
             e.strip().lower() for e in self.ujc_otp_review_allowlist.split(",") if e.strip()
         )
+
+    @model_validator(mode="after")
+    def _strip_public_url_slash(self) -> "Settings":
+        self.ujc_public_url = self.ujc_public_url.rstrip("/")
+        return self
 
     @model_validator(mode="after")
     def _check_secret_key(self) -> "Settings":

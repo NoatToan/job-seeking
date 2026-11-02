@@ -46,6 +46,12 @@ function cvStatusBadge(status: Cv["status"]) {
   }
 }
 
+// Digest hour options (M4-08): a local hour (0-23) in the user's digestTz, labelled in 12h form.
+const DIGEST_HOURS = Array.from({ length: 24 }, (_, hour) => ({
+  hour,
+  label: new Date(2026, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" }),
+}));
+
 const ONBOARDING_STEPS = ["Sign in", "Your CV", "Keywords"];
 
 function CvPageInner() {
@@ -58,6 +64,11 @@ function CvPageInner() {
   const [keywordError, setKeywordError] = useState<string | null>(null);
   const [remoteOnly, setRemoteOnly] = useState(me?.preferences.remoteOnly ?? false);
   const [candidateCountry, setCandidateCountry] = useState(me?.preferences.candidateCountry ?? "");
+  const [digestEnabled, setDigestEnabled] = useState(me?.preferences.digestEnabled ?? true);
+  const [digestHour, setDigestHour] = useState(me?.preferences.digestHour ?? 7);
+  // Not user-editable yet (no timezone picker in this MVP) — carried through unchanged so Save
+  // doesn't reset it back to the API default.
+  const digestTz = me?.preferences.digestTz ?? "Asia/Ho_Chi_Minh";
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [keywordsEverSaved, setKeywordsEverSaved] = useState((me?.preferences.keywords.length ?? 0) > 0);
@@ -175,6 +186,9 @@ function CvPageInner() {
         keywords,
         remoteOnly,
         candidateCountry: candidateCountry || null,
+        digestEnabled,
+        digestHour,
+        digestTz,
       });
       await refresh();
       setKeywordsEverSaved(true);
@@ -273,6 +287,44 @@ function CvPageInner() {
               </div>
               <p className="px-4 text-footnote text-label-secondary">
                 We&apos;ll hide remote jobs that aren&apos;t open to where you are.
+              </p>
+            </section>
+
+            <section aria-label="Daily digest" className="flex flex-col gap-1.5">
+              <h3 className="px-1 text-footnote font-normal uppercase tracking-wide text-label-secondary">
+                Daily digest
+              </h3>
+              <div className="overflow-hidden rounded-card bg-grouped-secondary shadow-card">
+                <div className="flex min-h-11 items-center gap-3 px-4 py-2">
+                  <span className="flex-1 text-body text-label">Email me new matches</span>
+                  <Toggle
+                    label="Email me new matches"
+                    checked={digestEnabled}
+                    onChange={setDigestEnabled}
+                  />
+                </div>
+                {digestEnabled ? (
+                  <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
+                    <span className="flex-1 text-body text-label">Send around</span>
+                    <select
+                      id="digest-hour"
+                      value={digestHour}
+                      onChange={(e) => setDigestHour(Number(e.target.value))}
+                      className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
+                    >
+                      {DIGEST_HOURS.map((h) => (
+                        <option key={h.hour} value={h.hour}>
+                          {h.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
+                  </label>
+                ) : null}
+              </div>
+              <p className="px-4 text-footnote text-label-secondary">
+                At most once a day, with up to 10 new matches. Never for Upwork. You can
+                unsubscribe from any digest email.
               </p>
             </section>
 
