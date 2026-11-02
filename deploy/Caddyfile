@@ -1,0 +1,30 @@
+# Serves the apps/web static export (apps/web/out, copied to /srv in deploy/web.Dockerfile) at
+# "/" and reverse-proxies "/api/*" to the FastAPI service, so the SPA and API are same-origin
+# (docs/product/ARCHITECTURE.md §1 D4). Sets the security headers the static export cannot set
+# itself (docs/product/PRD.md "Security headers at Caddy").
+{
+	admin off
+}
+
+:80 {
+	encode gzip zstd
+
+	header {
+		Content-Security-Policy "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+}
