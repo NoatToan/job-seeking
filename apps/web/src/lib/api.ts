@@ -3,6 +3,7 @@ import type {
   Application,
   ApplicationEvent,
   ApplicationStatus,
+  CreatedPersonalAccessToken,
   Cv,
   FeedPage,
   Job,
@@ -10,10 +11,12 @@ import type {
   LiveSearchPage,
   MeResponse,
   Page,
+  PersonalAccessToken,
   Preferences,
   Runner,
   RunnerPairingCode,
   SourceInfo,
+  TokenScope,
 } from "@ujc/core";
 
 /**
@@ -355,4 +358,28 @@ export function listRunners(): Promise<{ items: Runner[] }> {
 /** `DELETE /api/runners/{id}` — revokes a runner's token immediately. */
 export function revokeRunner(id: string): Promise<void> {
   return apiFetch<void>(`/api/runners/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// --- Personal access tokens (M3-08): apps/mcp calls the API on the user's behalf. -------------
+
+/** `GET /api/tokens` — the signed-in user's tokens, newest first; never includes the secret. */
+export function listTokens(): Promise<{ items: PersonalAccessToken[] }> {
+  return apiFetch<{ items: PersonalAccessToken[] }>("/api/tokens");
+}
+
+export interface CreateTokenInput {
+  name: string;
+  scopes: TokenScope[];
+  /** 1-365. Defaults to 365 server-side if omitted. */
+  expiresInDays?: number;
+}
+
+/** `POST /api/tokens` — the raw `ujc_pat_...` value is only ever in this one response. */
+export function createToken(input: CreateTokenInput): Promise<CreatedPersonalAccessToken> {
+  return apiFetch<CreatedPersonalAccessToken>("/api/tokens", { method: "POST", body: input });
+}
+
+/** `DELETE /api/tokens/{id}` — revokes a token; already-used copies stop working immediately. */
+export function revokeToken(id: string): Promise<void> {
+  return apiFetch<void>(`/api/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

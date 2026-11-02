@@ -15,6 +15,7 @@ import { RequireAuth } from "@/lib/require-auth";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
 import { AccountMenu } from "@/app/nav";
+import { PersonalAccessTokens } from "./personal-access-tokens";
 
 const CONFIRM_TEXT = "DELETE";
 
@@ -207,6 +208,8 @@ function AccountPageInner() {
         </section>
 
         <RunnerSection />
+
+        <PersonalAccessTokens />
 
         <section className="flex flex-col gap-2 rounded-card bg-danger-soft p-4 shadow-card">
           <h2 className="text-headline text-danger-ink">Delete account</h2>

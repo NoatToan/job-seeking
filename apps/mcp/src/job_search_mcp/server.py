@@ -1,14 +1,16 @@
-"""MCP server: free job search across SEEK, We Work Remotely and Arc.dev.
+"""MCP server: free job search across SEEK, We Work Remotely and Arc.dev, plus (M3-08) the
+signed-in user's own unified-job-crawler data when `UJC_API_URL`/`UJC_TOKEN` are set.
 
 LinkedIn / Glassdoor / Indeed are covered by the separate `jobspy-mcp` server
 (see the repo-root .mcp.json).
 """
 
 import asyncio
-from typing import Literal
+from typing import Any, Literal
 
 from mcp.server import MCPServer
 
+from . import ujc_client
 from .sources import arc, seek, wwr
 
 mcp = MCPServer("job-seeking")
@@ -82,6 +84,68 @@ async def search_freelance_jobs(keywords: str, limit_per_source: int = 10) -> di
         name: {"error": f"{type(res).__name__}: {res}"} if isinstance(res, Exception) else res
         for name, res in zip(tasks, results, strict=True)
     }
+
+
+def register_user_data_tools(
+    server: MCPServer, client: ujc_client.UjcApiClient | None = None
+) -> None:
+    """Registers the `my_*`/`save_job`/`update_application` tools on `server`, backed by
+    `client` (a fresh `UjcApiClient()` reading `UJC_API_URL`/`UJC_TOKEN` from the environment by
+    default). Called unconditionally here so tests can register these tools on a throwaway
+    `MCPServer` with a mocked transport without setting real env vars; the module-level `mcp`
+    below only calls it when `ujc_client.enabled()`."""
+    api = client or ujc_client.UjcApiClient()
+
+    @server.tool()
+    async def my_feed(cursor: str | None = None, q: str | None = None) -> dict[str, Any]:
+        """Your personalised job feed (jobs matching your saved keywords), newest first.
+
+        cursor: pass back the previous page's `nextCursor` to continue.
+        q: optional extra free-text filter on top of your saved keywords.
+        """
+        return await api.get_feed(cursor, q)
+
+    @server.tool()
+    async def my_job(job_id: str) -> dict[str, Any]:
+        """Full detail (including description) for one job by id, from `my_feed`/`my_live_search`
+        results."""
+        return await api.get_job(job_id)
+
+    @server.tool()
+    async def my_live_search(q: str, cursor: str | None = None) -> dict[str, Any]:
+        """Searches every configured platform's own search API right now (not just what's
+        already in your feed).
+
+        cursor: pass back the previous page's `nextCursor` to continue.
+        """
+        return await api.live_search(q, cursor)
+
+    @server.tool()
+    async def my_applications(status: str | None = None) -> dict[str, Any]:
+        """Your tracked applications.
+
+        status: optional filter — one of saved, applied, interviewing, offer, rejected,
+            withdrawn.
+        """
+        return await api.list_applications(status)
+
+    @server.tool()
+    async def save_job(job_id: str, note: str | None = None) -> dict[str, Any]:
+        """Tracks a job (status `saved`) by id. Idempotent: an already-tracked job is returned
+        unchanged rather than duplicated."""
+        return await api.save_job(job_id, note)
+
+    @server.tool()
+    async def update_application(
+        application_id: str, status: str | None = None, note: str | None = None
+    ) -> dict[str, Any]:
+        """Updates a tracked application's status and/or note. Provide at least one of `status`
+        (saved, applied, interviewing, offer, rejected, withdrawn) or `note`."""
+        return await api.update_application(application_id, status, note)
+
+
+if ujc_client.enabled():
+    register_user_data_tools(mcp)
 
 
 def main() -> None:

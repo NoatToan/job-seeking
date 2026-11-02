@@ -25,3 +25,13 @@ def require_csrf(request: Request) -> None:
             status_code=403,
             detail={"code": "csrf_failed", "message": "Missing or invalid X-CSRF-Token"},
         )
+
+
+def require_csrf_unless_bearer(request: Request) -> None:
+    """Same as `require_csrf`, except for requests carrying an `Authorization: Bearer ...`
+    header (personal access tokens, M3-08): those aren't browser-cookie-authenticated, so the
+    CSRF threat model doesn't apply, regardless of whether the token itself turns out to be
+    valid (an invalid one is still rejected, just by `require_scope`'s 401/403, not here)."""
+    if request.headers.get("Authorization", "").startswith("Bearer "):
+        return
+    require_csrf(request)

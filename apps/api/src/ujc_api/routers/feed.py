@@ -7,7 +7,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from job_crawler import eligibility
 
-from ujc_api.auth.deps import AuthedUser, current_user
+from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
 from ujc_api.dto import JOB_COLUMNS, job_dto
@@ -53,7 +53,7 @@ def get_feed(
     q: str | None = Query(default=None),
     source: str | None = Query(default=None),
     sort: str | None = Query(default=None),
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     limit = max(1, min(limit, MAX_LIMIT))
