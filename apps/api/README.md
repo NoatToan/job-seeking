@@ -97,6 +97,20 @@ uv run python -m ujc_api.worker
 - On failure it retries with backoff (`2^attempts` minutes) and gives up after 3 attempts,
   marking both the task and the CV `error` with a short message.
 
+### Keep it running (macOS)
+
+To make it survive logouts, reboots and crashes, install it as a per-user launchd agent from a
+stable checkout (not a temporary worktree). The repo-root `.env.local` must hold `DATABASE_URL`.
+
+```bash
+apps/api/scripts/worker-service.sh install    # starts now and at every login, restarts on exit
+apps/api/scripts/worker-service.sh status     # state, pid, last log lines
+apps/api/scripts/worker-service.sh uninstall
+```
+
+Logs go to `~/Library/Logs/job-seeking/worker.log`. On Linux, run the same command
+(`uv run python -m ujc_api.worker`) as a systemd user service with `Restart=always`.
+
 ## Test
 
 ```bash
