@@ -1,60 +1,24 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
-import { SOURCES } from "@ujc/core";
+import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
-import { Nav } from "./nav";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { AppShell } from "./nav";
 
 export const metadata: Metadata = {
   title: "Unified Job Crawler",
   description: "Jobs from many sources in one place, matched to your CVs.",
 };
 
+// System font stack only (DESIGN_SYSTEM.md §4: no web font download; `--font-sans` in
+// theme.css already covers SF Pro / Inter / Segoe UI / Roboto with full Vietnamese coverage).
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full bg-grouped text-label">
         <SessionProvider>
-          <header className="border-b border-zinc-200 dark:border-zinc-800">
-            <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-3 text-sm">
-              <Link href="/" className="font-semibold">
-                Unified Job Crawler
-              </Link>
-              <Nav />
-            </div>
-          </header>
-          <div className="flex flex-1 flex-col">{children}</div>
-          <footer className="border-t border-zinc-200 px-4 py-6 text-xs text-zinc-500 dark:border-zinc-800">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-1">
-              <p>
-                Jobs crawled from We Work Remotely, Greenhouse, Lever, Ashby, Himalayas, Remotive, and{" "}
-                <a
-                  href={SOURCES.adzuna.homepage}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  Jobs by Adzuna
-                </a>
-                .
-              </p>
-              <p>Every job links to its original posting.</p>
-            </div>
-          </footer>
+          <ToastProvider>
+            <AppShell>{children}</AppShell>
+          </ToastProvider>
         </SessionProvider>
       </body>
     </html>
