@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from job_crawler.models import JobRecord
 from starlette.concurrency import run_in_threadpool
 
-from ujc_api.auth.deps import AuthedUser, current_user
+from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.cursor import (
     SEARCH_SOURCE_IDS,
     InvalidCursor,
@@ -23,9 +23,12 @@ router = APIRouter(prefix="/api/search", tags=["search"])
 DEFAULT_LIMIT = 20
 
 
-def _rate_limited_live_search_user(user: AuthedUser = Depends(current_user)) -> AuthedUser:
+def _rate_limited_live_search_user(user: AuthedUser = Depends(require_jobs_read)) -> AuthedUser:
     """30/min per user (docs/product/SECURITY.md): `live_search` fans out to live third-party
-    sources, far more expensive per call than a normal read."""
+    sources, far more expensive per call than a normal read. `require_jobs_read` resolves
+    `user.id` the same way whether the caller used a session cookie or a `jobs:read` personal
+    access token (M3-08), so a PAT-authenticated caller (e.g. apps/mcp's `my_live_search`) is
+    rate-limited exactly like a signed-in browser session."""
     if not live_search_limiter.allow(str(user.id)):
         raise HTTPException(
             status_code=429,

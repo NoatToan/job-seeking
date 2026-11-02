@@ -421,8 +421,9 @@ Conventions:
 | `POST /api/cvs` | session | multipart `file` + `aiConsent=true` → 202 `{cvId, taskId}` | M4-02 |
 | `GET /api/cvs` · `GET /api/cvs/{id}` · `DELETE /api/cvs/{id}` | session | list / detail (extracted profile, no raw text by default) / delete | M4-02 |
 | `POST /api/profiles/{id}/match` | session | `{cvId, limit≤60, preferences?}` → 202 task | M4-03 |
-| `GET /api/applications` · `POST /api/applications` | session | list (`status`) / create from `jobId`, or manual `{source,url,title,company}` | M4-05 |
-| `PATCH/DELETE /api/applications/{id}` | session | status, notes, nextActionAt, cvId (status change writes an event) | M4-05 |
+| `GET /api/applications` · `POST /api/applications` | session or PAT (`applications:write`) | list (`status`) / create from `jobId`, or manual `{source,url,title,company}` | M4-05 |
+| `PATCH /api/applications/{id}` | session or PAT (`applications:write`) | status, notes, nextActionAt, cvId (status change writes an event) | M4-05 |
+| `DELETE /api/applications/{id}` | session | same as PATCH, session only | M4-05 |
 | `GET /api/applications/{id}/events` | session | history | M4-05 |
 | `POST /api/digest/unsubscribe` | token | one-click unsubscribe (RFC 8058 `List-Unsubscribe-Post`) | M4-08 |
 | `GET/POST/DELETE /api/tokens` | session | personal access tokens for MCP | M3-08 |

@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, field_validator
 
-from ujc_api.auth.csrf import require_csrf
-from ujc_api.auth.deps import AuthedUser, current_user
+from ujc_api.auth.csrf import require_csrf, require_csrf_unless_bearer
+from ujc_api.auth.deps import AuthedUser, current_user, require_applications_write
 from ujc_api.db import get_conn
 from ujc_api.dto import (
     APPLICATION_COLUMNS,
@@ -56,7 +56,7 @@ def _owned_application(conn: psycopg.Connection, user_id: int, application_id: i
 @router.get("")
 def list_applications(
     status: str | None = Query(default=None),
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(require_applications_write),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     if status is not None and status not in _STATUSES:
@@ -88,11 +88,11 @@ class CreateApplicationRequest(BaseModel):
         return _validate_note(v)
 
 
-@router.post("", dependencies=[Depends(require_csrf)])
+@router.post("", dependencies=[Depends(require_csrf_unless_bearer)])
 def create_application(
     body: CreateApplicationRequest,
     response: Response,
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(require_applications_write),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     try:
@@ -150,11 +150,11 @@ class PatchApplicationRequest(BaseModel):
         return _validate_note(v)
 
 
-@router.patch("/{application_id}", dependencies=[Depends(require_csrf)])
+@router.patch("/{application_id}", dependencies=[Depends(require_csrf_unless_bearer)])
 def patch_application(
     application_id: int,
     body: PatchApplicationRequest,
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(require_applications_write),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     current = _owned_application(conn, user.id, application_id)

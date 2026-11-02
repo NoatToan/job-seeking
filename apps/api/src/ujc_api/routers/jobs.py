@@ -7,7 +7,7 @@ The SPA's `getJob`/`getSources` (apps/web/src/lib/api.ts) call these; `JobDetail
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 
-from ujc_api.auth.deps import AuthedUser, current_user
+from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.db import get_conn
 from ujc_api.dto import JOB_DETAIL_COLUMNS, job_detail_dto, source_dto
 
@@ -45,7 +45,7 @@ SOURCES_SQL = """
 @router.get("/api/jobs/{job_id}")
 def get_job(
     job_id: int,
-    user: AuthedUser = Depends(current_user),
+    user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     row = conn.execute(f"SELECT {JOB_DETAIL_COLUMNS} FROM jobs WHERE id = %s", (job_id,)).fetchone()

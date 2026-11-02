@@ -17,6 +17,42 @@ uv sync
 uv run pytest && uv run ruff check .
 ```
 
+## Your own data (personal access token, M3-08)
+
+Set `UJC_API_URL` and `UJC_TOKEN` (see `.env.example`) to enable six more tools that call *your
+own* unified-job-crawler deployment on your behalf, authenticated with a personal access token
+instead of your browser session:
+
+| Tool | Calls | Scope needed |
+|---|---|---|
+| `my_feed(cursor?, q?)` | `GET /api/feed` | `jobs:read` |
+| `my_job(job_id)` | `GET /api/jobs/{id}` | `jobs:read` |
+| `my_live_search(q, cursor?)` | `GET /api/search/live` | `jobs:read` |
+| `my_applications(status?)` | `GET /api/applications` | `applications:write` |
+| `save_job(job_id, note?)` | `POST /api/applications` | `applications:write` |
+| `update_application(id, status?, note?)` | `PATCH /api/applications/{id}` | `applications:write` |
+
+Get a token from the web app's **Account → Personal access tokens** page: pick a name, tick only
+the scopes you actually need (least privilege — most people only need `jobs:read`), set an
+expiry, and copy the `ujc_pat_...` value shown once. Put it in `UJC_TOKEN`; it is never logged or
+echoed back by any tool, including in error messages.
+
+```bash
+# .env.local (repo root) or your shell profile — never commit a real token
+UJC_API_URL=https://jobs.example.com   # or http://localhost:8000 against a local API
+UJC_TOKEN=ujc_pat_...
+```
+
+Then restart Claude Code (or run `/mcp` to reconnect `job-search`) so it picks up the new env
+vars. If either variable is unset, these six tools simply don't appear — the free-source tools
+above keep working exactly as before. A revoked or expired token, or one missing the needed
+scope, doesn't break the connection: the call just returns `{"error": "..."}`, same shape as any
+other tool result.
+
+This sits next to Upwork's own official MCP server (`upwork` above) and `jobspy`: all three are
+registered in the same `.mcp.json`, so Claude Code can mix results from your own data and from
+every live source in one conversation.
+
 Open Claude Code at the repo root, approve the two servers from `.mcp.json`, check with `/mcp`, then
 ask e.g. "tìm job contract React trên SEEK ở Sydney 7 ngày qua" or "search_freelance_jobs python".
 

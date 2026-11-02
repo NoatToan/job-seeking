@@ -182,6 +182,27 @@ export interface Runner {
   revokedAt: string | null;
 }
 
+// --- Personal access tokens (M3-08): lets the user's own Claude (apps/mcp) call the API. ------
+
+/** A PAT scope. Subset is enforced both client- and server-side (`POST /api/tokens`). */
+export type TokenScope = "jobs:read" | "applications:write";
+
+/** One token (`GET/POST/DELETE /api/tokens`). Never carries the raw secret after creation. */
+export interface PersonalAccessToken {
+  id: string;
+  name: string;
+  scopes: TokenScope[];
+  createdAt: string;
+  expiresAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+/** `POST /api/tokens` response: the token fields plus the raw secret, shown exactly once. */
+export interface CreatedPersonalAccessToken extends PersonalAccessToken {
+  token: string;
+}
+
 /** One source's result for a page of `GET /api/search/live` (`sources[]`). */
 export interface LiveSourceStatus {
   id: string;

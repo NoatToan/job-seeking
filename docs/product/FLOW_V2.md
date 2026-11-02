@@ -129,18 +129,19 @@ WHERE id = (SELECT id FROM tasks WHERE status='queued' AND run_after<=now()
 | `POST /api/auth/otp` | – | `{email}` | `202 {sent:true, expiresInSec:600, devCode?}` (`devCode` only in review mode). Rate limit: 1 per 60 s per email, 5 per hour per email, 20 per hour per IP → `429`. |
 | `POST /api/auth/verify` | – | `{email, code}` | `200 {user}` + `Set-Cookie: ujc_session` (HttpOnly, Secure, SameSite=Lax, 30 d) + `ujc_csrf` (readable). Errors: `400 invalid_code` / `410 code_expired` / `429 too_many_attempts`. |
 | `POST /api/auth/logout` | session | – | `204`, cookies cleared |
-| `GET /api/me` | session | – | `{user:{id,email}, preferences:{keywords[],remoteOnly,candidateCountry}, latestCv: Cv \| null}` |
+| `GET /api/me` | session or PAT (`jobs:read`) | – | `{user:{id,email}, preferences:{keywords[],remoteOnly,candidateCountry}, latestCv: Cv \| null}` |
 | `PUT /api/me/preferences` | session+CSRF | `{keywords[] (≤30, each ≤40 chars), remoteOnly, candidateCountry}` | `{preferences}` |
 | `POST /api/cvs` | session+CSRF | multipart `file` | `202 Cv` (status `queued`); `413` > 5 MB; `415` bad type |
 | `GET /api/cvs` | session | – | `{items: Cv[]}` (no content) |
 | `GET /api/cvs/{id}` | session | – | `Cv` (owner only, else 404) |
 | `DELETE /api/cvs/{id}` | session+CSRF | – | `204` |
-| `GET /api/feed?cursor=&limit=20&q=&source=` | session | – | `{items: Job[], nextCursor: string\|null, keywords: string[]}` |
-| `GET /api/search/live?q=&sources=seek,himalayas,remotive,wwr,arc&cursor=` | session | – | `{items: Job[], nextCursor: string\|null, sources:[{id, count, error?}]}` |
+| `GET /api/feed?cursor=&limit=20&q=&source=` | session or PAT (`jobs:read`) | – | `{items: Job[], nextCursor: string\|null, keywords: string[]}` |
+| `GET /api/search/live?q=&sources=seek,himalayas,remotive,wwr,arc&cursor=` | session or PAT (`jobs:read`) | – | `{items: Job[], nextCursor: string\|null, sources:[{id, count, error?}]}` |
 
 - `Cv` = `{id, filename, status, error, keywords[], profile: {headline, seniority, skills[], summary} | null, createdAt, processedAt}`.
 - `Job` = the `Job` type in `packages/core` (`id, source, url, applyUrl, title, company, location, remote, employmentType, salaryText, tags, openTo, postedAt, firstSeenAt`).
 - CSRF uses the double-submit pattern: header `X-CSRF-Token` must equal the `ujc_csrf` cookie on unsafe methods. The SPA client from M2-01 already sends it.
+- PAT (M3-08, `GET/POST/DELETE /api/tokens`): `Authorization: Bearer ujc_pat_...` instead of the session cookie, scoped to `jobs:read` and/or `applications:write`; exempt from CSRF. `GET/POST/PATCH /api/applications` (docs/product/ARCHITECTURE.md §5) accept the same bearer token with `applications:write`.
 
 ## 5. Environment variables (names only)
 - `DATABASE_URL`

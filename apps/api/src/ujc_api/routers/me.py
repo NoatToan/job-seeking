@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, field_validator
 
 from ujc_api.auth.csrf import require_csrf
-from ujc_api.auth.deps import AuthedUser, current_user
+from ujc_api.auth.deps import AuthedUser, current_user, require_jobs_read
 from ujc_api.auth.session import clear_auth_cookies
 from ujc_api.db import get_conn
 from ujc_api.deps import app_settings
@@ -59,7 +59,8 @@ def _onboarded_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
 
 @router.get("")
 def get_me(
-    user: AuthedUser = Depends(current_user), conn: psycopg.Connection = Depends(get_conn)
+    user: AuthedUser = Depends(require_jobs_read),
+    conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     return {
         "user": {
