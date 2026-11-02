@@ -6,6 +6,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 MAX_KEYWORDS = 30
 MAX_KEYWORD_LEN = 40
+MAX_APPLICATION_NOTE_LEN = 5000
 
 
 def normalize_email(value: str) -> str:

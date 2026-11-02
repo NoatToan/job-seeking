@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ujc_api.db import close_pool
 from ujc_api.logging import REQUEST_ID_HEADER, RequestIdMiddleware, configure_logging
 from ujc_api.migrate import pending_migrations
+from ujc_api.routers import applications as applications_router
 from ujc_api.routers import auth as auth_router
 from ujc_api.routers import cvs as cvs_router
 from ujc_api.routers import feed as feed_router
@@ -154,6 +155,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(feed_router.router)
     app.include_router(jobs_router.router)
     app.include_router(search_router.router)
+    app.include_router(applications_router.router)
 
     @app.get("/api/health")
     def health() -> dict:
