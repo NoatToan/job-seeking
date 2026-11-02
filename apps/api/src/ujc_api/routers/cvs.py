@@ -13,12 +13,27 @@ from ujc_api.dto import CV_COLUMNS, cv_dto
 router = APIRouter(prefix="/api/cvs", tags=["cvs"])
 
 
+def _require_consent(conn: psycopg.Connection, user_id: int) -> None:
+    """CV text is sent to the LLM provider (Claude) during extraction; `ai_consent_at` must be
+    set first (`POST /api/me/consent`), else 409 `consent_required`."""
+    row = conn.execute("SELECT ai_consent_at FROM users WHERE id = %s", (user_id,)).fetchone()
+    if row is None or row[0] is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "consent_required",
+                "message": "Agree to AI processing of your CV before uploading",
+            },
+        )
+
+
 @router.post("", status_code=202, dependencies=[Depends(require_csrf)])
 async def upload_cv(
     file: UploadFile = File(...),
     user: AuthedUser = Depends(current_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
+    _require_consent(conn, user.id)
     content = await file.read()
     try:
         mime = validate_cv(file.filename or "", content)

@@ -76,8 +76,17 @@ def test_verify_wrong_code_then_correct_code(client: TestClient):
     assert right.status_code == 200
 
 
+def _consent(client: TestClient, csrf: str) -> None:
+    """`POST /api/cvs` 409s without AI-processing consent (M5-04) — upload tests need this first."""
+    resp = client.post(
+        "/api/me/consent", json={"aiProcessing": True}, headers={"X-CSRF-Token": csrf}
+    )
+    assert resp.status_code == 200, resp.text
+
+
 def test_cv_upload_creates_queued_cv_and_a_task(client: TestClient, migrated_database_url: str):
     csrf = _sign_in(client, "cvuser@example.com")
+    _consent(client, csrf)
 
     resp = client.post(
         "/api/cvs",
@@ -105,6 +114,7 @@ def test_cv_upload_creates_queued_cv_and_a_task(client: TestClient, migrated_dat
 def test_upload_rejects_oversized_and_wrong_type(client: TestClient):
     _sign_in(client, "badupload@example.com")
     csrf = client.cookies.get("ujc_csrf")
+    _consent(client, csrf)
 
     too_big = client.post(
         "/api/cvs",
@@ -123,6 +133,7 @@ def test_upload_rejects_oversized_and_wrong_type(client: TestClient):
 
 def test_worker_processes_an_uploaded_cv_to_done(client: TestClient, migrated_database_url: str):
     csrf = _sign_in(client, "workeruser@example.com")
+    _consent(client, csrf)
     resp = client.post(
         "/api/cvs",
         files={"file": ("cv.txt", b"hello world cv", "text/plain")},
@@ -210,6 +221,7 @@ def test_feed_rejects_a_tampered_cursor(client: TestClient):
 
 def test_cv_detail_is_owner_scoped(client: TestClient):
     csrf1 = _sign_in(client, "owner@example.com")
+    _consent(client, csrf1)
     resp = client.post(
         "/api/cvs",
         files={"file": ("cv.md", b"# CV", "text/markdown")},
