@@ -21,6 +21,7 @@ import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
 import { AccountMenu } from "@/app/nav";
+import { SaveJobButton } from "@/app/save-job-button";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -136,6 +137,7 @@ function FeedInner() {
                 job={job}
                 detailsHref={`/jobs/view?id=${encodeURIComponent(job.id)}`}
                 linkAs={Link}
+                actions={<SaveJobButton jobId={job.id} />}
               />
             ))}
           </div>

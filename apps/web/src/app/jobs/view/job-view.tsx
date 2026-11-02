@@ -21,6 +21,7 @@ import {
 } from "@ujc/ui";
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
+import { SaveJobButton } from "@/app/save-job-button";
 
 const BACK_LINK = (
   <Link
@@ -101,6 +102,10 @@ export function JobView() {
               ) : null}
               {employmentLabel(job.employmentType) ? <Badge>{employmentLabel(job.employmentType)}</Badge> : null}
               {job.salaryText ? <Badge>{job.salaryText}</Badge> : null}
+            </div>
+
+            <div>
+              <SaveJobButton jobId={job.id} label="Track" savedLabel="Tracked ✓" size="md" />
             </div>
 
             {job.match ? (
