@@ -11,6 +11,8 @@ import type {
   MeResponse,
   Page,
   Preferences,
+  Runner,
+  RunnerPairingCode,
   SourceInfo,
 } from "@ujc/core";
 
@@ -320,4 +322,21 @@ export function listApplicationEvents(id: string): Promise<{ items: ApplicationE
   return apiFetch<{ items: ApplicationEvent[] }>(
     `/api/applications/${encodeURIComponent(id)}/events`,
   );
+}
+
+// --- Companion runner (M3-06/M3-07): /account "Local runner" section. ----------------------
+
+/** `POST /api/runners/pairing-code` — a one-time code for `job_crawler.runner pair`. */
+export function createRunnerPairingCode(): Promise<RunnerPairingCode> {
+  return apiFetch<RunnerPairingCode>("/api/runners/pairing-code", { method: "POST" });
+}
+
+/** `GET /api/runners` — the signed-in user's paired companion runners. */
+export function listRunners(): Promise<{ items: Runner[] }> {
+  return apiFetch<{ items: Runner[] }>("/api/runners");
+}
+
+/** `DELETE /api/runners/{id}` — revokes a runner's token immediately. */
+export function revokeRunner(id: string): Promise<void> {
+  return apiFetch<void>(`/api/runners/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

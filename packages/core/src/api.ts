@@ -163,6 +163,23 @@ export interface ApplicationEvent {
   createdAt: string;
 }
 
+// --- Companion runner (M3-06/M3-07): pairing, list, revoke. --------------------------------
+
+/** `POST /api/runners/pairing-code`: a one-time code for `job_crawler.runner pair`. */
+export interface RunnerPairingCode {
+  code: string;
+  expiresAt: string;
+}
+
+/** A paired companion runner (`GET /api/runners`). */
+export interface Runner {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+}
+
 /** One source's result for a page of `GET /api/search/live` (`sources[]`). */
 export interface LiveSourceStatus {
   id: string;

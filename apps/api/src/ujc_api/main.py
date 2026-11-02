@@ -24,6 +24,8 @@ from ujc_api.routers import feed as feed_router
 from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
+from ujc_api.routers import runner as runner_router
+from ujc_api.routers import runners as runners_router
 from ujc_api.routers import search as search_router
 from ujc_api.settings import Settings, get_settings
 
@@ -158,6 +160,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(search_router.router)
     app.include_router(applications_router.router)
     app.include_router(matches_router.router)
+    app.include_router(runners_router.router)
+    app.include_router(runner_router.router)
 
     @app.get("/api/health")
     def health() -> dict:
