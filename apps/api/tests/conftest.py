@@ -9,6 +9,10 @@ import os
 import uuid
 from collections.abc import Iterator
 
+# Tests must never call a real LLM: the shared test schema can hand a worker a queued
+# `match_score` task from another test, which would otherwise shell out to the `claude` CLI.
+os.environ["UJC_LLM_PROVIDER"] = "fake"
+
 import psycopg
 import pytest
 from fastapi.testclient import TestClient

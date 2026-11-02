@@ -21,6 +21,13 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+    # `secrets` can't be used in `if:`; expose them as env and test env instead.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      UJC_SECRET_KEY: ${{ secrets.UJC_SECRET_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      UJC_PUBLIC_URL: ${{ vars.UJC_PUBLIC_URL }}
+      UJC_ENV: production
     steps:
       - uses: actions/checkout@v4
 
@@ -30,15 +37,9 @@ jobs:
         run: uv sync
 
       - name: Run digest
-        if: ${{ secrets.DATABASE_URL != '' && secrets.UJC_SECRET_KEY != '' }}
+        if: ${{ env.DATABASE_URL != '' && env.UJC_SECRET_KEY != '' }}
         run: uv run python -m ujc_api.digest run ${{ inputs.dry_run && '--dry-run' || '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UJC_SECRET_KEY: ${{ secrets.UJC_SECRET_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          UJC_PUBLIC_URL: ${{ vars.UJC_PUBLIC_URL }}
-          UJC_ENV: production
 
       - name: Skipped — missing DATABASE_URL / UJC_SECRET_KEY secret
-        if: ${{ secrets.DATABASE_URL == '' || secrets.UJC_SECRET_KEY == '' }}
+        if: ${{ env.DATABASE_URL == '' || env.UJC_SECRET_KEY == '' }}
         run: echo "DATABASE_URL and/or UJC_SECRET_KEY repo secrets are not set; skipping this run."
