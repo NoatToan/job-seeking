@@ -203,6 +203,42 @@ export interface CreatedPersonalAccessToken extends PersonalAccessToken {
   token: string;
 }
 
+// --- Connections (M3-01/M3-02/M3-04): platform catalogue, Adzuna key, Upwork OAuth. -------------
+
+export type PlatformKind = "public" | "api_key" | "oauth" | "runner";
+
+/** One entry of `GET /api/platforms`: what connecting to this platform means and whether the
+ * signed-in user already has. `status` (crawl health) is only present for `kind: "public"`. */
+export interface Platform {
+  id: string;
+  label: string;
+  kind: PlatformKind;
+  homepage: string;
+  description: string;
+  available: boolean;
+  connected: boolean;
+  externalAccount?: string | null;
+  status?: "running" | "ok" | "error";
+}
+
+/** `PUT /api/connections/adzuna` response: the key is never echoed back, only a masked form. */
+export interface AdzunaConnection {
+  platform: "adzuna";
+  connected: boolean;
+  externalAccount: string;
+  maskedAppKey: string;
+}
+
+/** `POST /api/upwork/search` response: cached <=24h, always separately attributed, never merged
+ * into `Job`/`jobs` (docs/product/ARCHITECTURE.md §7). */
+export interface UpworkSearchPage {
+  items: Record<string, unknown>[];
+  nextCursor: string | null;
+  fetchedAt: string;
+  expiresAt: string;
+  attribution: "Upwork";
+}
+
 /** One source's result for a page of `GET /api/search/live` (`sources[]`). */
 export interface LiveSourceStatus {
   id: string;

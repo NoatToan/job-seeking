@@ -13,6 +13,7 @@ import {
   DocumentIcon,
   GroupedList,
   KanbanIcon,
+  LinkIcon,
   ListRow,
   SearchIcon,
   Sheet,
@@ -27,12 +28,14 @@ const NAV_ITEMS: NavItem[] = [
   { key: "search", label: "Live search", href: "/search/", icon: <SearchIcon size={22} /> },
   { key: "tracker", label: "Tracker", href: "/tracker/", icon: <KanbanIcon size={22} /> },
   { key: "cv", label: "My CV", href: "/cv/", icon: <DocumentIcon size={22} /> },
+  { key: "connections", label: "Connections", href: "/connections/", icon: <LinkIcon size={22} /> },
 ];
 
 function activeKeyFor(pathname: string): string {
   if (pathname.startsWith("/search")) return "search";
   if (pathname.startsWith("/tracker")) return "tracker";
   if (pathname.startsWith("/cv")) return "cv";
+  if (pathname.startsWith("/connections")) return "connections";
   if (pathname === "/") return "feed";
   return "";
 }

@@ -43,12 +43,20 @@ def purge_expired_otps(conn: psycopg.Connection) -> int:
     return cur.rowcount
 
 
+def purge_expired_upwork_cache(conn: psycopg.Connection) -> int:
+    """Upwork API & MCP Terms §8.3: cached search results live at most 24h, never refreshed in
+    place — this just deletes rows past their `expires_at` (M3-04)."""
+    cur = conn.execute("DELETE FROM upwork_search_cache WHERE expires_at < now()")
+    return cur.rowcount
+
+
 def purge(conn: psycopg.Connection) -> dict[str, int]:
     with conn.transaction():
         result = {
             "cvs_content_cleared": purge_old_cv_content(conn),
             "sessions_deleted": purge_expired_sessions(conn),
             "otps_deleted": purge_expired_otps(conn),
+            "upwork_cache_deleted": purge_expired_upwork_cache(conn),
         }
     log.info("purge: %s", result)
     return result

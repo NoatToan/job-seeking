@@ -313,6 +313,46 @@ def test_adzuna_parse():
     assert other.tags == []
 
 
+def test_adzuna_verify_credentials_true_on_a_well_formed_response():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["app_id"] == "my-id"
+        assert request.url.params["app_key"] == "my-key"
+        return httpx.Response(200, json={"results": []})
+
+    http = HttpClient(transport=httpx.MockTransport(handler), board_delay=0)
+    assert adzuna.verify_credentials(http, "my-id", "my-key") is True
+
+
+def test_adzuna_verify_credentials_false_on_rejection():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"error": "invalid app_id/app_key"})
+
+    http = HttpClient(transport=httpx.MockTransport(handler), board_delay=0, retries=0)
+    assert adzuna.verify_credentials(http, "bad-id", "bad-key") is False
+
+
+def test_adzuna_search_with_a_users_own_key():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["what"] == "python developer"
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "id": "1",
+                        "title": "Python Developer",
+                        "redirect_url": "https://www.adzuna.com.au/land/ad/1",
+                        "company": {"display_name": "Acme"},
+                    }
+                ]
+            },
+        )
+
+    http = HttpClient(transport=httpx.MockTransport(handler), board_delay=0)
+    jobs = adzuna.search(http, "python developer", "au", "my-id", "my-key")
+    assert [j.external_id for j in jobs] == ["au:1"]
+
+
 # Shape trimmed from a live SEEK response (Oct 2026); also used by apps/mcp's seek tests.
 SEEK_PAYLOAD = {
     "totalCount": 1,

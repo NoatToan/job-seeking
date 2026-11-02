@@ -23,6 +23,37 @@ def _credentials() -> tuple[str, str] | None:
     return (app_id, app_key) if app_id and app_key else None
 
 
+def verify_credentials(http: HttpClient, app_id: str, app_key: str) -> bool:
+    """One cheap Adzuna call (M3-01: `PUT /api/connections/adzuna` validates before storing).
+    Returns `False` on any error or malformed response instead of raising, so the router can
+    turn it into a clean 422 `invalid_credentials`."""
+    try:
+        payload = http.get_json(
+            URL.format(country=COUNTRIES[0], page=1),
+            params={"app_id": app_id, "app_key": app_key, "what": QUERY, "results_per_page": 1},
+        )
+    except Exception:  # noqa: BLE001 - any failure means "not valid", not a crash
+        return False
+    return isinstance(payload, dict) and "results" in payload
+
+
+def search(
+    http: HttpClient, keywords: str, country: str, app_id: str, app_key: str
+) -> list[JobRecord]:
+    """A user's own Adzuna key, one page of results for `keywords` in `country` (M3-05 per-profile
+    search; not yet wired into a router, kept here so that issue can call it directly)."""
+    payload = http.get_json(
+        URL.format(country=country, page=1),
+        params={
+            "app_id": app_id,
+            "app_key": app_key,
+            "what": keywords,
+            "results_per_page": RESULTS_PER_PAGE,
+        },
+    )
+    return parse(payload, country)
+
+
 def parse(payload: dict[str, Any], country: str) -> list[JobRecord]:
     jobs = []
     for item in payload.get("results") or []:

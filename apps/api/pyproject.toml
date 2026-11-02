@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.27",
     "python-multipart>=0.0.12",
     "sentry-sdk[fastapi]>=2.0",
+    "cryptography>=43",
     "job_crawler",
     "job_search_mcp",
 ]
