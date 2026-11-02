@@ -165,13 +165,17 @@ class FakeJobsConn:
 
 
 class FakeWorkerConn:
-    """Enough of `psycopg.Connection` for `ujc_api.worker`: `tasks`, `user_cvs` and
-    `user_preferences` as in-memory dicts, matched against the exact SQL `worker.py` issues."""
+    """Enough of `psycopg.Connection` for `ujc_api.worker`: `tasks`, `user_cvs`,
+    `user_preferences`, `jobs` and `user_matches` as in-memory dicts, matched against the exact
+    SQL `worker.py` issues."""
 
     def __init__(self):
         self.tasks: dict[int, dict] = {}
         self.user_cvs: dict[int, dict] = {}
         self.user_preferences: dict[int, dict] = {}
+        self.jobs: dict[int, dict] = {}
+        self.user_matches: dict[tuple[int, int], dict] = {}
+        self._next_task_id = 1000
         self._in_transaction = False
 
     class _Txn:
@@ -276,6 +280,83 @@ class FakeWorkerConn:
             self.user_preferences[user_id] = {
                 "keywords": keywords,
                 "candidate_country": candidate_country,
+            }
+            return _Result(None)
+
+        if s.startswith("INSERT INTO tasks (kind, payload) VALUES ('match_score'"):
+            (payload,) = params
+            task_id = self._next_task_id
+            self._next_task_id += 1
+            self.tasks[task_id] = {
+                "id": task_id,
+                "kind": "match_score",
+                "payload": payload.obj if hasattr(payload, "obj") else payload,
+                "status": "queued",
+                "attempts": 0,
+                "locked_by": None,
+                "error": None,
+            }
+            return _Result(None)
+
+        if s.startswith("SELECT id, profile FROM user_cvs WHERE user_id = %s AND status = 'done'"):
+            (user_id,) = params
+            candidates = sorted(
+                (
+                    r
+                    for r in self.user_cvs.values()
+                    if r["user_id"] == user_id and r.get("status") == "done"
+                ),
+                key=lambda r: r["created_at"],
+                reverse=True,
+            )
+            if not candidates:
+                return _Result(None)
+            r = candidates[0]
+            return _Result((r["id"], r["profile"]))
+
+        if s.startswith("SELECT keywords, remote_only, candidate_country FROM user_preferences"):
+            (user_id,) = params
+            row = self.user_preferences.get(user_id)
+            if row is None:
+                return _Result(None)
+            return _Result(
+                (row["keywords"], row.get("remote_only", False), row["candidate_country"])
+            )
+
+        if s.startswith("SELECT id, title, company, location, remote, open_to, salary_text"):
+            rows = sorted(self.jobs.values(), key=lambda j: j["id"], reverse=True)
+            return _Result(
+                rows=[
+                    (
+                        j["id"],
+                        j["title"],
+                        j["company"],
+                        j.get("location"),
+                        j.get("remote", False),
+                        j.get("open_to"),
+                        j.get("salary_text"),
+                        j.get("employment_type"),
+                        j.get("tags", []),
+                        j.get("description", ""),
+                    )
+                    for j in rows
+                ]
+            )
+
+        if s.startswith("DELETE FROM user_matches WHERE user_id = %s"):
+            (user_id,) = params
+            for key in [k for k in self.user_matches if k[0] == user_id]:
+                del self.user_matches[key]
+            return _Result(None)
+
+        if s.startswith("INSERT INTO user_matches"):
+            user_id, cv_id, job_id, score, summary, reasons, missing_skills = params
+            self.user_matches[(user_id, job_id)] = {
+                "cv_id": cv_id,
+                "score": score,
+                "summary": summary,
+                "reasons": reasons,
+                "missing_skills": missing_skills,
             }
             return _Result(None)
 
