@@ -1,65 +1,36 @@
-"""SEEK (Australia / New Zealand) via the public job-search JSON API its website calls."""
+"""SEEK (Australia / New Zealand) via the public job-search JSON API its website calls.
 
-from typing import Literal
+The parser and param builder are shared with `apps/crawler` (`job_crawler.sources.seek`, a path
+dependency of this package) and `apps/api`'s live search; see docs/product/ARCHITECTURE.md D11.
+This module only adapts the shared `JobRecord`s into this MCP server's own tool-output shape, so
+Claude's tool output is unchanged.
+"""
 
-from .common import client, strip_html
+from job_crawler.sources import seek as crawler_seek
 
-SEARCH_URL = "https://www.seek.com.au/api/jobsearch/v5/search"
+from .common import client
 
-WORK_TYPES = {"full_time": 242, "part_time": 243, "contract": 244, "casual": 245}
-REMOTE_ARRANGEMENT = 3
-SITES = {
-    "au": ("AU-Main", "en-AU", "https://www.seek.com.au"),
-    "nz": ("NZ-Main", "en-NZ", "https://www.seek.co.nz"),
-}
-
-WorkType = Literal["full_time", "part_time", "contract", "casual"]
-Country = Literal["au", "nz"]
-
-
-def search_params(
-    keywords: str,
-    where: str,
-    work_type: WorkType | None,
-    remote_only: bool,
-    days: int | None,
-    country: Country,
-    limit: int,
-) -> dict:
-    site_key, locale, _ = SITES[country]
-    params: dict = {
-        "siteKey": site_key,
-        "locale": locale,
-        "keywords": keywords,
-        "where": where,
-        "page": 1,
-        "pageSize": min(limit, 100),
-    }
-    if work_type:
-        params["worktype"] = WORK_TYPES[work_type]
-    if remote_only:
-        params["workarrangement"] = REMOTE_ARRANGEMENT
-    if days:
-        params["daterange"] = days
-    return params
+SEARCH_URL = crawler_seek.SEARCH_URL
+search_params = crawler_seek.search_params
+WorkType = crawler_seek.WorkType
+Country = crawler_seek.Country
 
 
 def parse(payload: dict, country: Country = "au") -> list[dict]:
-    base = SITES[country][2]
     return [
         {
             "source": "seek",
-            "title": job.get("title"),
-            "company": (job.get("advertiser") or {}).get("description") or job.get("companyName"),
-            "location": ", ".join(loc.get("label", "") for loc in job.get("locations") or []),
-            "work_type": ", ".join(job.get("workTypes") or []),
-            "arrangement": (job.get("workArrangements") or {}).get("displayText"),
-            "salary": job.get("salaryLabel") or None,
-            "posted_at": job.get("listingDate"),
-            "summary": strip_html(job.get("teaser")),
-            "url": f"{base}/job/{job.get('id')}",
+            "title": record.title,
+            "company": record.company,
+            "location": record.location,
+            "work_type": record.employment_type,
+            "arrangement": (record.raw.get("workArrangements") or {}).get("displayText"),
+            "salary": record.salary_text,
+            "posted_at": record.raw.get("listingDate"),
+            "summary": record.description,
+            "url": record.url,
         }
-        for job in payload.get("data", [])
+        for record in crawler_seek.parse(payload, country)
     ]
 
 

@@ -2,13 +2,10 @@
 `JobRecord`, merged in parallel with per-source timeouts and errors
 (docs/product/FLOW_V2.md §3 "Cursor (live search)").
 
-- seek, wwr, arc: `job_search_mcp.sources` (async httpx). SEEK has no page param in the MCP
-  server's own `search()`, so this calls its `search_params()` + overrides `page` itself, rather
-  than modifying apps/mcp.
-- himalayas: a one-page adapter around the same search endpoint `job_crawler.profile_search`
-  already uses, so pagination is explicit here instead of that module's own 5-page loop.
-- remotive: `job_crawler.sources.remotive.search` (single page, run off the event loop since it's
-  a blocking `HttpClient` call).
+- seek, himalayas, remotive: `job_crawler.sources` (shared with the crawler's per-profile search;
+  see docs/product/ARCHITECTURE.md D11). seek and himalayas take an explicit page; both run off
+  the event loop since they use the blocking `HttpClient`.
+- wwr, arc: `job_search_mcp.sources` (async httpx); these two have no `job_crawler` equivalent yet.
 
 Upwork is never a source here (see docs/product/FLOW_V2.md §1): the registry below only ever
 names the five sources in the contract, and `merge_live_search` drops anything else defensively.
@@ -24,11 +21,10 @@ from job_crawler.models import JobRecord
 from job_crawler.profile_search import HIMALAYAS_SEARCH_URL
 from job_crawler.sources import himalayas as crawler_himalayas
 from job_crawler.sources import remotive as crawler_remotive
+from job_crawler.sources import seek as crawler_seek
 from job_crawler.text import clean, parse_datetime
 from job_search_mcp.sources import arc as mcp_arc
-from job_search_mcp.sources import seek as mcp_seek
 from job_search_mcp.sources import wwr as mcp_wwr
-from job_search_mcp.sources.common import client as mcp_client
 
 from ujc_api.cursor import SEARCH_SOURCE_IDS
 
@@ -53,29 +49,6 @@ def _best_effort_datetime(value: object):
         return parsedate_to_datetime(value)
     except (TypeError, ValueError):
         return None
-
-
-def seek_to_job_record(d: dict) -> JobRecord:
-    url = d.get("url") or ""
-    location = clean(d.get("location"))
-    arrangement = (d.get("arrangement") or "").lower()
-    remote = "remote" in arrangement or "remote" in (location or "").lower()
-    return JobRecord(
-        source="seek",
-        external_id=_external_id_from_url(url),
-        url=url,
-        apply_url=url,
-        title=clean(d.get("title")) or "Untitled",
-        company=clean(d.get("company")) or "Unknown",
-        location=location,
-        remote=remote,
-        employment_type=clean(d.get("work_type")),
-        salary_text=clean(d.get("salary")),
-        description=clean(d.get("summary")),
-        tags=[],
-        posted_at=_best_effort_datetime(d.get("posted_at")),
-        raw=d,
-    )
 
 
 def wwr_to_job_record(d: dict) -> JobRecord:
@@ -119,13 +92,13 @@ def arc_to_job_record(d: dict) -> JobRecord:
     )
 
 
+def _seek_page_sync(q: str, page: int, limit: int) -> list[JobRecord]:
+    with HttpClient() as http:
+        return crawler_seek.search(http, q, limit=limit, page=page)
+
+
 async def fetch_seek(q: str, page: int, limit: int) -> list[JobRecord]:
-    params = mcp_seek.search_params(q, "All Australia", None, False, None, "au", limit)
-    params["page"] = page
-    async with mcp_client() as http:
-        resp = await http.get(mcp_seek.SEARCH_URL, params=params)
-        resp.raise_for_status()
-    return [seek_to_job_record(d) for d in mcp_seek.parse(resp.json(), "au")[:limit]]
+    return await asyncio.to_thread(_seek_page_sync, q, page, limit)
 
 
 def _himalayas_page_sync(q: str, page: int) -> list[JobRecord]:
