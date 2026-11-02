@@ -33,7 +33,7 @@ describe("CvPage", () => {
   beforeEach(() => {
     useSessionMock.mockReturnValue({
       me: {
-        user: { id: "1", email: "person@example.com" },
+        user: { id: "1", email: "person@example.com", aiConsentAt: "2026-01-01T00:00:00Z" },
         preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
         latestCv: null,
       },
@@ -157,5 +157,44 @@ describe("CvPage", () => {
       remoteOnly: false,
       candidateCountry: null,
     });
+  });
+
+  it("shows a consent card before the first upload, and hides it after agreeing", async () => {
+    useSessionMock.mockReturnValue({
+      me: {
+        user: { id: "1", email: "person@example.com", aiConsentAt: null },
+        preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
+        latestCv: null,
+      },
+      loading: false,
+      error: null,
+      refresh: refreshMock,
+      signOut: signOutMock,
+    });
+
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url === "/api/me/consent" && method === "POST") {
+        return Promise.resolve(jsonResponse(200, { aiConsentAt: "2026-01-01T00:00:00Z" }));
+      }
+      return Promise.reject(new Error(`unexpected request ${method} ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderCvPage();
+
+    expect(screen.getByText(/sent to Claude/)).toBeTruthy();
+    expect(screen.queryByText("Start with your CV")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "I agree" }));
+    });
+
+    expect(screen.getByText("Start with your CV")).toBeTruthy();
+    expect(screen.queryByText(/sent to Claude/)).toBeNull();
+    const consentCall = fetchMock.mock.calls.find(([u]) => u === "/api/me/consent");
+    expect(consentCall).toBeTruthy();
+    const [, consentInit] = consentCall as [string, RequestInit];
+    expect(JSON.parse(consentInit.body as string)).toEqual({ aiProcessing: true });
   });
 });

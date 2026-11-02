@@ -109,9 +109,10 @@ export interface Preferences {
   candidateCountry: string | null;
 }
 
-/** `GET /api/me`. */
+/** `GET /api/me`. `aiConsentAt` is set once the user agrees to send CV text to the LLM
+ * provider (`POST /api/me/consent`); `POST /api/cvs` 409s `consent_required` until then. */
 export interface MeResponse {
-  user: { id: string; email: string };
+  user: { id: string; email: string; aiConsentAt: string | null };
   preferences: Preferences;
   latestCv: Cv | null;
 }

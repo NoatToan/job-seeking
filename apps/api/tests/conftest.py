@@ -50,3 +50,15 @@ def migrated_database_url(test_database_url: str) -> Iterator[str]:
     finally:
         with psycopg.connect(test_database_url, autocommit=True) as conn:
             conn.execute(f'DROP SCHEMA "{schema}" CASCADE')
+
+
+@pytest.fixture(autouse=True)
+def _reset_ip_rate_limiter() -> Iterator[None]:
+    """`otp.ip_rate_limiter` is an in-process singleton (by design — see its docstring), so
+    without this it accumulates hits across every test in the whole pytest run (all sharing the
+    test client's fake IP) instead of just within one test."""
+    from ujc_api.auth import otp
+
+    otp.ip_rate_limiter.reset()
+    yield
+    otp.ip_rate_limiter.reset()

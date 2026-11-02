@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
 import { requestOtp, verifyOtp } from "@/lib/api";
@@ -142,7 +143,11 @@ export function LoginForm() {
               </form>
             </Card>
             <p className="max-w-xs text-center text-footnote text-label-secondary">
-              By continuing you agree to our Terms and Privacy notice.
+              By continuing you agree to our Terms and{" "}
+              <Link href="/privacy/" className="font-medium text-tint hover:underline focus-ring">
+                Privacy notice
+              </Link>
+              .
             </p>
           </>
         ) : (

@@ -185,6 +185,46 @@ export function updatePreferences(input: Preferences): Promise<{ preferences: Pr
   });
 }
 
+/** `POST /api/me/consent` — agree to send CV text to the LLM provider (Claude) for extraction.
+ * Required once before the first `uploadCv` call, else it 409s `consent_required`. */
+export function giveAiConsent(): Promise<{ aiConsentAt: string }> {
+  return apiFetch<{ aiConsentAt: string }>("/api/me/consent", {
+    method: "POST",
+    body: { aiProcessing: true },
+  });
+}
+
+/** `GET /api/me/export` — downloads the signed-in user's data as a JSON `Blob`. */
+export async function exportMyData(): Promise<Blob> {
+  const headers = new Headers();
+  const csrf = typeof document !== "undefined" ? readCsrfCookie() : null;
+  if (csrf) headers.set("X-CSRF-Token", csrf);
+  const res = await fetch(`${API_BASE_URL}/api/me/export`, {
+    credentials: "include",
+    headers,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    const data: ApiErrorBody | undefined = text ? JSON.parse(text) : undefined;
+    throw new ApiError(
+      res.status,
+      data?.error?.code ?? "unknown_error",
+      data?.error?.message ?? res.statusText,
+    );
+  }
+  return res.blob();
+}
+
+function readCsrfCookie(): string | null {
+  const match = document.cookie.match(/(?:^|; )ujc_csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** `DELETE /api/me` — hard-deletes the account (cascades); clears the session. */
+export function deleteMyAccount(): Promise<void> {
+  return apiFetch<void>("/api/me", { method: "DELETE", body: { confirm: "DELETE" } });
+}
+
 /** `POST /api/cvs` — upload a CV (multipart); the host worker scans it asynchronously. */
 export function uploadCv(file: File): Promise<Cv> {
   const form = new FormData();

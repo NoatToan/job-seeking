@@ -23,7 +23,7 @@ import {
   UploadIcon,
   useToast,
 } from "@ujc/ui";
-import { ApiError, getCv, updatePreferences, uploadCv } from "@/lib/api";
+import { ApiError, getCv, giveAiConsent, updatePreferences, uploadCv } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { AccountMenu } from "@/app/nav";
@@ -72,6 +72,10 @@ function CvPageInner() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [keywordsEverSaved, setKeywordsEverSaved] = useState((me?.preferences.keywords.length ?? 0) > 0);
+
+  const [aiConsentAt, setAiConsentAt] = useState<string | null>(me?.user.aiConsentAt ?? null);
+  const [consenting, setConsenting] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const seededCvIdRef = useRef<string | null>(null);
   const trackedCvIdRef = useRef<string | null>(null);
@@ -127,6 +131,21 @@ function CvPageInner() {
     // fresh object reference from the same poll doesn't tear down and restart the interval.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cv?.id, cv?.status]);
+
+  async function handleConsent() {
+    setConsenting(true);
+    setConsentError(null);
+    try {
+      const { aiConsentAt: granted } = await giveAiConsent();
+      setAiConsentAt(granted);
+    } catch (err) {
+      setConsentError(
+        err instanceof ApiError ? err.message : "Could not save your consent. Please try again.",
+      );
+    } finally {
+      setConsenting(false);
+    }
+  }
 
   async function handleFile(file: File) {
     setUploadError(null);
@@ -206,6 +225,9 @@ function CvPageInner() {
   const scanning = cv != null && (cv.status === "queued" || cv.status === "processing");
   const showDropzone = !cv || cv.status === "error";
   const showProgressSteps = isFirstRun && !keywordsEverSaved;
+  // Before the very first upload, gate the dropzone behind AI-processing consent (M5-04): the
+  // CV is sent to Claude (on the host machine) to extract skills, so we ask first.
+  const needsConsent = showDropzone && !aiConsentAt;
 
   return (
     <>
@@ -219,7 +241,28 @@ function CvPageInner() {
           Upload your CV once — we scan it for skills and keywords, and match you to jobs automatically.
         </p>
 
-        {showDropzone ? (
+        {needsConsent ? (
+          <div
+            role="region"
+            aria-label="AI processing consent"
+            className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card"
+          >
+            <p className="text-subheadline font-semibold text-label">Before you upload</p>
+            <p className="text-body text-label-secondary">
+              Your CV is sent to Claude, an AI model running on our host machine, to pull out your
+              skills and keywords. It&apos;s stored until you delete it, or automatically after 180
+              days.
+            </p>
+            {consentError ? (
+              <p role="alert" className="text-footnote text-danger-ink">
+                {consentError}
+              </p>
+            ) : null}
+            <Button onClick={() => void handleConsent()} loading={consenting} className="self-start">
+              I agree
+            </Button>
+          </div>
+        ) : showDropzone ? (
           <div className="flex flex-col gap-3">
             {cv?.status === "error" ? (
               <div role="alert" className="flex flex-col gap-1 rounded-card bg-danger-soft px-4 py-3">

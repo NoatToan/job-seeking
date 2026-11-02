@@ -74,6 +74,12 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" }) 
       <Sheet open={open} onClose={() => setOpen(false)} title="Account" description={me.user.email}>
         <GroupedList label="Account options">
           <ListRow
+            title="Account & privacy"
+            href="/account/"
+            linkAs={Link}
+            onClick={() => setOpen(false)}
+          />
+          <ListRow
             title="Sign out"
             destructive
             onClick={() => {
