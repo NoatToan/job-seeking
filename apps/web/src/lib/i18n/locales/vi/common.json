@@ -49,6 +49,13 @@
   "language": {
     "label": "Ngôn ngữ"
   },
+  "theme": {
+    "label": "Giao diện",
+    "system": "Theo hệ thống",
+    "light": "Sáng",
+    "dark": "Tối",
+    "toggle": "Giao diện: {{current}}. Chuyển sang {{next}}"
+  },
   "brand": {
     "homeAriaLabel": "Trang chủ {{name}}"
   },

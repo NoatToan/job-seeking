@@ -56,21 +56,30 @@ import {
   useToast,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
+import { useTheme } from "@/lib/theme";
+import { applyTheme, readTheme } from "@/lib/theme-core";
+import type { ThemePreference } from "@/lib/theme-core";
 
-type ThemeMode = "system" | "light" | "dark";
+type ThemeMode = ThemePreference;
 
-/** Sets `.light` / `.dark` on <html> (system = neither). Cleans up when leaving the page. */
+/**
+ * The page's appearance switch is the app-wide setting (lib/theme). `?theme=dark` / `?theme=light`
+ * previews an appearance without saving it (handy for screenshots); leaving the page restores the
+ * saved choice.
+ */
 function useThemeMode(): [ThemeMode, (m: ThemeMode) => void] {
-  // `?theme=dark` / `?theme=light` preselects an appearance (handy for screenshots).
   const [fromUrl, setFromUrl] = useQueryState("theme", parseAsStringLiteral(["light", "dark"] as const));
-  const mode: ThemeMode = fromUrl ?? "system";
-  const setMode = (m: ThemeMode) => void setFromUrl(m === "system" ? null : m);
+  const { theme, setTheme } = useTheme();
+  const mode: ThemeMode = fromUrl ?? theme;
+  const setMode = (m: ThemeMode) => {
+    void setFromUrl(null);
+    setTheme(m);
+  };
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    if (mode !== "system") root.classList.add(mode);
-    return () => root.classList.remove("light", "dark");
-  }, [mode]);
+    if (!fromUrl) return;
+    applyTheme(fromUrl);
+    return () => applyTheme(readTheme());
+  }, [fromUrl]);
   return [mode, setMode];
 }
 

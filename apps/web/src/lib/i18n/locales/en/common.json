@@ -50,6 +50,13 @@
   "language": {
     "label": "Language"
   },
+  "theme": {
+    "label": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "toggle": "Appearance: {{current}}. Switch to {{next}}"
+  },
   "brand": {
     "homeAriaLabel": "{{name}} home"
   },

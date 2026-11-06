@@ -63,7 +63,7 @@ export function PublicJobs({
           ) : (
             <>
               Find a tech job you&apos;ll{" "}
-              <span className="bg-[linear-gradient(90deg,#ea580c,#e11d48_55%,#9333ea)] bg-clip-text text-transparent">love</span>
+              <span className="bg-[image:var(--ujc-brand-text-gradient)] bg-clip-text text-transparent">love</span>
             </>
           )
         }

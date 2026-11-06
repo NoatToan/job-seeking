@@ -46,6 +46,8 @@
   --ujc-sky-moon-glow: rgb(199 210 254 / 0.28);
   --ujc-sky-star: #ffffff;
   --ujc-brand-gradient: linear-gradient(135deg, #fb923c 0%, #f43f5e 55%, #a855f7 100%);
+  /* Gradient for text (bg-clip-text): darker stops so the word keeps >= 3:1 on the page. */
+  --ujc-brand-text-gradient: linear-gradient(90deg, #ea580c, #e11d48 55%, #9333ea);
   --ujc-sky-scrim: rgb(0 0 0 / 0.06);
 
   /* Backgrounds (systemBackground family, warmed 2-3% toward the tint) */
@@ -120,6 +122,7 @@
 
 /* Dark palette, applied by class or by system preference. Keep both blocks identical. */
 .dark {
+  --ujc-brand-text-gradient: linear-gradient(90deg, #fb923c, #fb7185 55%, #c084fc);
   --ujc-sky-scrim: rgb(0 0 0 / 0.22);
   --ujc-sky-day-top: rgb(56 189 248 / 0.32);
   --ujc-sky-day-bottom: rgb(14 165 233 / 0.1);
@@ -173,6 +176,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
+    --ujc-brand-text-gradient: linear-gradient(90deg, #fb923c, #fb7185 55%, #c084fc);
     --ujc-sky-scrim: rgb(0 0 0 / 0.22);
     --ujc-sky-day-top: rgb(56 189 248 / 0.32);
     --ujc-sky-day-bottom: rgb(14 165 233 / 0.1);

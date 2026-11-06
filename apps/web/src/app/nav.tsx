@@ -25,6 +25,7 @@ import type { NavItem } from "@ujc/ui";
 import { FeedbackWidget } from "@contributor-box/react";
 import { ContributorRoot } from "@/lib/contributor";
 import { LanguageSwitch } from "@/lib/i18n/provider";
+import { ThemePicker, ThemeToggle } from "@/lib/theme";
 import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
@@ -133,6 +134,11 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
         </button>
       )}
       <Sheet open={open} onClose={() => setOpen(false)} title={t("nav.account")} description={me.user.email}>
+        <GroupedList header={t("theme.label")} className="mb-5">
+          <li className="p-3">
+            <ThemePicker className="w-full" />
+          </li>
+        </GroupedList>
         <GroupedList label={t("nav.accountOptions")}>
           <ListRow
             title={t("nav.accountPrivacy")}
@@ -219,6 +225,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }
           trailing={
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <LanguageSwitch />
               <AccountMenu variant="pill" />
             </div>
