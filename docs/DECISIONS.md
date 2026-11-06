@@ -380,7 +380,7 @@ Status: accepted. Code: `db/migrations/028_query_indexes.sql`, `apps/api/src/ujc
 
 ## Job downvotes: "Not worth applying?" (2026-11-07)
 
-Status: accepted. Code: `db/migrations/029_job_votes.sql`, `apps/api/src/ujc_api/job_votes.py`,
+Status: accepted. Code: `db/migrations/030_job_votes.sql`, `apps/api/src/ujc_api/job_votes.py`,
 `apps/api/src/ujc_api/routers/job_votes.py`, `apps/web/src/app/jobs/job-vote.tsx`.
 
 Request: let people mark a job as not worth applying to, so others don't waste time on it.

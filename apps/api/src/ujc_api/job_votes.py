@@ -1,5 +1,5 @@
 """Community signal on jobs: "Not worth applying?" reports and "Still good" confirmations
-(migration 029, docs/DECISIONS.md "Job downvotes").
+(migration 030, docs/DECISIONS.md "Job downvotes").
 
 Votes live in `job_votes` (one per job and user). What everyone sees is `job_vote_stats`, one
 denormalised row per job, recomputed by `refresh_stats` in the same request as every vote write

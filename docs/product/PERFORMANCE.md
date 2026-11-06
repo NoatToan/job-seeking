@@ -148,7 +148,7 @@ Current constants (signed in): `/api/jobs` 2, `/api/jobs/facets` 2, `/api/source
 `/api/me/profile` 2, `/api/feedback?scope=board|mine` 4. Signed out: `/api/jobs` 1, feedback
 board 2.
 
-Job votes (migration 029, DECISIONS.md "Job downvotes"): the `community` aggregate is a
+Job votes (migration 030, DECISIONS.md "Job downvotes"): the `community` aggregate is a
 primary-key `LEFT JOIN job_vote_stats` in the same statement, so `/api/jobs`, `/api/jobs/{id}`
 and `/api/feed` keep the counts above (with or without `hide_reported`, which is a `NOT EXISTS`
 anti-join so `jobs_feed_idx` / `jobs_salary_sort_idx` still drive the page: 0.03–0.06 ms on 50k
