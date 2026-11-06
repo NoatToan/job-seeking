@@ -160,12 +160,16 @@ export const FIT_TONES: Record<FitLevel, "success" | "info" | "warning" | "dange
   night: "danger",
 };
 
+/** Jobs open to many countries can list dozens of zones; name the first few only. */
+const MAX_LISTED_ZONES = 4;
+
 /** "UTC-8 … UTC-5" for a job accepting a range of fixed offsets, else the zone labels joined. */
 export function jobZonesLabel(zones: readonly string[]): string {
   if (zones.length > 2 && zones.every((z) => FIXED_OFFSET.test(z))) {
     return `${zoneLabel(zones[0])} … ${zoneLabel(zones[zones.length - 1])}`;
   }
-  return zones.map(zoneLabel).join(", ");
+  const shown = zones.slice(0, MAX_LISTED_ZONES).map(zoneLabel).join(", ");
+  return zones.length > MAX_LISTED_ZONES ? `${shown} +${zones.length - MAX_LISTED_ZONES} more` : shown;
 }
 
 /** Legacy IANA aliases some browsers still report, mapped to the current names. */
