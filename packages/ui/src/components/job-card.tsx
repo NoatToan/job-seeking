@@ -3,11 +3,12 @@
 import { useState } from "react";
 import type { ElementType, MouseEvent, ReactNode } from "react";
 import type { Job } from "@ujc/core";
-import { openToLabel } from "@ujc/core";
+import { openToLabel, sortTech } from "@ujc/core";
 import { cx } from "../cx";
 import { ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge } from "./badges";
 import { Avatar } from "./feedback";
+import { TechStackRow } from "./tech-icon";
 
 /** "2 days ago" style label from an ISO date; null when unknown. */
 export function timeAgo(iso: string | null, now: number = Date.now()): string | null {
@@ -222,6 +223,7 @@ export function JobListItem({
           <span className="font-medium">{job.company}</span>
           {job.location ? ` · ${job.location}` : ""}
         </p>
+        {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-1.5" /> : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-label-secondary">
           <SourceBadge source={job.source} />
           {job.remote ? (

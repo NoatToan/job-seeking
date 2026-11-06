@@ -139,6 +139,7 @@ export interface FeedPage {
 /** `GET /api/jobs/facets`: filter options with how many jobs each one has. */
 export interface JobFacets {
   countries: { code: string; count: number }[];
+  tech: { id: string; count: number }[];
 }
 
 export interface PublicJobsPage {

@@ -162,6 +162,8 @@ export interface PublicJobsFilters {
   remote?: boolean;
   /** ISO country code: jobs in / open to that country (`jobs.countries`). */
   country?: string;
+  /** Comma-separated tech ids: jobs mentioning all of them (`jobs.tech_stack`). */
+  tech?: string;
 }
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
@@ -293,6 +295,8 @@ export interface FeedFilters {
   sort?: "score";
   /** ISO country code: jobs in / open to that country. */
   country?: string;
+  /** Comma-separated tech ids: jobs mentioning all of them. */
+  tech?: string;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

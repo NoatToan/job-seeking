@@ -27,6 +27,7 @@ import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
 import { TimezonePicker } from "@/app/work-hours";
 import { CountryFilter } from "@/app/country-filter";
+import { TechFilter } from "@/app/tech-filter";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -51,6 +52,8 @@ function FeedInner() {
   const [source, setSource] = useViewState("feed:source", "");
   const [bestMatches, setBestMatches] = useViewState("feed:best", false);
   const [country, setCountry] = useViewState("feed:country", "");
+  const [tech, setTech] = useViewState<string[]>("feed:tech", []);
+  const techKey = tech.join(",");
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -68,16 +71,17 @@ function FeedInner() {
         source: source || undefined,
         sort: bestMatches ? "score" : undefined,
         country: country || undefined,
+        tech: techKey || undefined,
       }),
-    [q, source, bestMatches, country],
+    [q, source, bestMatches, country, techKey],
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
-  const listKey = `feed:${JSON.stringify([q, source, bestMatches, country])}`;
+  const listKey = `feed:${JSON.stringify([q, source, bestMatches, country, techKey])}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [q, source, bestMatches, country], { onPage, cacheKey: listKey });
+  >(fetchPage, [q, source, bestMatches, country, techKey], { onPage, cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   async function handleRefreshScores() {
@@ -150,6 +154,7 @@ function FeedInner() {
             </Chip>
           ))}
         </div>
+        <TechFilter value={tech} onChange={setTech} />
       </NavBar>
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 sm:px-6">

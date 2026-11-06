@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@ujc/ui";
 
@@ -264,5 +264,34 @@ describe("Home", () => {
 
     fireEvent.change(select, { target: { value: "DE" } });
     await waitFor(() => expect(screen.getByText("Berlin Job")).toBeTruthy(), { timeout: 5000 });
+  });
+
+  it("filters by tech stack chips and shows tech icons on rows", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs/facets")) {
+        return Promise.resolve(
+          jsonResponse(200, { countries: [], tech: [{ id: "react", count: 9 }, { id: "python", count: 4 }] }),
+        );
+      }
+      if (isJobsListCall(url)) {
+        const item = url.includes("tech=react")
+          ? { ...job("1", "React Job"), techStack: ["react", "nextjs"] }
+          : job("2", "Any Job");
+        return Promise.resolve(jsonResponse(200, { items: [item], nextCursor: null }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
+    const frontend = await screen.findByRole("group", { name: "Frontend tech" });
+    expect(screen.getByRole("group", { name: "Backend tech" }).textContent).toContain("Python");
+
+    fireEvent.click(within(frontend).getByRole("button", { name: /React/ }));
+    await waitFor(() => expect(screen.getByText("React Job")).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getAllByRole("img", { name: "Next.js" }).length).toBeGreaterThan(0);
   });
 });

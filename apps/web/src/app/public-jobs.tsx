@@ -25,6 +25,7 @@ import { AccountMenu } from "@/app/nav";
 import { JobBrowser } from "@/app/job-browser";
 import { TimezonePicker } from "@/app/work-hours";
 import { CountryFilter } from "@/app/country-filter";
+import { TechFilter } from "@/app/tech-filter";
 
 function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
   if (status === "error") return "danger";
@@ -67,6 +68,8 @@ export function PublicJobs() {
   const [source, setSource] = useViewState("public:source", "");
   const [remoteOnly, setRemoteOnly] = useViewState("public:remote", false);
   const [country, setCountry] = useViewState("public:country", "");
+  const [tech, setTech] = useViewState<string[]>("public:tech", []);
+  const techKey = tech.join(",");
 
   // Debounced filter, same 300 ms as the signed-in feed (SCREENS.md §4).
   useEffect(() => {
@@ -84,15 +87,16 @@ export function PublicJobs() {
         source: source || undefined,
         remote: remoteOnly || undefined,
         country: country || undefined,
+        tech: techKey || undefined,
       }),
-    [q, source, remoteOnly, country],
+    [q, source, remoteOnly, country, techKey],
   );
 
-  const listKey = `public:${JSON.stringify([q, source, remoteOnly, country])}`;
+  const listKey = `public:${JSON.stringify([q, source, remoteOnly, country, techKey])}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     PublicJobsPage
-  >(fetchPage, [q, source, remoteOnly, country], { cacheKey: listKey });
+  >(fetchPage, [q, source, remoteOnly, country, techKey], { cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   return (
@@ -126,6 +130,7 @@ export function PublicJobs() {
             </Chip>
           ))}
         </div>
+        <TechFilter value={tech} onChange={setTech} />
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <label className="flex items-center gap-2 text-subheadline text-label-secondary">
             <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
@@ -163,7 +168,7 @@ export function PublicJobs() {
             title="No jobs match yet"
             message="Try a different search, or clear the filters."
             action={
-              source || q || remoteOnly || country ? (
+              source || q || remoteOnly || country || tech.length ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -171,6 +176,7 @@ export function PublicJobs() {
                     setSource("");
                     setRemoteOnly(false);
                     setCountry("");
+                    setTech([]);
                   }}
                   className={buttonClasses({ variant: "gray", size: "sm" })}
                 >

@@ -10,7 +10,7 @@ from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
 from ujc_api.dto import JOB_COLUMNS, job_dto, job_sort_key
-from ujc_api.feed_query import COUNTRY_CLAUSE, feed_filter_clauses
+from ujc_api.feed_query import COUNTRY_CLAUSE, TECH_CLAUSE, feed_filter_clauses, parse_tech
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
 
@@ -40,6 +40,7 @@ def get_feed(
     source: str | None = Query(default=None),
     sort: str | None = Query(default=None),
     country: str | None = Query(default=None),
+    tech: str | None = Query(default=None),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -76,6 +77,10 @@ def get_feed(
     if country:
         clauses.append(COUNTRY_CLAUSE)
         where_params.append(country.upper())
+
+    if tech_ids := parse_tech(tech):
+        clauses.append(TECH_CLAUSE)
+        where_params.append(tech_ids)
 
     if cursor_state:
         cursor_t, cursor_i = cursor_state

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
-import { openToLabel, sourceMeta } from "@ujc/core";
+import { openToLabel, sortTech, sourceMeta, techInfo } from "@ujc/core";
 import {
   Badge,
   buttonClasses,
@@ -13,6 +13,7 @@ import {
   MatchBadge,
   Skeleton,
   SourceBadge,
+  TechIcon,
 } from "@ujc/ui";
 import { SaveJobButton } from "@/app/save-job-button";
 import { WorkHoursCard } from "@/app/work-hours";
@@ -70,6 +71,23 @@ export function JobDetail({ job, loadingDescription = false, signedIn, variant =
           signedIn={signedIn}
         />
       </div>
+
+      {job.techStack?.length ? (
+        <div>
+          <h2 className="text-headline text-label">Tech stack</h2>
+          <ul aria-label="Tech stack" className="mt-2 flex flex-wrap gap-1.5">
+            {sortTech(job.techStack).map((id) => (
+              <li
+                key={id}
+                className="inline-flex items-center gap-1.5 rounded-control-sm bg-fill-tertiary px-2 py-1 text-footnote font-medium text-label"
+              >
+                <TechIcon id={id} size={14} />
+                {techInfo(id).label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <WorkHoursCard job={job} />
 

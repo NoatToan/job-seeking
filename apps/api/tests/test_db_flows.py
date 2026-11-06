@@ -492,3 +492,23 @@ def test_public_jobs_country_filter_and_facets(client: TestClient, migrated_data
     counts = {f["code"]: f["count"] for f in facets.json()["countries"]}
     assert counts["DE"] >= 2
     assert counts["VN"] >= 1
+
+
+def test_public_jobs_tech_filter_and_facets(client: TestClient, migrated_database_url: str):
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        for ext, tech in (("fe", ["nextjs", "react"]), ("fe2", ["react"]), ("be", ["python"])):
+            conn.execute(
+                "INSERT INTO jobs (source, external_id, url, title, company, remote, tech_stack)"
+                " VALUES ('tech-test', %s, %s, %s, 'Acme', false, %s)",
+                (ext, f"https://example.test/{ext}", f"Tech {ext}", tech),
+            )
+
+    resp = client.get("/api/jobs", params={"source": "tech-test", "tech": "React"})
+    assert sorted(i["title"] for i in resp.json()["items"]) == ["Tech fe", "Tech fe2"]
+    both = client.get("/api/jobs", params={"source": "tech-test", "tech": "react,nextjs"})
+    items = both.json()["items"]
+    assert [i["title"] for i in items] == ["Tech fe"]
+    assert items[0]["techStack"] == ["nextjs", "react"]
+
+    counts = {f["id"]: f["count"] for f in client.get("/api/jobs/facets").json()["tech"]}
+    assert counts["react"] >= 2

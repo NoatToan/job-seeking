@@ -160,6 +160,7 @@ class FakeJobsConn:
                         j["first_seen_at"],
                         j.get("timezones"),
                         j.get("timezone_source"),
+                        j.get("tech_stack"),
                     )
                     for j in rows
                 ]
@@ -187,6 +188,7 @@ class FakeJobsConn:
                             job["first_seen_at"],
                             job.get("timezones"),
                             job.get("timezone_source"),
+                            job.get("tech_stack"),
                             job.get("description"),
                         )
                     )

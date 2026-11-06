@@ -1,5 +1,6 @@
 export * from "./sources";
 export * from "./api";
+export * from "./tech";
 
 /** A job as the apps see it (one row of the jobs table). */
 export interface Job {
@@ -24,6 +25,8 @@ export interface Job {
   timezones?: string[] | null;
   /** "stated" = the posting says it; "location" = inferred from where the job is. */
   timezoneSource?: "stated" | "location" | null;
+  /** Tech ids found in the posting (job_crawler.techstack), e.g. ["nextjs", "react"]. */
+  techStack?: string[];
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
 }

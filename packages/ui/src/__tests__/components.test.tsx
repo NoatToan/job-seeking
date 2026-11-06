@@ -10,6 +10,8 @@ import {
   ProgressSteps,
   SearchField,
   SegmentedControl,
+  TechIcon,
+  TechStackRow,
   Sheet,
   SourceBadge,
   Toggle,
@@ -266,5 +268,19 @@ describe("badges and JobCard", () => {
     render(<ProgressSteps steps={["Sign in", "Your CV", "Keywords"]} current={1} label="Setup" />);
     const current = screen.getByRole("listitem", { current: "step" });
     expect(current.textContent).toContain("Your CV");
+  });
+});
+
+describe("TechIcon", () => {
+  it("draws a brand mark with an accessible name, and a monogram for brands simple-icons lacks", () => {
+    render(<TechIcon id="react" />);
+    expect(screen.getByRole("img", { name: "React" }).tagName.toLowerCase()).toBe("svg");
+    render(<TechIcon id="aws" />);
+    expect(screen.getByRole("img", { name: "AWS" }).textContent).toBe("AWS");
+  });
+
+  it("TechStackRow caps the icons and says how many more", () => {
+    render(<TechStackRow ids={["react", "nextjs", "typescript", "nodejs"]} max={2} />);
+    expect(screen.getByText("+2")).toBeTruthy();
   });
 });

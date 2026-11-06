@@ -11,8 +11,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": { "@ujc/core": "workspace:*" },
-  "peerDependencies": { "react": ">=19", "react-dom": ">=19" },
+  "dependencies": {
+    "@ujc/core": "workspace:*",
+    "simple-icons": "^16.36.0"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",

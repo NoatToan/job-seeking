@@ -72,6 +72,7 @@ def job_params(job: JobRecord) -> dict[str, Any]:
             description=job.description,
             remote=job.remote,
             raw=job.raw,
+            tags=job.tags,
         )
     )
     return params
@@ -188,10 +189,15 @@ def recompute_derived(conn: psycopg.Connection) -> int:
     changed: list[tuple] = []
     # A server-side (named) cursor needs a transaction even on an autocommit connection.
     with conn.transaction(), conn.cursor(name="derived_recompute") as cur:
-        cur.execute(f"SELECT id, title, location, description, remote, raw, {cols} FROM jobs")
-        for job_id, title, location, description, remote, raw, *current in cur:
+        cur.execute(f"SELECT id, title, location, description, remote, raw, tags, {cols} FROM jobs")
+        for job_id, title, location, description, remote, raw, tags, *current in cur:
             fresh = derive(
-                title=title, location=location, description=description, remote=remote, raw=raw
+                title=title,
+                location=location,
+                description=description,
+                remote=remote,
+                raw=raw,
+                tags=list(tags or []),
             )
             values = [fresh[c] for c in DERIVED_COLUMNS]
             if values != current:
