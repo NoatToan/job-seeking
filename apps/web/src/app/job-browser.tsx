@@ -208,14 +208,10 @@ export function JobBrowser({
   // rows already rendered are remembered (also across Back) so the spacers stay accurate.
   const listRef = useRef<HTMLDivElement | null>(null);
   const heightsKey = `row-heights:${stateKey}`;
-  const heights = useRef<Map<string, number>>(readViewCache<Map<string, number>>(heightsKey) ?? new Map());
-  const [heightsVersion, setHeightsVersion] = useState(0);
-  const layout = useMemo(
-    () => layoutRows(jobs.map((j) => j.id), heights.current, ROW_GAP_PX),
-    // heightsVersion: the map is mutated in place and bumped after each measurement.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [jobs, heightsVersion],
+  const [heights, setHeights] = useState<ReadonlyMap<string, number>>(
+    () => readViewCache<ReadonlyMap<string, number>>(heightsKey) ?? new Map(),
   );
+  const layout = useMemo(() => layoutRows(jobs.map((j) => j.id), heights, ROW_GAP_PX), [jobs, heights]);
   const layoutRef = useRef(layout);
   const jobsRef = useRef(jobs);
   // Layout effect, so the window update below (also a layout effect) already sees the new rows.
@@ -254,25 +250,25 @@ export function JobBrowser({
     }
   }, [setRange, viewport]);
 
-  // Measure the rendered rows; remember heights that changed and re-layout once.
+  // Measure the rows just rendered; remember heights that changed and re-layout once.
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    let changed = false;
+    let next: Map<string, number> | null = null;
     for (const row of list.querySelectorAll<HTMLElement>("[data-row-id]")) {
       const h = row.offsetHeight;
       const id = row.dataset.rowId;
       if (!id || h <= 0) continue; // not laid out (tests, hidden)
-      if (Math.abs((heights.current.get(id) ?? -1) - h) > 0.5) {
-        heights.current.set(id, h);
-        changed = true;
+      if (Math.abs((heights.get(id) ?? -1) - h) > 0.5) {
+        next ??= new Map(heights);
+        next.set(id, h);
       }
     }
-    if (changed) {
-      writeViewCache(heightsKey, heights.current);
-      setHeightsVersion((v) => v + 1);
+    if (next) {
+      writeViewCache(heightsKey, next);
+      setHeights(next);
     }
-  });
+  }, [jobs, range, heights, heightsKey]);
 
   // New rows (load more, filters) or new heights: make sure the window still covers the viewport.
   useLayoutEffect(() => {
