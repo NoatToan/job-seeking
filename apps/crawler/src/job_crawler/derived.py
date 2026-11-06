@@ -7,13 +7,14 @@ jobs (backfill after a rule change: `python -m job_crawler --recompute-derived`)
 - `timezones`,
   `timezone_source` the zone(s) the job works in (timezones.py)
 - `countries`       ISO codes of the countries the job is in / open to, for the country filter
+- `tech_stack`      technologies the job asks for (techstack.py), for icons and the tech filter
 """
 
 from typing import Any
 
-from job_crawler import eligibility, timezones
+from job_crawler import eligibility, techstack, timezones
 
-DERIVED_COLUMNS = ("open_to", "timezones", "timezone_source", "countries")
+DERIVED_COLUMNS = ("open_to", "timezones", "timezone_source", "countries", "tech_stack")
 
 _ISO = set(eligibility.COUNTRIES.values())
 
@@ -39,6 +40,7 @@ def derive(
     description: str | None,
     remote: bool,
     raw: dict[str, Any] | None,
+    tags: list[str] | None = None,
 ) -> dict[str, Any]:
     extra = structured_locations(raw)
     zones, zone_source = timezones.job_timezones(location, description, extra, raw)
@@ -47,4 +49,5 @@ def derive(
         "timezones": zones,
         "timezone_source": zone_source,
         "countries": job_countries(location, extra),
+        "tech_stack": techstack.tech_stack(title, description, tags),
     }

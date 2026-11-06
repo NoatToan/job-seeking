@@ -9,6 +9,14 @@ from job_crawler import eligibility
 
 # "Jobs in / open to this country" (ISO code param), on `jobs.countries` (migration 017).
 COUNTRY_CLAUSE = "countries @> ARRAY[%s]::text[]"
+# "Jobs that mention all of these technologies" (list param), on `jobs.tech_stack` (migration 018).
+TECH_CLAUSE = "tech_stack @> %s::text[]"
+
+
+def parse_tech(tech: str | None) -> list[str]:
+    """ "react, nextjs" -> ["react", "nextjs"] (lowercased, de-duplicated, at most 10)."""
+    ids = [t.strip().lower() for t in (tech or "").split(",") if t.strip()]
+    return list(dict.fromkeys(ids))[:10]
 
 
 def accepted_open_to_tokens(candidate_country: str | None) -> list[str]:

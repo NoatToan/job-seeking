@@ -7,7 +7,8 @@ from typing import Any
 
 JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
-    " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source"
+    " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source,"
+    " tech_stack"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
@@ -55,6 +56,7 @@ def job_dto(row: tuple) -> dict[str, Any]:
         first_seen_at,
         timezones,
         timezone_source,
+        tech_stack,
     ) = row
     return {
         "id": str(id_),
@@ -74,6 +76,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         # Working time zone(s): IANA names or "UTC±hh:mm" (job_crawler.timezones); null = unknown.
         "timezones": list(timezones) if timezones is not None else None,
         "timezoneSource": timezone_source,
+        # Tech ids found in the posting (job_crawler.techstack), e.g. ["nextjs", "react"].
+        "techStack": list(tech_stack or []),
     }
 
 

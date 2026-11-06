@@ -26,7 +26,7 @@ from ujc_api.dto import (
     job_sort_key,
     source_dto,
 )
-from ujc_api.feed_query import COUNTRY_CLAUSE
+from ujc_api.feed_query import COUNTRY_CLAUSE, TECH_CLAUSE, parse_tech
 
 router = APIRouter(tags=["jobs"])
 
@@ -78,6 +78,7 @@ def list_jobs(
     source: str | None = None,
     remote: bool | None = None,
     country: str | None = None,
+    tech: str | None = None,
     user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -114,6 +115,10 @@ def list_jobs(
         clauses.append(COUNTRY_CLAUSE)
         params.append(country.upper())
 
+    if tech_ids := parse_tech(tech):
+        clauses.append(TECH_CLAUSE)
+        params.append(tech_ids)
+
     if cursor_state:
         cursor_t, cursor_i = cursor_state
         clauses.append("(coalesce(posted_at, first_seen_at), id) < (%s, %s)")
@@ -140,13 +145,21 @@ def list_jobs(
 @router.get("/api/jobs/facets")
 def get_job_facets(conn: psycopg.Connection = Depends(get_conn)) -> dict:
     """Filter options with job counts, most common first: `countries` (ISO codes from
-    `jobs.countries`). Public, like the catalogue itself."""
+    `jobs.countries`) and `tech` (ids from `jobs.tech_stack`). Public, like the catalogue."""
     rows = conn.execute(
         "SELECT c, count(*) FROM jobs, unnest(countries) AS c"
         " WHERE source != %s GROUP BY c ORDER BY count(*) DESC, c",
         (_EXCLUDED_SOURCES,),
     ).fetchall()
-    return {"countries": [{"code": code, "count": count} for code, count in rows]}
+    tech_rows = conn.execute(
+        "SELECT t, count(*) FROM jobs, unnest(tech_stack) AS t"
+        " WHERE source != %s GROUP BY t ORDER BY count(*) DESC, t",
+        (_EXCLUDED_SOURCES,),
+    ).fetchall()
+    return {
+        "countries": [{"code": code, "count": count} for code, count in rows],
+        "tech": [{"id": tech_id, "count": count} for tech_id, count in tech_rows],
+    }
 
 
 @router.get("/api/jobs/{job_id}")
