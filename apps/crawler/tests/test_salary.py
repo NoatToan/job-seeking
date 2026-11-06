@@ -144,3 +144,24 @@ def test_display_round_trip():
 )
 def test_yearly(salary, yearly):
     assert salary.yearly() == yearly
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Plus a $1,000 annual learning stipend",
+        "We offer a $500 home office setup budget",
+        "$300 per day per diem when travelling",
+        "Annual wellness allowance of $1,200",
+        "A $2,000 signing bonus",
+        "Get $1,000 per year in training credits",
+    ],
+)
+def test_perks_are_not_salary(text):
+    assert parse_salary(text) is None
+
+
+def test_salary_still_found_next_to_a_perk():
+    found = parse_salary("Salary $120,000 - $140,000 per year, plus a $1,000 learning budget")
+    assert found is not None
+    assert (found.min, found.max) == (120000, 140000)
