@@ -40,7 +40,8 @@
     "endPublic": "You've reached the end — new jobs are crawled every day.",
     "endFeed": "You've reached the end of your feed. New jobs arrive every morning.",
     "jobsAriaLabel": "Jobs",
-    "jobDetailsAriaLabel": "Job details"
+    "jobDetailsAriaLabel": "Job details",
+    "loadingJob": "Loading the job…"
   },
   "detailPanel": {
     "errorTitle": "We couldn't load the full description"

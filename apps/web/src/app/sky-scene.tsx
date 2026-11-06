@@ -2,6 +2,14 @@ import { useId } from "react";
 import { cx } from "@ujc/ui";
 import type { DayPhase } from "@/lib/work-hours";
 
+/** Literal class names, so Tailwind sees and generates every sky-* utility. */
+const SKY_CLASS: Record<DayPhase, string> = {
+  dawn: "sky-dawn",
+  day: "sky-day",
+  dusk: "sky-dusk",
+  night: "sky-night",
+};
+
 /**
  * Weather-app style corner scene for a job row: the sky at the time the job's hours fall on the
  * viewer's clock — sun and clouds by day, a low sun at dawn and dusk, moon and stars at night.
@@ -30,7 +38,7 @@ export function SkyScene({
           "h-56 w-[26rem] max-w-full [mask-image:radial-gradient(120%_100%_at_100%_0%,black_45%,transparent_80%)]",
         size === "panel" && "top-0 right-0",
         size === "panel-bleed" && "-top-6 -right-6 rounded-tr-[22px]",
-        `sky-${phase}`,
+        SKY_CLASS[phase],
         className,
       )}
     >

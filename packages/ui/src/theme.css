@@ -44,6 +44,7 @@
   --ujc-sky-moon: #fef3c7;
   --ujc-sky-moon-glow: rgb(254 243 199 / 0.22);
   --ujc-sky-star: #ffffff;
+  --ujc-brand-gradient: linear-gradient(135deg, #fb923c 0%, #f43f5e 55%, #a855f7 100%);
   --ujc-sky-scrim: rgb(0 0 0 / 0.06);
 
   /* Backgrounds (systemBackground family, warmed 2-3% toward the tint) */
@@ -338,6 +339,8 @@
   --animate-toast-in: ujc-toast-in 300ms var(--ease-spring) both;
   --animate-shimmer: ujc-shimmer 1.4s ease-in-out infinite;
   --animate-twinkle: ujc-twinkle 3.2s ease-in-out infinite;
+  --animate-sun-rise: ujc-sun-rise 1.2s ease-in-out infinite;
+  --animate-ray: ujc-ray 1.2s ease-in-out infinite;
   --animate-detail-in: ujc-detail-in 280ms var(--ease-spring) both;
 
   @keyframes ujc-fade-in {
@@ -367,6 +370,14 @@
       opacity: 0;
       transform: translateX(12px);
     }
+  }
+  @keyframes ujc-sun-rise {
+    0%, 100% { transform: translateY(3px); opacity: 0.55; }
+    50% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes ujc-ray {
+    0%, 100% { opacity: 0.2; }
+    40%, 60% { opacity: 1; }
   }
   @keyframes ujc-twinkle {
     0%, 100% { opacity: 1; }

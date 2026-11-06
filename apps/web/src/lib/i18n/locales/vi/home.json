@@ -39,7 +39,8 @@
     "endPublic": "Bạn đã xem hết — việc làm mới được thu thập mỗi ngày.",
     "endFeed": "Bạn đã xem hết nguồn việc làm của mình. Việc làm mới xuất hiện mỗi sáng.",
     "jobsAriaLabel": "Việc làm",
-    "jobDetailsAriaLabel": "Chi tiết việc làm"
+    "jobDetailsAriaLabel": "Chi tiết việc làm",
+    "loadingJob": "Đang tải việc làm…"
   },
   "detailPanel": {
     "errorTitle": "Không thể tải đầy đủ mô tả công việc"

@@ -10,6 +10,7 @@ import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
+import { LogoLoader } from "@/app/logo-loader";
 import { SkyScene } from "@/app/sky-scene";
 import { useWorkHoursPhase, WorkHoursBadge } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
@@ -33,6 +34,9 @@ const BOTTOM_GAP_PX = 16;
 /** Wait for the scroll to settle before fetching a description, so flicking past 30 rows
  * doesn't fire 30 requests (the header still updates instantly from the list row). */
 const DETAIL_FETCH_DELAY_MS = 150;
+/** While the list is being scrolled, the detail panel waits this long after the last scroll
+ * event before switching to the newly selected job (fast scrolling would re-render it per row). */
+const SCROLL_SETTLE_MS = 280;
 
 const NO_TERMS: readonly string[] = [];
 /** Load the next page once the user has scrolled through this share of the list (Slack: "load
@@ -169,6 +173,13 @@ export function JobBrowser({
   }, [selectedId]);
 
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null;
+  // Scroll debounce for the detail panel: while the list scrolls, the panel keeps the job it
+  // showed when scrolling started (with the logo loader over it) and catches up once scrolling
+  // settles. Clicks and arrow keys are not scrolls, so they switch at once.
+  const [scrolling, setScrolling] = useState(false);
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const panelJob = scrolling ? (jobs.find((j) => j.id === heldId) ?? selected) : selected;
+  const panelPending = scrolling && panelJob?.id !== selected?.id;
   const viewed = useViewedJobs();
   const { country: basedIn } = useBasedIn();
   const scrollKey = `list-scroll:${stateKey}`;
@@ -306,7 +317,19 @@ export function JobBrowser({
     const el = scrollRef.current;
     if (!el) return;
     let frame = 0;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    let active = false;
     const onScroll = () => {
+      if (!active) {
+        active = true;
+        setHeldId(selectedRef.current);
+        setScrolling(true);
+      }
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        active = false;
+        setScrolling(false);
+      }, SCROLL_SETTLE_MS);
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         writeViewCache(scrollKey, el.scrollTop);
@@ -323,6 +346,7 @@ export function JobBrowser({
     window.addEventListener("scroll", onWindowScroll, { passive: true });
     window.addEventListener("resize", onWindowScroll);
     return () => {
+      clearTimeout(settle);
       cancelAnimationFrame(frame);
       cancelAnimationFrame(windowFrame);
       el.removeEventListener("scroll", onScroll);
@@ -444,12 +468,18 @@ export function JobBrowser({
       <aside
         aria-label={t("list.jobDetailsAriaLabel")}
         aria-live="polite"
-        className="hidden min-h-0 overflow-hidden rounded-[22px] border border-separator bg-background shadow-raised lg:flex lg:flex-col"
+        aria-busy={panelPending || undefined}
+        className="relative hidden min-h-0 overflow-hidden rounded-[22px] border border-separator bg-background shadow-raised lg:flex lg:flex-col"
       >
+        {panelPending ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-[2px] animate-fade-in">
+            <LogoLoader label={t("list.loadingJob")} />
+          </div>
+        ) : null}
         {/* The border + radius live on the <aside>, the scrolling on this inner box, so the scrollbar
             sits inside the rounded frame instead of painting over its border. */}
         <div className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
-          {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
+          {wide && panelJob ? <DetailPanel job={panelJob} signedIn={signedIn} highlight={highlight} /> : null}
         </div>
       </aside>
     </div>
