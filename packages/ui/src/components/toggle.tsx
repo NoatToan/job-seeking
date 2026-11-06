@@ -23,7 +23,7 @@ export function Toggle({ checked, onChange, label, className, disabled, ...rest 
       onClick={() => onChange(!checked)}
       className={cx(
         "relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full p-0.5 transition-colors duration-300 ease-spring focus-ring",
-        "before:absolute before:-inset-y-1.5 before:inset-x-0 before:content-['']",
+        "before:absolute before:-inset-y-2 before:inset-x-0 before:content-['']",
         checked ? "bg-success" : "bg-fill ring-1 ring-inset ring-separator",
         disabled && "cursor-not-allowed opacity-40",
         className,

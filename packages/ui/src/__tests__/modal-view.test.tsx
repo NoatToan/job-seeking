@@ -86,6 +86,27 @@ describe("ModalView (imperative handle)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("a second close() while the first is popping its entry is ignored (double tap on Apply)", async () => {
+    const onApply = vi.fn();
+    render(<Harness onApply={onApply} />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onApply).not.toHaveBeenCalled();
+    await waitFor(() => expect(onApply).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
+  it("Esc that a field already handled does not close the view", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    dialog.addEventListener("keydown", (e) => e.preventDefault(), { once: true });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Filters" })).toBeTruthy();
+  });
+
   it("the system Back gesture dismisses it", async () => {
     const onDismiss = vi.fn();
     render(<Harness onDismiss={onDismiss} />);

@@ -75,6 +75,8 @@ export function Sheet({
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // A field already used Esc (SearchField clears itself): don't also close or step back.
+        if (e.defaultPrevented) return;
         e.stopPropagation();
         (onEscapeRef.current ?? onCloseRef.current)();
         return;
@@ -133,7 +135,7 @@ export function Sheet({
         {!isAlert ? (
           <span aria-hidden className="mx-auto mt-2 h-1.5 w-9 shrink-0 rounded-full bg-fill sm:hidden" />
         ) : null}
-        <header className={cx("flex items-start gap-3 px-5 pt-4", isAlert && "text-center")}>
+        <header className={cx("flex gap-3 px-5 pt-4", leading ? "items-center" : "items-start", isAlert && "text-center")}>
           {leading}
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-headline text-label">
@@ -159,7 +161,7 @@ export function Sheet({
           // Without a footer the body is the sheet's last block: keep its end above the home indicator.
           <div
             className={cx(
-              "min-h-0 flex-1 overflow-y-auto px-5 pt-4",
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4",
               footer ? "pb-4" : "pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))]",
             )}
           >

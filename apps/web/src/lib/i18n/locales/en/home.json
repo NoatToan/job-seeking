@@ -116,12 +116,11 @@
       "unreadOnly": "Unread jobs only",
       "tech": "Tech stack",
       "techAny": "Any",
-      "techCount_one": "{{count}} selected",
-      "techCount_other": "{{count}} selected",
       "show": "Show jobs",
       "reset": "Reset",
       "back": "Back",
-      "done": "Done"
+      "done": "Done",
+      "zoneError": "We couldn't save your time zone. It's set on this device; try again later to save it to your account."
     }
   },
   "country": {

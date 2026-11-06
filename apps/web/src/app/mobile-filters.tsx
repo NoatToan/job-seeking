@@ -19,6 +19,7 @@ import {
   SlidersIcon,
   TechIcon,
   Toggle,
+  useToast,
   useUiStrings,
 } from "@ujc/ui";
 import type { ModalViewHandle } from "@ujc/ui";
@@ -43,7 +44,8 @@ const DEFAULT_HOURS: [number, number] = [9, 17];
 
 function valuesOf(f: JobFilterState): JobFilterValues {
   return {
-    q: f.q,
+    // What the search pill shows, even if its 300 ms debounce hasn't reached the URL yet.
+    q: f.draftQ,
     source: f.source,
     remoteOnly: f.remoteOnly,
     country: f.country,
@@ -75,7 +77,8 @@ const EMPTY: JobFilterValues = {
 export function MobileFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const { t } = useTranslation("home");
   const modalRef = useRef<FilterModalHandle>(null);
-  const count = f.activeCount + (f.hiddenIds !== null ? 1 : 0);
+  // The search pill is visible next to the button, so the badge counts only what is inside the view.
+  const count = f.activeCount - (f.q ? 1 : 0) + (f.hiddenIds !== null ? 1 : 0);
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2">
@@ -112,12 +115,25 @@ export function MobileFilterBar({ filters: f, sources, extra }: JobFilterBarProp
   );
 }
 
-/** A 44px option chip (the kit's `Chip` is 32px, sized for pointer screens). */
-function Choice({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
+/** A 44px option chip (the kit's `Chip` is 32px, sized for pointer screens). `radio` = one of a
+ * set (inside a `role="radiogroup"`); otherwise a toggle (several may be on). */
+function Choice({
+  selected,
+  onClick,
+  radio = false,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  radio?: boolean;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
-      aria-pressed={selected}
+      role={radio ? "radio" : undefined}
+      aria-checked={radio ? selected : undefined}
+      aria-pressed={radio ? undefined : selected}
       onClick={onClick}
       className={cx(
         "inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-subheadline font-medium transition-colors duration-200 focus-ring",
@@ -173,10 +189,11 @@ function OptionRow({ selected, onPick, hint, icon, children }: {
   children: ReactNode;
 }) {
   return (
-    <li>
+    <li role="none">
       <button
         type="button"
-        aria-pressed={selected}
+        role="radio"
+        aria-checked={selected}
         onClick={onPick}
         className={cx(
           "flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left text-body transition-colors duration-150 hover:bg-fill-tertiary focus-ring",
@@ -213,6 +230,7 @@ export function FilterModal({
   const postedOptions = usePostedOptions();
   const hourPresets = useHourPresets();
   const { zone, setZone } = useUserTimezone();
+  const toast = useToast();
   const { data: facets } = useApi(getJobFacets, [], { cacheKey: "facets" });
   const view = useRef<ModalViewHandle>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -226,7 +244,7 @@ export function FilterModal({
   useImperativeHandle(ref, () => ({ open: () => view.current?.open(), close: () => view.current?.close() }), []);
 
   const go = (next: Step) => {
-    setLastStep(step);
+    setLastStep(next);
     setSearch("");
     setStep(next);
   };
@@ -263,13 +281,17 @@ export function FilterModal({
   const apply = () =>
     view.current?.close(() => {
       f.apply(draft);
-      if (draftZone !== zone) void setZone(draftZone).catch(() => {});
+      if (draftZone !== zone) {
+        void setZone(draftZone).catch(() =>
+          toast.show({ tone: "error", title: t("filters.mobile.zoneError") }),
+        );
+      }
     });
 
   let body: ReactNode;
   if (step === "source") {
     body = (
-      <ul className="flex flex-col">
+      <ul role="radiogroup" aria-label={titles[step]} className="flex flex-col">
         {["", ...sources].map((id) => (
           <OptionRow
             key={id || "all"}
@@ -293,7 +315,7 @@ export function FilterModal({
     body = (
       <div className="flex flex-col gap-2">
         <SearchField value={search} onChange={setSearch} label={t("country.searchPlaceholder")} placeholder={t("country.searchPlaceholder")} />
-        <ul className="flex flex-col">
+        <ul role="radiogroup" aria-label={titles[step]} className="flex flex-col">
           {options.length === 0 ? <li className="px-3 py-2 text-body text-label-secondary">{strings.noMatches}</li> : null}
           {options.map((c) => (
             <OptionRow
@@ -316,7 +338,7 @@ export function FilterModal({
     body = (
       <div className="flex flex-col gap-2">
         <SearchField value={search} onChange={setSearch} label={t("workHours.searchPlaceholder")} placeholder={t("workHours.searchPlaceholder")} />
-        <ul className="flex flex-col">
+        <ul role="radiogroup" aria-label={titles[step]} className="flex flex-col">
           {options.length === 0 ? <li className="px-3 py-2 text-body text-label-secondary">{strings.noMatches}</li> : null}
           {options.map((z) => {
             const offset = zoneOffsetMinutes(z);
@@ -398,9 +420,9 @@ export function FilterModal({
           </div>
         </Section>
         <Section title={t("filters.postedLabel")}>
-          <div role="group" aria-label={t("filters.postedLabel")} className="flex flex-wrap gap-2">
+          <div role="radiogroup" aria-label={t("filters.postedLabel")} className="flex flex-wrap gap-2">
             {postedOptions.map((o) => (
-              <Choice key={o.value || "any"} selected={draft.posted === o.value} onClick={() => set({ posted: o.value })}>
+              <Choice key={o.value || "any"} radio selected={draft.posted === o.value} onClick={() => set({ posted: o.value })}>
                 {o.label}
               </Choice>
             ))}
@@ -410,14 +432,14 @@ export function FilterModal({
           <div className="rounded-card bg-background py-1">
             <SwitchRow label={t("filters.mobile.remoteOnly")} checked={draft.remoteOnly} onChange={(remoteOnly) => set({ remoteOnly })} />
           </div>
-          <div role="group" aria-label={t("filters.access.label")} className="flex flex-wrap gap-2">
-            <Choice selected={draft.access === ""} onClick={() => set({ access: "" })}>
+          <div role="radiogroup" aria-label={t("filters.access.label")} className="flex flex-wrap gap-2">
+            <Choice radio selected={draft.access === ""} onClick={() => set({ access: "" })}>
               {t("filters.access.any")}
             </Choice>
-            <Choice selected={draft.access === "open"} onClick={() => set({ access: "open" })}>
+            <Choice radio selected={draft.access === "open"} onClick={() => set({ access: "open" })}>
               {accessYou ? t("filters.access.open", { you: accessYou }) : t("filters.access.openWorldwide")}
             </Choice>
-            <Choice selected={draft.access === "confirmed"} onClick={() => set({ access: "confirmed" })}>
+            <Choice radio selected={draft.access === "confirmed"} onClick={() => set({ access: "confirmed" })}>
               {accessYou ? t("filters.access.confirmed", { you: accessYou }) : t("filters.access.confirmedWorldwide")}
             </Choice>
           </div>
@@ -445,10 +467,11 @@ export function FilterModal({
                   onChange={(v) => set({ hours: v })}
                   format={hourLabel}
                 />
-                <div className="flex flex-wrap gap-2">
+                <div role="radiogroup" aria-label={t("filters.hours.panelTitle")} className="flex flex-wrap gap-2">
                   {hourPresets.map((p) => (
                     <Choice
                       key={p.label}
+                      radio
                       selected={hours[0] === p.value[0] && hours[1] === p.value[1]}
                       onClick={() => set({ hours: p.value })}
                     >
@@ -478,7 +501,8 @@ export function FilterModal({
         <Section title={t("filters.mobile.reading")}>
           <div className="flex flex-col gap-1 rounded-card bg-background py-1">
             <SwitchRow label={t("filters.mobile.unreadOnly")} checked={draft.unreadOnly} onChange={(unreadOnly) => set({ unreadOnly })} />
-            <div className="px-3 pb-2">
+            {/* Its "Clear" is a text link on desktop; here it gets a 44px row. */}
+            <div className="px-3 pb-1 [&_button]:min-h-11">
               <ReadHistory />
             </div>
           </div>
@@ -535,6 +559,10 @@ export function FilterModal({
         ) : undefined
       }
     >
+      {/* The title changes in place when a step opens: say so (the dialog name isn't re-read). */}
+      <p aria-live="polite" className="sr-only">
+        {step === "list" ? "" : titles[step]}
+      </p>
       <div ref={bodyRef}>{body}</div>
     </ModalView>
   );

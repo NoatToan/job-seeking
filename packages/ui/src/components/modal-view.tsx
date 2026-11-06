@@ -39,12 +39,16 @@ export function ModalView({ ref, onOpen, onDismiss, onBack, ...sheet }: ModalVie
   /** Our history entry is the current one. */
   const pushed = useRef(false);
   const after = useRef<(() => void) | null>(null);
+  /** A close is waiting for its `popstate`: a second `close()` (double tap on Apply) must not run
+   * `then` early, on the entry that is about to be popped. */
+  const closing = useRef(false);
   const latest = useRef({ onOpen, onDismiss, onBack });
   useEffect(() => {
     latest.current = { onOpen, onDismiss, onBack };
   });
 
   const finish = useCallback(() => {
+    closing.current = false;
     setOpen(false);
     const then = after.current;
     after.current = null;
@@ -53,8 +57,10 @@ export function ModalView({ ref, onOpen, onDismiss, onBack, ...sheet }: ModalVie
 
   const close = useCallback(
     (then?: () => void) => {
+      if (closing.current) return;
       after.current = then ?? null;
       if (pushed.current) {
+        closing.current = true;
         pushed.current = false;
         window.history.back(); // `popstate` below finishes the close
       } else {

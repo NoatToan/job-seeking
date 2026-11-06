@@ -114,12 +114,11 @@
       "unreadOnly": "Chỉ việc chưa đọc",
       "tech": "Công nghệ",
       "techAny": "Bất kỳ",
-      "techCount_one": "Đã chọn {{count}}",
-      "techCount_other": "Đã chọn {{count}}",
       "show": "Xem việc làm",
       "reset": "Đặt lại",
       "back": "Quay lại",
-      "done": "Xong"
+      "done": "Xong",
+      "zoneError": "Không lưu được múi giờ vào tài khoản. Múi giờ đã được đặt trên thiết bị này; hãy thử lại sau."
     }
   },
   "country": {

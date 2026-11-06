@@ -99,19 +99,23 @@ describe("phone filters (one modal view)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     const dialog = screen.getByRole("dialog", { name: "Filters" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Past 7 days" }));
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Past 7 days" }));
     fireEvent.click(within(dialog).getByRole("switch", { name: "Remote jobs only" }));
 
     // A sub-choice is a step inside the same dialog, not a popover.
     fireEvent.click(within(dialog).getByRole("button", { name: /^Country/ }));
     const countryStep = screen.getByRole("dialog", { name: "Country" });
-    fireEvent.click(await within(countryStep).findByRole("button", { name: /Germany/ }));
+    fireEvent.click(await within(countryStep).findByRole("radio", { name: /Germany/ }));
     expect(screen.getByRole("dialog", { name: "Filters" })).toBeTruthy();
+    // Focus comes back to the row that opened the step.
+    await waitFor(() => expect(document.activeElement?.getAttribute("data-step")).toBe("country"));
 
     // Nothing is applied while choosing.
     expect(onUrlUpdate).not.toHaveBeenCalled();
     expect(listCalls().length).toBe(callsBefore);
 
+    // A double tap on Apply still applies once.
+    fireEvent.click(screen.getByRole("button", { name: "Show jobs" }));
     fireEvent.click(screen.getByRole("button", { name: "Show jobs" }));
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalledTimes(1));
     const params = onUrlUpdate.mock.calls[0][0].searchParams;

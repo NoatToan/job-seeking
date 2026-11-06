@@ -149,11 +149,12 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
       <button
         ref={triggerRef}
         type="button"
-        aria-expanded={open}
-        aria-controls={panelId}
+        // Phones open a modal sheet (aria-haspopup); wider screens a disclosure popover.
+        aria-expanded={phone ? undefined : open}
+        aria-controls={phone ? undefined : panelId}
         aria-haspopup={phone ? "dialog" : undefined}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-9 items-center gap-2 rounded-full border border-separator bg-background/80 px-3.5 text-subheadline font-medium text-label transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-separator bg-background/80 px-3.5 pointer-coarse:h-11 text-subheadline font-medium text-label transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
       >
         <span aria-hidden className="relative flex size-2">
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-50 motion-reduce:hidden" />
