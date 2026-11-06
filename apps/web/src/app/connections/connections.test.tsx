@@ -1,20 +1,15 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type OnUrlUpdateFunction, withNuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ToastProvider } from "@ujc/ui";
 
-const { useSessionMock, searchParamsMock, replaceMock } = vi.hoisted(() => ({
+const { useSessionMock, searchParamsMock } = vi.hoisted(() => ({
   useSessionMock: vi.fn(),
   searchParamsMock: new URLSearchParams(),
-  replaceMock: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({
   useSession: () => useSessionMock(),
-}));
-
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => searchParamsMock,
-  useRouter: () => ({ replace: replaceMock }),
 }));
 
 import { Connections } from "./connections";
@@ -72,11 +67,12 @@ const CATALOGUE = [
   }),
 ];
 
-function renderConnections() {
+function renderConnections(onUrlUpdate?: OnUrlUpdateFunction) {
   return render(
     <ToastProvider>
       <Connections />
     </ToastProvider>,
+    { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString(), onUrlUpdate }) },
   );
 }
 
@@ -89,7 +85,6 @@ describe("Connections", () => {
       refresh: vi.fn(),
     });
     for (const key of Array.from(searchParamsMock.keys())) searchParamsMock.delete(key);
-    replaceMock.mockReset();
   });
 
   afterEach(() => {
@@ -170,9 +165,11 @@ describe("Connections", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    renderConnections();
+    const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
+    renderConnections(onUrlUpdate);
 
     expect(await screen.findByText("Upwork connected")).toBeTruthy();
-    expect(replaceMock).toHaveBeenCalledWith("/connections/");
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has("upwork")).toBe(false);
   });
 });

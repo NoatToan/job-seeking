@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { ApiError } from "@/lib/api";
 import { requestOtp, verifyOtp } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -30,8 +31,9 @@ function errorMessage(err: unknown): string {
 }
 
 export function LoginForm() {
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next");
+  // Only same-site paths: `?next=https://evil.example` must not turn sign-in into an open redirect.
+  const [nextParam] = useQueryState("next");
+  const next = nextParam?.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
   const router = useRouter();
   const { refresh } = useSession();
 

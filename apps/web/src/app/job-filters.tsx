@@ -5,7 +5,9 @@ import type { Job } from "@ujc/core";
 import type { ReactNode } from "react";
 import { sourceMeta, techInfo } from "@ujc/core";
 import { Chip, ClockIcon, cx, GlobeIcon, RangeSlider, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
+import { useQueryStates } from "nuqs";
 import { useViewState } from "@/lib/view-cache";
+import { jobFilterParsers, POSTED_DAYS } from "@/lib/url-state";
 import { CountryFilter } from "@/app/country-filter";
 import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
 import { TechFilter } from "@/app/tech-filter";
@@ -13,6 +15,8 @@ import { TimezonePicker } from "@/app/work-hours";
 import { clearViewed, useViewedJobs } from "@/lib/viewed";
 import { useUserTimezone } from "@/lib/user-timezone";
 import { jobFitsHours, shortZoneName } from "@/lib/work-hours";
+
+type PostedDays = (typeof POSTED_DAYS)[number];
 
 /** "Posted within" options (Slack request: 3 days, 7 days, 1 month). Value = days, "" = any. */
 export const POSTED_OPTIONS = [
@@ -54,43 +58,52 @@ export interface JobFilterState {
 }
 
 /**
- * Every home-page filter in one place, kept in the view cache under `prefix` so Back from a job
- * restores them. Shared by the public catalogue and the signed-in feed.
+ * Every home-page filter in one place. The applied filters live in the URL (nuqs,
+ * `jobFilterParsers`), so a filtered list can be shared or bookmarked and Back from a job restores
+ * it. Only the "Unread" snapshot stays in the view cache under `prefix`: it is a list of job ids
+ * read in this browser, not something to put in a link. Shared by the public catalogue and the
+ * signed-in feed.
  */
 export function useJobFilters(prefix: string): JobFilterState {
-  const [draftQ, setDraftQ] = useViewState(`${prefix}:draftQ`, "");
-  const [q, setQ] = useViewState(`${prefix}:q`, "");
-  const [source, setSource] = useViewState(`${prefix}:source`, "");
-  const [remoteOnly, setRemoteOnly] = useViewState(`${prefix}:remote`, false);
-  const [country, setCountry] = useViewState(`${prefix}:country`, "");
-  const [tech, setTech] = useViewState<string[]>(`${prefix}:tech`, []);
-  const [posted, setPosted] = useViewState(`${prefix}:posted`, "");
+  const [url, setUrl] = useQueryStates(jobFilterParsers);
+  const { q, source, remote: remoteOnly, country, tech, posted, hours } = url;
+  // The search box shows keystrokes at once; the URL (and the request) follow 300 ms later
+  // (SCREENS.md §4). An outside change of `q` (Clear, Back) resets the box.
+  const [draftQ, setDraftQ] = useState(q);
+  const [syncedQ, setSyncedQ] = useState(q);
+  if (q !== syncedQ) {
+    setSyncedQ(q);
+    setDraftQ(q);
+  }
   const [hidden, setHidden] = useViewState<string[] | null>(`${prefix}:hidden`, null);
-  const [hours, setHours] = useViewState<[number, number] | null>(`${prefix}:hours`, null);
   const viewed = useViewedJobs();
 
-  // Debounced search, 300 ms (SCREENS.md §4).
   useEffect(() => {
-    const timer = setTimeout(() => setQ(draftQ), 300);
+    if (draftQ === q) return;
+    const timer = setTimeout(() => {
+      setSyncedQ(draftQ);
+      void setUrl({ q: draftQ });
+    }, 300);
     return () => clearTimeout(timer);
-  }, [draftQ, setQ]);
+  }, [draftQ, q, setUrl]);
 
   const techKey = tech.join(",");
+  const postedValue = posted ?? "";
   return {
     draftQ,
     setDraftQ,
     q,
     source,
-    setSource,
+    setSource: (v) => void setUrl({ source: v }),
     remoteOnly,
-    setRemoteOnly,
+    setRemoteOnly: (v) => void setUrl({ remote: v }),
     country,
-    setCountry,
+    setCountry: (v) => void setUrl({ country: v }),
     tech,
-    setTech,
-    posted,
-    setPosted,
-    key: JSON.stringify([q, source, remoteOnly, country, techKey, posted]),
+    setTech: (v) => void setUrl({ tech: v }),
+    posted: postedValue,
+    setPosted: (v) => void setUrl({ posted: (POSTED_DAYS as readonly string[]).includes(v) ? (v as PostedDays) : null }),
+    key: JSON.stringify([q, source, remoteOnly, country, techKey, postedValue]),
     params: {
       q: q || undefined,
       source: source || undefined,
@@ -101,19 +114,13 @@ export function useJobFilters(prefix: string): JobFilterState {
     },
     activeCount: [q, source, remoteOnly, country, posted, hours].filter(Boolean).length + tech.length,
     hours,
-    setHours,
+    setHours: (v) => void setUrl({ hours: v }),
     hiddenIds: hidden ? new Set(hidden) : null,
     setUnreadOnly: (on: boolean) => setHidden(on ? [...viewed] : null),
     clear: () => {
       setDraftQ("");
-      setQ("");
-      setSource("");
-      setRemoteOnly(false);
-      setCountry("");
-      setTech([]);
-      setPosted("");
       setHidden(null);
-      setHours(null);
+      void setUrl(null);
     },
   };
 }

@@ -1,5 +1,6 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withNuqsTestingAdapter } from "nuqs/adapters/testing";
 
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
 
@@ -97,7 +98,7 @@ describe("LiveSearch", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<LiveSearch />);
+    render(<LiveSearch />, { wrapper: withNuqsTestingAdapter() });
 
     await waitFor(() => expect(screen.getByText("Go Developer")).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByText(/We Work Remotely: timed out/)).toBeTruthy();

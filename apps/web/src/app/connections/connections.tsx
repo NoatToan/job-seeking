@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryState } from "nuqs";
 import type { Platform } from "@ujc/core";
 import { DEEP_LINK_SITES } from "@ujc/core";
 import {
@@ -268,20 +268,19 @@ const UPWORK_TOAST: Record<string, { tone: "success" | "error" | "info"; title: 
 
 function ConnectionsInner() {
   const { data, loading, error, reload } = useApi(() => getPlatforms(), []);
-  const searchParams = useSearchParams();
-  const router = useRouter();
+  // `?upwork=connected|denied|…` is set by the Upwork OAuth callback: toast once, then drop it.
+  const [upworkResult, setUpworkResult] = useQueryState("upwork");
   const toast = useToast();
   const handledUpworkParam = useRef(false);
 
   useEffect(() => {
-    const upwork = searchParams.get("upwork");
-    if (!upwork || handledUpworkParam.current) return;
+    if (!upworkResult || handledUpworkParam.current) return;
     handledUpworkParam.current = true;
-    const entry = UPWORK_TOAST[upwork];
+    const entry = UPWORK_TOAST[upworkResult];
     if (entry) toast.show(entry);
-    router.replace("/connections/");
+    void setUpworkResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [upworkResult]);
 
   const items = data?.items ?? [];
   const publicPlatforms = items.filter((p) => p.kind === "public");

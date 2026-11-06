@@ -72,6 +72,11 @@ gcloud services enable analyticsadmin.googleapis.com analyticsdata.googleapis.co
 
 Then restart Claude Code and approve the servers in `/mcp`.
 
+## URL state and SEO (web)
+
+- Every query on a page lives in the URL via [nuqs](https://nuqs.dev) (`apps/web/src/lib/url-state.ts`): home filters `?q=&source=&country=&remote=&tech=&posted=&hours=9-17&view=all|matches`, live search `?q=&off=`, job page `?id=`, sign-in `?next=`. Links are shareable and Back restores them; updates replace the history entry instead of pushing one per keystroke.
+- SEO: per-page titles (`%s · JobSeeking`), description, Open Graph/Twitter card with a build-time preview image (`opengraph-image.tsx`), `robots.txt` and `sitemap.xml` (signed-in pages are `noindex` and disallowed), schema.org `WebSite` + `SearchAction` on `/` and `JobPosting` on job pages. `NEXT_PUBLIC_SITE_URL` sets the canonical domain (default: the Vercel URL).
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on push to `main`:
