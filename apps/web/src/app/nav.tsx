@@ -32,16 +32,6 @@ import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
 
-/** Blog tab icon (a newspaper; same 24px stroke style as the @ujc/ui icons). */
-function NewspaperIcon({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M4 5.5h13v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z" />
-      <path d="M17 9h3v9.5a2 2 0 0 1-4 0M7.5 9h6M7.5 12.5h6M7.5 16h4" />
-    </svg>
-  );
-}
-
 /** Roadmap tab icon (a folded map; same stroke style). */
 function RoadmapIcon({ size = 22 }: { size?: number }) {
   return (
