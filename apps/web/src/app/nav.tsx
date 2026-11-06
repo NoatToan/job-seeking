@@ -6,28 +6,24 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Avatar,
   BrandMark,
   BriefcaseIcon,
   buttonClasses,
   cx,
   DocumentIcon,
-  GroupedList,
   KanbanIcon,
-  LinkIcon,
-  ListRow,
-  SearchIcon,
-  Sheet,
   Skeleton,
   TabBar,
   TopNav,
+  UserIcon,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
 import { FeedbackWidget } from "@contributor-box/react";
 import { ContributorRoot } from "@/lib/contributor";
 import { LanguageSwitch } from "@/lib/i18n/provider";
-import { ThemePicker, ThemeToggle } from "@/lib/theme";
+import { ThemeToggle } from "@/lib/theme";
 import { GitHubLink } from "@/app/github-link";
+import { ProfileMenuButton, ProfileSheet, profileMenuKeyFor } from "@/app/profile-menu";
 import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
@@ -44,15 +40,17 @@ function RoadmapIcon({ size = 22 }: { size?: number }) {
 /** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
 export const BRAND_NAME = "JobSeeking";
 
-function useNavItems(): NavItem[] {
+/**
+ * The public places: the desktop top bar's only tabs, for everyone (signed in or not). Personal
+ * places live in the profile menu (`profile-menu.tsx`). To add a public page (e.g. Release notes),
+ * append it here and to `PUBLIC_ACTIVE_PREFIXES`; on phones it then shows in the signed-out tab bar
+ * and, signed in, in the profile sheet.
+ */
+export function usePublicNavItems(): NavItem[] {
   const { t, i18n } = useTranslation("common");
   return useMemo(
     () => [
       { key: "feed", label: t("nav.jobs"), href: "/", icon: <BriefcaseIcon size={22} /> },
-      { key: "search", label: t("nav.liveSearch"), href: "/search/", icon: <SearchIcon size={22} /> },
-      { key: "tracker", label: t("nav.tracker"), href: "/tracker/", icon: <KanbanIcon size={22} /> },
-      { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
-      { key: "connections", label: t("nav.connections"), href: "/connections/", icon: <LinkIcon size={22} /> },
       // Blog hidden from navigation for now (Tony, 2026-11-07): the daily blog crawl and the
       // /blog/ pages keep running and stay in the sitemap; only the links are gone. To bring it
       // back: { key: "blog", label: t("nav.blog"), href: "/blog/", icon: <NewspaperIcon /> },
@@ -64,122 +62,43 @@ function useNavItems(): NavItem[] {
   );
 }
 
-/** Nav items a signed-out visitor sees (their pages work without a session). */
-const PUBLIC_NAV_KEYS = new Set(["feed", "blog", "roadmap"]);
+/** Path prefix -> public nav key (exact "/" is "feed"). */
+const PUBLIC_ACTIVE_PREFIXES: ReadonlyArray<[string, string]> = [
+  ["/blog", "blog"],
+  ["/roadmap", "roadmap"],
+];
 
-function activeKeyFor(pathname: string): string {
-  if (pathname.startsWith("/search")) return "search";
-  if (pathname.startsWith("/tracker")) return "tracker";
-  if (pathname.startsWith("/cv")) return "cv";
-  if (pathname.startsWith("/connections")) return "connections";
-  if (pathname.startsWith("/blog")) return "blog";
-  if (pathname.startsWith("/roadmap")) return "roadmap";
+/** The tab/top-bar key for the page on screen: a public place, else a profile-menu place. */
+export function activeKeyFor(pathname: string): string {
   if (pathname === "/") return "feed";
-  return "";
+  const hit = PUBLIC_ACTIVE_PREFIXES.find(([prefix]) => pathname.startsWith(prefix));
+  return hit ? hit[1] : profileMenuKeyFor(pathname);
 }
 
+/** Phone tab bar, signed in: the most used places get a tab, everything else is in the sheet. */
+const PHONE_TAB_KEYS = ["tracker", "cv"] as const;
+
 /**
- * Avatar/initial trigger that opens an account Sheet with "Sign out". `variant="row"` renders
- * the name + email row used in the Sidebar footer; `variant="icon"` is a compact trigger for the
- * NavBar trailing slot on phones (the Sidebar footer already covers desktop).
+ * The phone NavBar slot many pages render (`<div className="md:hidden"><AccountMenu /></div>`).
+ * Signed out it is a "Sign in" button. Signed in it renders nothing: the tab bar's "Profile" tab
+ * opens the profile sheet, and a second avatar in every header would just repeat it.
+ * `variant="pill"` is the desktop "Sign in" pill.
  */
-export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "pill" }) {
-  const { me, signOut } = useSession();
+export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "pill" }) {
+  const { me } = useSession();
   const { t } = useTranslation("common");
-  const { t: tc } = useTranslation("contributor");
-  const [open, setOpen] = useState(false);
-
-  if (!me && variant === "pill") {
-    return (
-      <Link href="/login/" className={buttonClasses({ variant: "tinted", size: "sm", className: "rounded-full px-4" })}>
-        {t("nav.signIn")}
-      </Link>
-    );
-  }
-
-  if (!me) {
-    return (
-      <Link
-        href="/login/"
-        className={buttonClasses({ variant: variant === "row" ? "gray" : "tinted", size: "sm", fullWidth: variant === "row" })}
-      >
-        {t("nav.signIn")}
-      </Link>
-    );
-  }
-
+  if (me) return null;
   return (
-    <>
-      {variant === "pill" ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={t("nav.accountOf", { email: me.user.email })}
-          className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
-        >
-          <Avatar name={me.user.email} size={30} />
-          <span className="max-w-[12rem] truncate text-subheadline font-medium text-label">{me.user.email}</span>
-        </button>
-      ) : variant === "row" ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex w-full items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
-        >
-          <Avatar name={me.user.email} size={32} />
-          <span className="min-w-0 flex-1 truncate text-subheadline font-semibold text-label">
-            {me.user.email}
-          </span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label={t("nav.accountOf", { email: me.user.email })}
-          className="relative rounded-full focus-ring"
-        >
-          <Avatar name={me.user.email} size={32} />
-        </button>
-      )}
-      <Sheet open={open} onClose={() => setOpen(false)} title={t("nav.account")} description={me.user.email}>
-        <GroupedList header={t("theme.label")} className="mb-5">
-          <li className="p-3">
-            <ThemePicker className="w-full" />
-          </li>
-        </GroupedList>
-        <GroupedList label={t("nav.accountOptions")}>
-          <ListRow
-            title={t("nav.accountPrivacy")}
-            href="/account/"
-            linkAs={Link}
-            onClick={() => setOpen(false)}
-          />
-          <ListRow title={t("nav.roadmap")} href="/roadmap/" linkAs={Link} onClick={() => setOpen(false)} />
-          <ListRow
-            title={tc("nav.contribute")}
-            href="/contribute/"
-            linkAs={Link}
-            onClick={() => setOpen(false)}
-          />
-          {me.user.role === "admin" ? (
-            <ListRow
-              title={tc("nav.reviewFeedback")}
-              href="/admin/feedback/"
-              linkAs={Link}
-              onClick={() => setOpen(false)}
-            />
-          ) : null}
-          <ListRow
-            title={t("nav.signOut")}
-            destructive
-            onClick={() => {
-              setOpen(false);
-              void signOut();
-            }}
-          />
-        </GroupedList>
-      </Sheet>
-    </>
+    <Link
+      href="/login/"
+      className={buttonClasses({
+        variant: "tinted",
+        size: "sm",
+        className: variant === "pill" ? "rounded-full px-4" : undefined,
+      })}
+    >
+      {t("nav.signIn")}
+    </Link>
   );
 }
 
@@ -187,16 +106,22 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
  * App shell: TopNav (>= md) or TabBar (< md), hidden on `/login` and `/design` (both are their
  * own self-contained layouts). Each page renders its own `NavBar`.
  *
- * Signed-in: every nav item. Signed out: only on a public route (home, job detail) — everywhere
- * else, the chrome stays hidden while the page's own content (e.g. `RequireAuth`) handles the
- * redirect to `/login`, same as before this page became reachable signed out. The nav itself
- * only ever shows the "Jobs" item (now the public jobs page) plus "Sign in" — Search/Tracker/CV/
- * Connections all need a session, so they would just be dead ends for an anonymous visitor.
+ * Information architecture (docs/DECISIONS.md, "Navigation: public tabs + profile menu"):
+ *  - Desktop top bar: the public places only (Jobs, Roadmap; `usePublicNavItems`), then GitHub,
+ *    theme, language and either "Sign in" or the avatar that opens the profile menu with every
+ *    personal place. The avatar gets an active ring while one of those places is on screen.
+ *  - Phone tab bar, signed in: Jobs, Tracker, CV, Profile (opens the profile sheet: For you, Live
+ *    search, Connections, Contribute, Roadmap, Edit profile, Account, theme, Sign out). Signed
+ *    out: Jobs, Roadmap, Sign in.
+ *
+ * Signed out, the chrome shows only on a public route (home, job detail): everywhere else the
+ * page's own content (e.g. `RequireAuth`) redirects to `/login`.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading } = useSession();
   const { t } = useTranslation("common");
-  const allItems = useNavItems();
+  const publicItems = usePublicNavItems();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const pathname = usePathname() ?? "/";
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
@@ -206,12 +131,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Public routes always end up with the TopNav; private ones do for the signed-in visitor who
   // stays (a signed-out one is redirected to the bare /login anyway).
   const chromePending = loading && !bareRoute;
-  // Signed out: the public pages only (jobs, blog, roadmap).
-  const navItems = me ? allItems : allItems.filter((item) => PUBLIC_NAV_KEYS.has(item.key));
-  // The phone tab bar keeps its five signed-in tabs; the blog and the roadmap stay reachable from
-  // the TopNav (>= md) and the account sheet (phones).
-  const tabItems = me ? navItems.filter((item) => item.key !== "blog" && item.key !== "roadmap") : navItems;
   const activeKey = activeKeyFor(pathname);
+  // Phones: the tabs with their own slot; any other active place lights up the Profile tab.
+  const phoneTabKeys = new Set<string>(["feed", ...PHONE_TAB_KEYS]);
+  const sheetExtras = publicItems.filter((item) => !phoneTabKeys.has(item.key));
+  const tabItems: NavItem[] = me
+    ? [
+        publicItems[0],
+        { key: "tracker", label: t("nav.tracker"), href: "/tracker/", icon: <KanbanIcon size={22} /> },
+        { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
+        {
+          key: "profile",
+          label: t("nav.profile"),
+          href: "/profile/",
+          icon: <UserIcon size={22} />,
+          onSelect: () => setSheetOpen(true),
+        },
+      ]
+    : [...publicItems, { key: "signIn", label: t("nav.signIn"), href: "/login/", icon: <UserIcon size={22} /> }];
+  const tabActiveKey = !me || phoneTabKeys.has(activeKey) || activeKey === "" ? activeKey : "profile";
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
   // desktop for pushed screens too.
@@ -239,7 +177,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
       {showChrome ? (
         <TopNav
-          items={navItems}
+          items={publicItems}
           activeKey={activeKey}
           linkAs={Link}
           brand={
@@ -252,7 +190,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <GitHubLink />
               <ThemeToggle />
               <LanguageSwitch />
-              <AccountMenu variant="pill" />
+              {me ? <ProfileMenuButton currentKey={activeKey} /> : <AccountMenu variant="pill" />}
             </div>
           }
         />
@@ -269,7 +207,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="flex-1">{children}</div>
       </div>
-      {showTabBar ? <TabBar items={tabItems} activeKey={activeKey} linkAs={Link} /> : null}
+      {showTabBar ? <TabBar items={tabItems} activeKey={tabActiveKey} linkAs={Link} /> : null}
+      {me ? (
+        <ProfileSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          currentKey={activeKey}
+          exclude={PHONE_TAB_KEYS}
+          extraItems={sheetExtras}
+        />
+      ) : null}
       {/* Contributor feedback button (D14) wherever the chrome shows; lifted above the phone tab
           bar or the job page's Apply bar so it never covers them. */}
       {showChrome ? (

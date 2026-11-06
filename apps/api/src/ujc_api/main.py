@@ -31,6 +31,7 @@ from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
 from ujc_api.routers import platforms as platforms_router
+from ujc_api.routers import profile as profile_router
 from ujc_api.routers import runner as runner_router
 from ujc_api.routers import runners as runners_router
 from ujc_api.routers import search as search_router
@@ -180,6 +181,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(auth_router.router)
     app.include_router(me_router.router)
+    app.include_router(profile_router.router)
     app.include_router(cvs_router.router)
     app.include_router(feed_router.router)
     app.include_router(jobs_router.router)

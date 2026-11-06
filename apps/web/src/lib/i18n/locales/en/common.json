@@ -75,7 +75,15 @@
     "accountOptions": "Account options",
     "accountPrivacy": "Account & privacy",
     "signOut": "Sign out",
-    "roadmap": "Roadmap"
+    "roadmap": "Roadmap",
+    "profile": "Profile",
+    "forYou": "For you",
+    "editProfile": "Edit profile",
+    "profileMenu": "Profile menu",
+    "openProfileMenu": "Profile menu for {{name}}",
+    "menuJobSearch": "Your job search",
+    "menuCommunity": "Community",
+    "menuAccount": "Account"
   },
   "loading": "Loading…",
   "tryAgain": "Try again",

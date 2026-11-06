@@ -73,6 +73,8 @@ export interface ListRowProps {
   /** Link component (e.g. Next `Link`). Default "a". */
   linkAs?: ElementType;
   destructive?: boolean;
+  /** The page this row links to is the one on screen: `aria-current="page"` plus a tint dot. */
+  current?: boolean;
 }
 
 export function ListRow({
@@ -86,6 +88,7 @@ export function ListRow({
   onClick,
   linkAs: LinkAs = "a",
   destructive,
+  current,
 }: ListRowProps) {
   const interactive = Boolean(href || onClick);
   const content = (
@@ -103,10 +106,18 @@ export function ListRow({
         </span>
       ) : null}
       <span className="flex min-w-0 flex-1 flex-col py-0.5 text-left">
-        <span className={cx("truncate text-body", destructive ? "text-danger-ink" : "text-label")}>{title}</span>
+        <span
+          className={cx(
+            "truncate text-body",
+            destructive ? "text-danger-ink" : current ? "font-semibold text-tint-ink" : "text-label",
+          )}
+        >
+          {title}
+        </span>
         {subtitle ? <span className="truncate text-footnote text-label-secondary">{subtitle}</span> : null}
       </span>
       {detail ? <span className="shrink-0 text-body text-label-secondary">{detail}</span> : null}
+      {current ? <span aria-hidden className="size-2 shrink-0 rounded-full bg-tint" /> : null}
       {accessory ?? (href && !destructive ? (
         <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
       ) : null)}
@@ -125,7 +136,7 @@ export function ListRow({
       )}
     >
       {href ? (
-        <LinkAs href={href} className={rowClass}>
+        <LinkAs href={href} aria-current={current ? "page" : undefined} className={rowClass}>
           {content}
         </LinkAs>
       ) : onClick ? (
