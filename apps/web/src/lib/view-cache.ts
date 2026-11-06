@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { BUILD_ID } from "./build-id";
 
 /**
  * In-memory view cache for client-side navigation (Slack request — "going into a page and back
@@ -11,8 +12,14 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
  *
  * Module-level on purpose: it survives unmounts but not a full page reload, and never persists
  * personal data to storage. `clearViewCache()` runs on sign-out.
+ *
+ * Versioned by build: the store belongs to the deployment whose API last answered. When a
+ * long-lived tab sees a different `X-Build-Id` on an API response (a deploy went out), everything
+ * cached is dropped (`noteServerBuild`, called by `apiFetch`), so screens refetch from the new
+ * deployment instead of showing data fetched by the old one.
  */
 const store = new Map<string, { value: unknown; at: number }>();
+let storeBuild: string = BUILD_ID;
 
 /** Entries older than this are treated as missing (lists get refetched from page 1). */
 export const VIEW_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
@@ -33,6 +40,31 @@ export function writeViewCache<T>(key: string, value: T): void {
 
 export function clearViewCache(): void {
   store.clear();
+}
+
+/** The build id the cached entries belong to (tests / diagnostics). */
+export function viewCacheBuild(): string {
+  return storeBuild;
+}
+
+/**
+ * Called with the `X-Build-Id` of every API response. A different, non-empty id than the one the
+ * cache was filled under means a new deployment: drop everything and adopt the new id (once — the
+ * next responses carry the same id). Returns whether the cache was invalidated.
+ */
+export function noteServerBuild(serverBuild: string | null | undefined): boolean {
+  if (!serverBuild || serverBuild === storeBuild) return false;
+  const hadBuild = storeBuild !== "";
+  storeBuild = serverBuild;
+  // First id ever learned (a build without a baked-in id): nothing to compare against.
+  if (!hadBuild) return false;
+  store.clear();
+  return true;
+}
+
+/** Test hook: forget the adopted build id. */
+export function resetViewCacheBuildForTests(build: string = BUILD_ID): void {
+  storeBuild = build;
 }
 
 /**

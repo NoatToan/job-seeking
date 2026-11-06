@@ -25,6 +25,8 @@ import type {
   UserProfile,
   UserProfilePatch,
 } from "@ujc/core";
+import { BUILD_ID_HEADER } from "./build-id";
+import { noteServerBuild } from "./view-cache";
 
 /**
  * Base URL the SPA calls for the API. "" (default) means same origin, so calls go to
@@ -104,6 +106,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     credentials: "include",
   });
 
+  // A new deployment answered: drop the in-memory view cache (lib/view-cache.ts).
+  noteServerBuild(res.headers?.get(BUILD_ID_HEADER));
+
   if (res.status === 401) unauthorizedHandler?.();
 
   if (res.status === 204) return undefined as T;
@@ -141,7 +146,7 @@ export interface JobFilters {
   page?: number;
 }
 
-/** `GET /api/jobs` — browse the public catalogue (+ own jobs if signed in). */
+/** `GET /api/jobs` — browse the public catalogue (identical for everyone; CDN-cached). */
 export function getJobs(filters: JobFilters = {}): Promise<Page<Job>> {
   return apiFetch<Page<Job>>(`/api/jobs${buildQuery(filters)}`);
 }

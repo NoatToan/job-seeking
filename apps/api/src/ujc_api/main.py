@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ujc_api.body_limit import BodySizeLimitMiddleware
+from ujc_api.cache_control import CacheControlMiddleware
 from ujc_api.db import close_pool
 from ujc_api.logging import REQUEST_ID_HEADER, RequestIdMiddleware, configure_logging
 from ujc_api.migrate import pending_migrations
@@ -168,6 +169,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(BodySizeLimitMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    # Public vs personal `Cache-Control` (+ ETag/304, X-Build-Id): ujc_api.cache_control.
+    app.add_middleware(CacheControlMiddleware)
     app.add_middleware(RequestIdMiddleware)
 
     def _app_settings() -> Settings:

@@ -8,15 +8,11 @@ def test_baseline_headers_present_on_every_response(client):
     assert resp.headers["X-Frame-Options"] == "DENY"
 
 
-def test_no_cache_control_without_session_cookie(client):
-    resp = client.get("/api/health")
-    assert "cache-control" not in {k.lower() for k in resp.headers}
-
-
-def test_cache_control_no_store_when_session_cookie_present(client):
+def test_non_public_routes_are_never_cacheable_with_or_without_session(client):
+    """Cache-Control is per route now (ujc_api.cache_control, see test_cache_control.py)."""
+    assert client.get("/api/health").headers["Cache-Control"] == "private, no-store"
     client.cookies.set(SESSION_COOKIE, "fake-token-value")
-    resp = client.get("/api/health")
-    assert resp.headers["Cache-Control"] == "no-store"
+    assert client.get("/api/health").headers["Cache-Control"] == "private, no-store"
 
 
 def test_headers_present_on_error_responses_too(client):
