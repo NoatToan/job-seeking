@@ -8,13 +8,25 @@ jobs (backfill after a rule change: `python -m job_crawler --recompute-derived`)
   `timezone_source` the zone(s) the job works in (timezones.py)
 - `countries`       ISO codes of the countries the job is in / open to, for the country filter
 - `tech_stack`      technologies the job asks for (techstack.py), for icons and the tech filter
+- `salary_*`        structured salary (salary.py) from the source's salary text, else the posting
 """
 
 from typing import Any
 
-from job_crawler import eligibility, techstack, timezones
+from job_crawler import eligibility, salary, techstack, timezones
 
-DERIVED_COLUMNS = ("open_to", "timezones", "timezone_source", "countries", "tech_stack")
+DERIVED_COLUMNS = (
+    "open_to",
+    "timezones",
+    "timezone_source",
+    "countries",
+    "tech_stack",
+    "salary_min",
+    "salary_max",
+    "salary_currency",
+    "salary_period",
+    "salary_source",
+)
 
 _ISO = set(eligibility.COUNTRIES.values())
 
@@ -41,6 +53,7 @@ def derive(
     remote: bool,
     raw: dict[str, Any] | None,
     tags: list[str] | None = None,
+    salary_text: str | None = None,
 ) -> dict[str, Any]:
     extra = structured_locations(raw)
     zones, zone_source = timezones.job_timezones(location, description, extra, raw)
@@ -50,4 +63,31 @@ def derive(
         "timezone_source": zone_source,
         "countries": job_countries(location, extra),
         "tech_stack": techstack.tech_stack(title, description, tags),
+        **job_salary(salary_text, title, description),
+    }
+
+
+_SALARY_COLUMNS = ("salary_min", "salary_max", "salary_currency", "salary_period", "salary_source")
+
+
+def job_salary(
+    salary_text: str | None, title: str | None, description: str | None
+) -> dict[str, Any]:
+    """The source's own salary string wins; otherwise look in the title, then the description."""
+    found, source = salary.parse_salary(salary_text), "source"
+    if found is None:
+        found, source = (
+            salary.parse_salary(title) or salary.parse_salary(description),
+            "description",
+        )
+    if found is None:
+        return dict.fromkeys(
+            ("salary_min", "salary_max", "salary_currency", "salary_period", "salary_source")
+        )
+    return {
+        "salary_min": found.min,
+        "salary_max": found.max,
+        "salary_currency": found.currency,
+        "salary_period": found.period,
+        "salary_source": source,
     }

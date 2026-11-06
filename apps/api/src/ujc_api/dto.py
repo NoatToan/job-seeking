@@ -5,10 +5,12 @@ plain-SQL-no-ORM convention)."""
 from datetime import datetime
 from typing import Any
 
+from job_crawler.salary import Salary
+
 JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
     " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source,"
-    " tech_stack"
+    " tech_stack, salary_min, salary_max, salary_currency, salary_period, salary_source"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
@@ -57,7 +59,22 @@ def job_dto(row: tuple) -> dict[str, Any]:
         timezones,
         timezone_source,
         tech_stack,
+        salary_min,
+        salary_max,
+        salary_currency,
+        salary_period,
+        salary_source,
     ) = row
+    salary = (
+        Salary(
+            float(salary_min) if salary_min is not None else None,
+            float(salary_max) if salary_max is not None else None,
+            salary_currency,
+            salary_period,
+        )
+        if salary_source
+        else None
+    )
     return {
         "id": str(id_),
         "source": source,
@@ -68,7 +85,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         "location": location,
         "remote": bool(remote),
         "employmentType": employment_type,
-        "salaryText": salary_text,
+        # The board's own text when it sent one, else the salary found in the posting.
+        "salaryText": salary_text or (salary.display() if salary else None),
         "tags": list(tags or []),
         "openTo": list(open_to) if open_to is not None else None,
         "postedAt": _iso(posted_at),
@@ -78,6 +96,16 @@ def job_dto(row: tuple) -> dict[str, Any]:
         "timezoneSource": timezone_source,
         # Tech ids found in the posting (job_crawler.techstack), e.g. ["nextjs", "react"].
         "techStack": list(tech_stack or []),
+        # Structured salary (job_crawler.salary); `source` = "source" (the board) or "description".
+        "salary": {
+            "min": salary.min,
+            "max": salary.max,
+            "currency": salary.currency,
+            "period": salary.period,
+            "source": salary_source,
+        }
+        if salary
+        else None,
     }
 
 

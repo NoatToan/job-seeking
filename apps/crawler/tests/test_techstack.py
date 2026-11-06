@@ -37,6 +37,7 @@ def test_tech_stack(title, description, expected):
     "prose",
     [
         "Go to market fast and react quickly to feedback.",
+        "Program Manager, Go-to-Market. Partner with Sales, Go-to-market teams.",
         "Express yourself; Spring is our busiest season.",
         "Every node of the network, rust-proof coatings, a ruby anniversary.",
         "",

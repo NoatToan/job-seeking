@@ -46,6 +46,33 @@ def test_job_dto_carries_working_timezones():
     assert unknown["timezoneSource"] is None
 
 
+def test_job_dto_salary_falls_back_to_the_parsed_salary():
+    conn = FakeJobsConn(
+        jobs=[
+            _job(
+                salary_min=60000,
+                salary_max=75000,
+                salary_currency="EUR",
+                salary_period="year",
+                salary_source="description",
+            ),
+            _job(id=2, salary_text="Competitive", salary_source=None),
+        ]
+    )
+    body = get_job(1, user=USER, conn=conn)
+    assert body["salaryText"] == "EUR 60,000 - 75,000 / year"
+    assert body["salary"] == {
+        "min": 60000.0,
+        "max": 75000.0,
+        "currency": "EUR",
+        "period": "year",
+        "source": "description",
+    }
+    board_text = get_job(2, user=USER, conn=conn)
+    assert board_text["salaryText"] == "Competitive"
+    assert board_text["salary"] is None
+
+
 def test_get_job_works_without_a_session_too():
     """`GET /api/jobs/{id}` is public: `optional_user` can be `None` (anonymous)."""
     conn = FakeJobsConn(jobs=[_job()])

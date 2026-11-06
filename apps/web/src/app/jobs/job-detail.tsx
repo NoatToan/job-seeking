@@ -52,7 +52,12 @@ export function JobDetail({ job, loadingDescription = false, signedIn, variant =
           </Badge>
         ) : null}
         {employmentLabel(job.employmentType) ? <Badge>{employmentLabel(job.employmentType)}</Badge> : null}
-        {job.salaryText ? <Badge>{job.salaryText}</Badge> : null}
+        {job.salaryText ? (
+          <Badge title={job.salary?.source === "description" ? "Found in the job description" : undefined}>
+            {job.salaryText}
+            {job.salary?.source === "description" ? " · from description" : ""}
+          </Badge>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

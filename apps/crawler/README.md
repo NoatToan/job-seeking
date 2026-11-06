@@ -57,6 +57,24 @@ workflow runs with `--profiles`.
 structured country lists into `jobs.open_to`. A profile with "I'm based in: Vietnam" hides remote
 jobs that clearly exclude Vietnam. After changing the rules: `uv run python -m job_crawler --recompute-open-to`.
 
+## Derived columns (time zones, countries, tech stack, salary)
+
+Every upsert also derives these columns from the posting text (`derived.py`):
+
+| Column(s) | Module | What |
+| --- | --- | --- |
+| `timezones`, `timezone_source` | `timezones.py` | Working zone(s): stated ("UTC+7", "EST") or inferred from location |
+| `countries` | `derived.py` | ISO codes the job is in / open to (country filter) |
+| `tech_stack` | `techstack.py` | Tech ids (react, nextjs, python, …) for icons and the tech filter |
+| `salary_min/max/currency/period/source` | `salary.py` | Salary from the board's own text, else regex over title + description |
+
+Backfill / re-apply after changing any of these rules (streams the whole table, updates only
+changed rows):
+
+```bash
+uv run python -m job_crawler --recompute-derived
+```
+
 ## CV matching (Claude)
 
 ```bash

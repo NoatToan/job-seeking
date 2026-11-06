@@ -161,6 +161,11 @@ class FakeJobsConn:
                         j.get("timezones"),
                         j.get("timezone_source"),
                         j.get("tech_stack"),
+                        j.get("salary_min"),
+                        j.get("salary_max"),
+                        j.get("salary_currency"),
+                        j.get("salary_period"),
+                        j.get("salary_source"),
                     )
                     for j in rows
                 ]
@@ -189,6 +194,11 @@ class FakeJobsConn:
                             job.get("timezones"),
                             job.get("timezone_source"),
                             job.get("tech_stack"),
+                            job.get("salary_min"),
+                            job.get("salary_max"),
+                            job.get("salary_currency"),
+                            job.get("salary_period"),
+                            job.get("salary_source"),
                             job.get("description"),
                         )
                     )
