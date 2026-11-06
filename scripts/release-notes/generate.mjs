@@ -13,7 +13,7 @@
 // soft (a warning, exit 0): the anchor (`commits.to` of the newest entry) only moves when an entry
 // is written, so the next push retries the same commits.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -169,6 +169,51 @@ export async function callClaude({ apiKey, model = DEFAULT_MODEL, system, user, 
   }
 }
 
+/**
+ * Same request through the local Claude Code CLI (`claude -p`, the developer's own login), so the
+ * notes can be written on the machine before a push without an API key. Tools off, no session
+ * saved, only user settings loaded (no project hooks, so this never recurses into the push hook).
+ */
+export function callClaudeCli({ model, system, user, spawn = spawnSync }) {
+  const res = spawn(
+    "claude",
+    [
+      "-p",
+      user,
+      "--system-prompt",
+      system,
+      "--output-format",
+      "json",
+      "--json-schema",
+      JSON.stringify(AI_OUTPUT_SCHEMA),
+      "--tools",
+      "",
+      "--no-session-persistence",
+      "--setting-sources",
+      "user",
+      ...(model ? ["--model", model] : []),
+    ],
+    { encoding: "utf8", timeout: 300_000, maxBuffer: 32 * 1024 * 1024 },
+  );
+  if (res.error) throw new Error(`claude CLI failed to start: ${res.error.message}`);
+  if (res.status !== 0) throw new Error(`claude CLI exited ${res.status}: ${(res.stderr || res.stdout || "").slice(0, 300)}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(res.stdout);
+  } catch {
+    throw new Error("claude CLI output was not JSON");
+  }
+  const messages = Array.isArray(parsed) ? parsed : [parsed];
+  const result = messages.find((m) => m && m.type === "result") ?? messages[messages.length - 1];
+  if (!result || result.is_error) throw new Error(`claude CLI returned an error: ${String(result?.result ?? "").slice(0, 300)}`);
+  if (result.structured_output && typeof result.structured_output === "object") return result.structured_output;
+  try {
+    return JSON.parse(result.result);
+  } catch {
+    throw new Error("Claude's answer was not valid JSON");
+  }
+}
+
 /** The stored entry: model text + date and commit range from git. */
 export function makeEntry({ date, out, commits, existing }) {
   const entry = {
@@ -203,7 +248,15 @@ function setOutput(env, key, value) {
  * @param {{ cwd?: string, env?: Record<string, string | undefined>, fetchImpl?: typeof fetch,
  *   dryRun?: boolean, log?: { log: (message: string) => void } }} [options]
  */
-export async function run({ cwd = process.cwd(), env = process.env, fetchImpl = fetch, dryRun = false, log = console } = {}) {
+export async function run({
+  cwd = process.cwd(),
+  env = process.env,
+  fetchImpl = fetch,
+  dryRun = false,
+  local = false,
+  spawn = spawnSync,
+  log = console,
+} = {}) {
   const file = path.join(cwd, NOTES_FILE);
   const notes = JSON.parse(readFileSync(file, "utf8"));
   const fileErrors = validateReleaseNotes(notes);
@@ -232,14 +285,16 @@ export async function run({ cwd = process.cwd(), env = process.env, fetchImpl = 
     log.log(`--- model: ${model}\n--- system:\n${system}\n--- user:\n${user}`);
     return { status: "dry-run" };
   }
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!local && !env.ANTHROPIC_API_KEY) {
     log.log("::notice::Release notes: ANTHROPIC_API_KEY is not set, skipping (add the repository secret to turn this on).");
     return { status: "skipped", reason: "no API key" };
   }
 
   let out;
   try {
-    out = await callClaude({ apiKey: env.ANTHROPIC_API_KEY, model, system, user, fetchImpl });
+    out = local
+      ? callClaudeCli({ model: env.RELEASE_NOTES_MODEL || undefined, system, user, spawn })
+      : await callClaude({ apiKey: env.ANTHROPIC_API_KEY, model, system, user, fetchImpl });
   } catch (err) {
     return fail(log, err instanceof Error ? err.message : String(err));
   }
@@ -270,5 +325,5 @@ function fail(log, reason) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await run({ dryRun: process.argv.includes("--dry-run") });
+  await run({ dryRun: process.argv.includes("--dry-run"), local: process.argv.includes("--local") });
 }
