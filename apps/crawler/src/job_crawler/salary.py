@@ -17,6 +17,7 @@ import re
 from dataclasses import dataclass
 
 YEAR, MONTH, WEEK, DAY, HOUR = "year", "month", "week", "day", "hour"
+_MIN_YEARLY = 5_000
 _PER_YEAR = {YEAR: 1, MONTH: 12, WEEK: 52, DAY: 260, HOUR: 2080}
 
 
@@ -137,11 +138,15 @@ _FROM_RE = re.compile(
 _TRAILING_JUNK_RE = re.compile(r"^(?:\s?%|[.,]?\d)")
 _FUNDING_BEFORE_RE = re.compile(
     r"\b(?:raised|raising|raise|funding|funded|valuation|valued\s+at|revenue|arr|mrr|"
+    r"stipends?|allowances?|budgets?|bonus(?:es)?|reimburs\w*|equipment|wellness|wellbeing|learning|education|training|referral|sign(?:ing|-on)|credits?|gift|per\s+diem|coworking|co-working|internet|home\s+office|setup|relocation|"
     r"investments?|invested|backed\s+by|secured|series\s+[a-h]\s+of|round\s+of)\b",
     re.I,
 )
+# After an amount, a plain "bonus" is usually "+ bonus" on top of a real salary ("£50k pa + bonus"),
+# so only the before-side list treats it as a perk.
 _FUNDING_AFTER_RE = re.compile(
     r"\b(?:funding|raised|series\s+[a-h]|seed|arr|mrr|revenue|valuation|users|customers|"
+    r"stipends?|allowances?|budgets?|reimburs\w*|equipment|wellness|wellbeing|learning|education|training|referral|sign(?:ing|-on)|credits?|gift|per\s+diem|coworking|co-working|internet|home\s+office|setup|relocation|"
     r"clients|followers|subscribers|downloads|installs|members|employees|people|stars|"
     r"visitors|transactions|requests|records|investors?|investment|in\s+sales)\b",
     re.I,
@@ -326,7 +331,9 @@ def _guess_period(amount: float, currency: str | None) -> str | None:
 
 def _sane(salary: Salary) -> bool:
     scale = _SCALE.get(salary.currency or "", 1)
-    floor = 300 if salary.currency in _LOW_VALUE else 1_000
+    # A real wage is at least a few thousand a year; smaller figures are perks (a $1,000
+    # learning budget) or fees that slipped past the context checks.
+    floor = 300 if salary.currency in _LOW_VALUE else _MIN_YEARLY
     values = [v / scale for v in salary.yearly() if v is not None]
     return bool(values) and all(floor <= v <= _MAX_YEARLY for v in values)
 
