@@ -168,6 +168,9 @@ export interface PublicJobsFilters {
   days?: number;
   /** Only jobs posted (or first seen) within this many hours (wins over `days`). */
   hours?: number;
+  /** Remote-region filter, with `based_in` = the candidate's ISO country. */
+  access?: "open" | "confirmed";
+  based_in?: string;
 }
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
@@ -320,6 +323,9 @@ export interface FeedFilters {
   days?: number;
   /** Only jobs posted (or first seen) within this many hours (wins over `days`). */
   hours?: number;
+  /** Remote-region filter, with `based_in` = the candidate's ISO country. */
+  access?: "open" | "confirmed";
+  based_in?: string;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

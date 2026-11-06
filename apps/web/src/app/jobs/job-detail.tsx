@@ -1,7 +1,7 @@
 "use client";
 
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
-import { openToLabel, sortTech, sourceMeta, techInfo } from "@ujc/core";
+import { sortTech, sourceMeta, techInfo } from "@ujc/core";
 import {
   Avatar,
   Badge,
@@ -10,17 +10,19 @@ import {
   cx,
   employmentLabel,
   ExternalLinkIcon,
-  GlobeIcon,
   LocationText,
   MapPinIcon,
   matchBand,
   MatchBadge,
+  RemoteAccessBadge,
   Skeleton,
   SourceBadge,
   TechIcon,
 } from "@ujc/ui";
 import { SaveJobButton } from "@/app/save-job-button";
+import { RemoteAccessCard } from "@/app/remote-access-card";
 import { WorkHoursCard } from "@/app/work-hours";
+import { useBasedIn } from "@/lib/based-in";
 import { Highlighted, matchedTerms } from "@/lib/highlight";
 
 export interface JobDetailProps {
@@ -48,6 +50,7 @@ export function JobDetail({
   const matches = highlight.length ? matchedTerms(`${job.title}\n${description ?? ""}`, highlight) : [];
   const applyHref = job.applyUrl ?? job.url;
   const source = sourceMeta(job.source).label;
+  const { country: basedIn } = useBasedIn();
   return (
     <article className="flex flex-col gap-5">
       <header className="flex items-start gap-4">
@@ -76,8 +79,8 @@ export function JobDetail({
       <div className="flex flex-wrap items-center gap-1.5">
         <SourceBadge source={job.source} />
         {job.remote ? (
-          <Badge tone="info" icon={<GlobeIcon size={12} strokeWidth={2.25} />}>
-            {openToLabel(job.openTo) ? `Remote · ${openToLabel(job.openTo)}` : "Remote"}
+          <Badge tone="neutral" className="max-w-full">
+            <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} />
           </Badge>
         ) : null}
         {employmentLabel(job.employmentType) ? <Badge>{employmentLabel(job.employmentType)}</Badge> : null}
@@ -110,6 +113,8 @@ export function JobDetail({
           signedIn={signedIn}
         />
       </div>
+
+      <RemoteAccessCard job={job} />
 
       {matches.length ? (
         <p aria-label="Matches your search" className="flex flex-wrap items-center gap-1.5 text-footnote text-label-secondary">

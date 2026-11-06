@@ -1,6 +1,8 @@
 export * from "./sources";
 export * from "./api";
 export * from "./tech";
+export * from "./remote";
+import { COUNTRY_REGIONS, WORLDWIDE } from "./remote";
 
 /** A job as the apps see it (one row of the jobs table). */
 export interface Job {
@@ -44,18 +46,16 @@ export interface Job {
  * Candidate locations for "I'm based in". `accepts` lists the open_to tokens (see
  * apps/crawler eligibility.py) that make a remote job open to someone living there.
  */
-export const CANDIDATE_COUNTRIES = [
-  { code: "VN", label: "Vietnam", accepts: ["WORLDWIDE", "VN", "APAC", "ASIA", "SEA"] },
-  { code: "AU", label: "Australia", accepts: ["WORLDWIDE", "AU", "APAC", "OCEANIA"] },
-  { code: "SG", label: "Singapore", accepts: ["WORLDWIDE", "SG", "APAC", "ASIA", "SEA"] },
-  { code: "PH", label: "Philippines", accepts: ["WORLDWIDE", "PH", "APAC", "ASIA", "SEA"] },
-  { code: "IN", label: "India", accepts: ["WORLDWIDE", "IN", "APAC", "ASIA"] },
-  { code: "JP", label: "Japan", accepts: ["WORLDWIDE", "JP", "APAC", "ASIA"] },
-  { code: "GB", label: "United Kingdom", accepts: ["WORLDWIDE", "GB", "EUROPE", "EMEA"] },
-  { code: "DE", label: "Germany", accepts: ["WORLDWIDE", "DE", "EUROPE", "EMEA"] },
-  { code: "US", label: "United States", accepts: ["WORLDWIDE", "US", "NORTH_AMERICA", "AMERICAS"] },
-  { code: "CA", label: "Canada", accepts: ["WORLDWIDE", "CA", "NORTH_AMERICA", "AMERICAS"] },
-] as const;
+const CANDIDATE_LABELS: [string, string][] = [
+  ["VN", "Vietnam"], ["TH", "Thailand"], ["MY", "Malaysia"], ["SG", "Singapore"], ["ID", "Indonesia"],
+  ["PH", "Philippines"], ["IN", "India"], ["JP", "Japan"], ["KR", "South Korea"], ["AU", "Australia"],
+  ["NZ", "New Zealand"], ["GB", "United Kingdom"], ["DE", "Germany"], ["FR", "France"], ["NL", "Netherlands"],
+  ["ES", "Spain"], ["PL", "Poland"], ["US", "United States"], ["CA", "Canada"], ["MX", "Mexico"],
+  ["BR", "Brazil"], ["AR", "Argentina"],
+];
+export const CANDIDATE_COUNTRIES: { code: string; label: string; accepts: string[] }[] = CANDIDATE_LABELS.map(
+  ([code, label]) => ({ code, label, accepts: [WORLDWIDE, code, ...(COUNTRY_REGIONS[code] ?? [])] }),
+);
 
 export function acceptedTokens(country: string | null | undefined): string[] | null {
   const c = CANDIDATE_COUNTRIES.find((x) => x.code === country);

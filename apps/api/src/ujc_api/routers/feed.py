@@ -13,6 +13,7 @@ from ujc_api.dto import JOB_COLUMNS, job_dto, job_sort_key
 from ujc_api.feed_query import (
     COUNTRY_CLAUSE,
     TECH_CLAUSE,
+    access_clause,
     feed_filter_clauses,
     parse_tech,
     posted_within_clause,
@@ -49,6 +50,8 @@ def get_feed(
     tech: str | None = Query(default=None),
     days: int | None = Query(default=None),
     hours: int | None = Query(default=None),
+    access: str | None = Query(default=None),
+    based_in: str | None = Query(default=None),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -89,6 +92,10 @@ def get_feed(
     if tech_ids := parse_tech(tech):
         clauses.append(TECH_CLAUSE)
         where_params.append(tech_ids)
+
+    if region := access_clause(access, based_in):
+        clauses.append(region[0])
+        where_params.append(region[1])
 
     if posted := posted_within_clause(days, hours):
         clauses.append(posted[0])

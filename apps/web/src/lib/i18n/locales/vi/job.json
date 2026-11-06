@@ -19,5 +19,26 @@
     "backToFeed": "Về nguồn việc làm của bạn",
     "loadingJob": "Đang tải việc làm",
     "errorTitle": "Không thể tải việc làm này"
+  },
+  "remote": {
+    "title": "Ai được apply",
+    "badgeOpen": "Nhận bạn",
+    "badgeClosed": "Không nhận bạn",
+    "badgeUnknown": "Chưa ghi vùng",
+    "badgeWorldwide": "Toàn cầu",
+    "badgeRestricted": "Giới hạn vùng",
+    "badgeOnsite": "Tại văn phòng",
+    "worldwide": "Làm remote từ bất kỳ đâu: bài đăng ghi nhận ứng viên toàn cầu.",
+    "restrictedYes": "Nhận bạn: bài đăng nhận ứng viên remote ở {{places}}, có cả {{you}}.",
+    "restrictedNo": "Chỉ nhận ứng viên remote ở {{places}}. Bạn đang ở {{you}} nên nhiều khả năng job này không nhận — bỏ qua trừ khi họ hỗ trợ visa hoặc relocation.",
+    "restricted": "Chỉ nhận ứng viên remote ở {{places}}. Chọn nơi bạn đang ở để biết có nằm trong vùng này không.",
+    "unknown": "Bài đăng không ghi ứng viên remote phải ở đâu. Thực tế nhiều job kiểu này chỉ nhận ở Mỹ hoặc châu Âu — hãy kiểm tra bài gốc trước khi apply.",
+    "onsite": "Không remote: job làm tại {{location}}. Bạn cần sống ở đó hoặc relocate.",
+    "onsiteNoLocation": "Không remote, và bài đăng không ghi địa điểm làm việc.",
+    "fromLocation": "Theo địa điểm trong bài đăng: \"{{location}}\"",
+    "basedIn": "Tôi đang ở",
+    "notSet": "Chưa chọn",
+    "searchCountry": "Gõ tên nước…",
+    "guessed": "(đoán theo múi giờ của bạn)"
   }
 }

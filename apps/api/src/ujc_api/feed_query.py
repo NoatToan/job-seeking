@@ -49,6 +49,22 @@ def accepted_open_to_tokens(candidate_country: str | None) -> list[str]:
     return [eligibility.WORLDWIDE, candidate_country, *regions]
 
 
+# "Remote region" filter (`access` param, with `based_in` = the candidate's ISO country):
+#   open      -> hide remote jobs known NOT to accept them (keeps on-site and "region not stated")
+#   confirmed -> only remote jobs whose region is stated and includes them (or worldwide)
+ACCESS_MODES = ("open", "confirmed")
+
+
+def access_clause(access: str | None, based_in: str | None) -> tuple[str, list[str]] | None:
+    """The `WHERE` clause + param for the remote-region filter, or None when it doesn't apply."""
+    if access not in ACCESS_MODES:
+        return None
+    tokens = accepted_open_to_tokens((based_in or "").upper() or None)
+    if access == "confirmed":
+        return "(remote AND open_to && %s)", tokens
+    return "(NOT remote OR open_to IS NULL OR open_to && %s)", tokens
+
+
 def feed_filter_clauses(
     keywords: list[str], remote_only: bool, candidate_country: str | None
 ) -> tuple[list[str], list[Any]]:

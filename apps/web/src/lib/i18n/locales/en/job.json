@@ -19,5 +19,26 @@
     "backToFeed": "Back to your feed",
     "loadingJob": "Loading job",
     "errorTitle": "We couldn't load this job"
+  },
+  "remote": {
+    "title": "Who can apply",
+    "badgeOpen": "Open to you",
+    "badgeClosed": "Not open to you",
+    "badgeUnknown": "Region not stated",
+    "badgeWorldwide": "Worldwide",
+    "badgeRestricted": "Region-locked",
+    "badgeOnsite": "On-site",
+    "worldwide": "Remote from anywhere: the posting says it's open worldwide.",
+    "restrictedYes": "Open to you: the posting accepts remote candidates in {{places}}, which includes {{you}}.",
+    "restrictedNo": "Only remote candidates in {{places}}. You're based in {{you}}, so this job probably won't accept you — skip it unless they sponsor or relocate.",
+    "restricted": "Only remote candidates in {{places}}. Set where you're based to see whether that includes you.",
+    "unknown": "The posting doesn't say where remote candidates must live. Many such jobs are US- or EU-only in practice — check the original posting before applying.",
+    "onsite": "Not remote: the job is based in {{location}}. You'd need to live there or relocate.",
+    "onsiteNoLocation": "Not remote, and the posting doesn't say where the job is.",
+    "fromLocation": "From the posting's location: \"{{location}}\"",
+    "basedIn": "I'm based in",
+    "notSet": "Not set",
+    "searchCountry": "Type a country…",
+    "guessed": "(guessed from your time zone)"
   }
 }

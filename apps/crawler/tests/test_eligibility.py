@@ -62,3 +62,16 @@ def test_accepts():
     assert accepts(["EUROPE"], "VN") is False
     assert accepts(None, "VN") is None
     assert accepts(open_to("Albania", True, HIMALAYAS_LIST), "VN") is True
+
+
+def test_every_iso_country_name_is_recognised():
+    assert open_to("Curaçao", True) == ["CW"]
+    assert open_to("Remote - Senegal", True) == ["SN"]
+    assert open_to("Mali or Somalia", True) == ["ML", "SO"]
+    assert open_to("Papua New Guinea", True) == ["PG"]
+
+
+def test_extra_country_codes_are_not_matched_in_text():
+    # "NC" is New Caledonia's code but in locations it means North Carolina.
+    assert open_to("Charlotte, NC", True) == ["US"]
+    assert open_to("Remote (NC)", True) is None

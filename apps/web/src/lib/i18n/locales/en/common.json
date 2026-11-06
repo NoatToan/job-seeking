@@ -20,10 +20,39 @@
     "today": "today",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
-    "fit": { "great": "Great fit", "good": "Good fit", "worth": "Worth a look", "long": "Long shot" }
+    "fit": {
+      "great": "Great fit",
+      "good": "Good fit",
+      "worth": "Worth a look",
+      "long": "Long shot"
+    },
+    "remoteAccess": {
+      "worldwide": "Remote · Worldwide",
+      "only": "Remote · {{places}} only",
+      "unknown": "Remote · region not stated",
+      "openToYou": "Open to candidates in {{country}}",
+      "notOpenToYou": "Not open to candidates in {{country}}",
+      "regions": {
+        "EUROPE": "Europe",
+        "EMEA": "EMEA",
+        "APAC": "APAC",
+        "ASIA": "Asia",
+        "SEA": "Southeast Asia",
+        "LATAM": "Latin America",
+        "NORTH_AMERICA": "North America",
+        "AMERICAS": "Americas",
+        "OCEANIA": "Oceania",
+        "MIDDLE_EAST": "Middle East",
+        "AFRICA": "Africa"
+      }
+    }
   },
-  "language": { "label": "Language" },
-  "brand": { "homeAriaLabel": "{{name}} home" },
+  "language": {
+    "label": "Language"
+  },
+  "brand": {
+    "homeAriaLabel": "{{name}} home"
+  },
   "nav": {
     "jobs": "Jobs",
     "liveSearch": "Live search",

@@ -29,6 +29,7 @@ from ujc_api.dto import (
 from ujc_api.feed_query import (
     COUNTRY_CLAUSE,
     TECH_CLAUSE,
+    access_clause,
     parse_tech,
     posted_within_clause,
 )
@@ -86,6 +87,8 @@ def list_jobs(
     tech: str | None = None,
     days: int | None = None,
     hours: int | None = None,
+    access: str | None = None,
+    based_in: str | None = None,
     user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -125,6 +128,10 @@ def list_jobs(
     if tech_ids := parse_tech(tech):
         clauses.append(TECH_CLAUSE)
         params.append(tech_ids)
+
+    if region := access_clause(access, based_in):
+        clauses.append(region[0])
+        params.append(region[1])
 
     if posted := posted_within_clause(days, hours):
         clauses.append(posted[0])
