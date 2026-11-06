@@ -71,6 +71,12 @@ def test_job_timezones_prefers_structured_then_stated_then_location():
     assert job_timezones("Worldwide", None) == (None, None)
 
 
+def test_structured_range_spanning_every_zone_is_no_constraint():
+    every = {"timezoneRestrictions": list(range(-10, 15))}
+    assert job_timezones("India", None, raw=every) == (["Asia/Kolkata"], LOCATION)
+    assert job_timezones("Worldwide", None, raw=every) == (None, None)
+
+
 def test_job_params_include_timezones():
     job = JobRecord(
         source="lever",

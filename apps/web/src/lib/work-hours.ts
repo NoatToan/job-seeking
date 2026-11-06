@@ -168,10 +168,23 @@ export function jobZonesLabel(zones: readonly string[]): string {
   return zones.map(zoneLabel).join(", ");
 }
 
+/** Legacy IANA aliases some browsers still report, mapped to the current names. */
+const ZONE_ALIASES: Record<string, string> = {
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Europe/Kiev": "Europe/Kyiv",
+};
+
+export function canonicalZone(zone: string): string {
+  return ZONE_ALIASES[zone] ?? zone;
+}
+
 /** The browser's own zone, or Asia/Ho_Chi_Minh if the runtime can't tell (SSR / old engines). */
 export function browserTimezone(): string {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Ho_Chi_Minh";
+    return canonicalZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Ho_Chi_Minh");
   } catch {
     return "Asia/Ho_Chi_Minh";
   }
