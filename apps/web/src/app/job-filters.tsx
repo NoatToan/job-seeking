@@ -406,15 +406,15 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const panelId = useId();
   return (
     <div className="flex flex-col gap-3">
-      {/* Phones: search, then one sideways-scrolling row of pills. Wide: all on one line. */}
-      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center">
+      {/* Search on its own line, the filter pills under it (phones: one sideways-scrolling row). */}
+      <div className="flex flex-col gap-2.5">
         <SearchField
           variant="hero"
           value={f.draftQ}
           onChange={f.setDraftQ}
           label={t("filters.searchLabel")}
           placeholder={t("filters.searchPlaceholder")}
-          className="w-full xl:max-w-xl xl:min-w-[22rem] xl:flex-1"
+          className="w-full md:max-w-2xl"
         />
         <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
         <PillSelect label={t("filters.sourceLabel")} value={f.source} onChange={f.setSource}>
