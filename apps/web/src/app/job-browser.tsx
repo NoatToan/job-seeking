@@ -223,14 +223,14 @@ export function JobBrowser({
   return (
     <div
       ref={rootRef}
-      className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]"
+      className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(20rem,25rem)_minmax(0,1fr)]"
     >
       <div
         ref={scrollRef}
         data-testid="job-list-scroll"
         className="lg:-mx-1 lg:min-h-0 lg:snap-y lg:snap-proximity lg:overflow-y-auto lg:overscroll-y-contain lg:px-1 lg:py-1"
       >
-        <div role="list" aria-label="Jobs" className="flex flex-col gap-2">
+        <div role="list" aria-label="Jobs" className="flex flex-col gap-2.5">
           {jobs.map((job) => (
             <div role="listitem" key={job.id} className="snap-start scroll-mt-1">
               <JobListItem
@@ -251,7 +251,7 @@ export function JobBrowser({
       <aside
         aria-label="Job details"
         aria-live="polite"
-        className="hidden min-h-0 overflow-y-auto overscroll-contain rounded-card bg-grouped-secondary p-6 shadow-card lg:block"
+        className="hidden min-h-0 overflow-y-auto overscroll-contain rounded-[22px] border border-separator bg-background p-7 shadow-raised lg:block"
       >
         {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
       </aside>

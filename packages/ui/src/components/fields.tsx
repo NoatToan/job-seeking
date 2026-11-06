@@ -60,6 +60,8 @@ export interface SearchFieldProps
   label?: string;
   /** Accessible name of the clear button. Default "Clear search". */
   clearLabel?: string;
+  /** "hero": large white pill with a soft shadow, for the main search on a page hero. */
+  variant?: "default" | "hero";
 }
 
 /** iOS-style search field: magnifier, rounded fill, clear (x) button while it has text. */
@@ -72,8 +74,10 @@ export function SearchField({
   placeholder = "Search",
   className,
   onKeyDown,
+  variant = "default",
   ...rest
 }: SearchFieldProps) {
+  const hero = variant === "hero";
   const [inner, setInner] = useState(defaultValue);
   const controlled = value !== undefined;
   const current = controlled ? value : inner;
@@ -86,7 +90,10 @@ export function SearchField({
 
   return (
     <div className={cx("relative flex items-center", className)}>
-      <SearchIcon size={17} className="pointer-events-none absolute left-2.5 text-label-tertiary" />
+      <SearchIcon
+        size={hero ? 20 : 17}
+        className={cx("pointer-events-none absolute text-label-tertiary", hero ? "left-4" : "left-2.5")}
+      />
       <input
         ref={inputRef}
         type="search"
@@ -102,7 +109,9 @@ export function SearchField({
           onKeyDown?.(e);
         }}
         className={cx(
-          "h-11 w-full rounded-control bg-fill-tertiary pl-9 pr-9 text-body text-label lg:h-9",
+          hero
+            ? "h-12 w-full rounded-full border border-separator bg-background pl-12 pr-12 text-callout text-label shadow-raised"
+            : "h-11 w-full rounded-control bg-fill-tertiary pl-9 pr-9 text-body text-label lg:h-9",
           "placeholder:text-label-tertiary transition-shadow duration-200",
           "focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-tint",
           "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
@@ -117,7 +126,10 @@ export function SearchField({
             set("");
             inputRef.current?.focus();
           }}
-          className="absolute right-0 flex size-11 items-center justify-center text-label-tertiary hover:text-label-secondary focus-ring rounded-full lg:size-9"
+          className={cx(
+            "absolute flex items-center justify-center text-label-tertiary hover:text-label-secondary focus-ring rounded-full",
+            hero ? "right-0 size-12" : "right-0 size-11 lg:size-9",
+          )}
         >
           <XCircleFillIcon size={17} />
         </button>

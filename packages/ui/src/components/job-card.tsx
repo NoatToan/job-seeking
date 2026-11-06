@@ -6,7 +6,7 @@ import type { Job } from "@ujc/core";
 import { openToLabel, sortTech } from "@ujc/core";
 import { cx } from "../cx";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
-import { Badge, MatchBadge, SourceBadge } from "./badges";
+import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
 import { TechStackRow } from "./tech-icon";
 
@@ -203,55 +203,72 @@ export function JobListItem({
       data-viewed={viewed ? "true" : undefined}
       aria-current={selected ? "true" : undefined}
       className={cx(
-        "relative flex scroll-my-1 gap-3 rounded-card p-3 transition-[background-color,box-shadow] duration-200 ease-spring",
-        // Inset ring + accent bar: stays fully visible inside a scrolling list (an outer ring or a
-        // translate would be clipped by the list's overflow).
+        "group relative flex scroll-my-1 gap-3 rounded-[18px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 ease-spring",
+        // Border colour (not an outer ring) marks the selection, so it is never clipped by the
+        // scrolling list's overflow.
         selected
-          ? "bg-tint-soft shadow-card ring-2 ring-inset ring-tint/50 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-tint"
-          : "bg-grouped-secondary shadow-card hover:shadow-raised",
-        viewed && !selected && "opacity-60 hover:opacity-100",
+          ? "border-tint/60 bg-[color-mix(in_srgb,var(--ujc-tint)_6%,var(--ujc-background))] shadow-raised"
+          : "border-separator bg-background hover:border-control-border/50 hover:shadow-raised",
         className,
       )}
     >
-      <Avatar name={job.company || job.title} shape="rounded" size={32} />
+      <Avatar
+        name={job.company || job.title}
+        shape="rounded"
+        size={40}
+        className={cx("rounded-xl", viewed && !selected && "opacity-60")}
+      />
       <div className="min-w-0 flex-1">
-        <h3 className="line-clamp-2 text-subheadline font-semibold text-label">
-          <LinkAs
-            href={href}
-            onClick={onSelect}
-            className="rounded-control-sm after:absolute after:inset-0 after:rounded-card focus-ring"
+        <div className="flex items-start gap-2">
+          <h3
+            className={cx(
+              "line-clamp-2 min-w-0 flex-1 text-subheadline font-semibold leading-snug",
+              viewed && !selected ? "text-label-secondary" : "text-label",
+            )}
           >
-            {job.title}
-          </LinkAs>
-        </h3>
+            <LinkAs
+              href={href}
+              onClick={onSelect}
+              className="rounded-control-sm after:absolute after:inset-0 after:rounded-[18px] focus-ring"
+            >
+              {job.title}
+            </LinkAs>
+          </h3>
+          {job.match ? <MatchBadge score={job.match.score} className="shrink-0" /> : null}
+        </div>
         <p className="mt-0.5 truncate text-footnote text-label-secondary">
-          <span className="font-medium">{job.company}</span>
+          <span className="font-medium text-label">{job.company}</span>
           {job.location ? ` · ${job.location}` : ""}
         </p>
-        {job.salaryText ? (
-          <p className="mt-0.5 truncate text-footnote font-medium text-label">{job.salaryText}</p>
-        ) : null}
-        {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-1.5" /> : null}
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-label-secondary">
-          <SourceBadge source={job.source} />
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote">
+          {job.salaryText ? <span className="truncate font-semibold text-success-ink">{job.salaryText}</span> : null}
           {job.remote ? (
-            <Badge tone="info" icon={<GlobeIcon size={11} strokeWidth={2.25} />}>
+            <span className="inline-flex items-center gap-1 font-medium text-info-ink">
+              <GlobeIcon size={12} strokeWidth={2.25} aria-hidden />
               Remote
-            </Badge>
+            </span>
           ) : null}
-          {meta}
-          {posted ? <span>{posted}</span> : null}
+        </div>
+        {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-2" /> : null}
+        {meta ? <div className="mt-2 flex flex-wrap items-center gap-1.5">{meta}</div> : null}
+        <div className="mt-2 flex items-center gap-2 text-caption text-label-tertiary">
+          <SourceDot source={job.source} />
+          {posted ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{posted}</span>
+            </>
+          ) : null}
           {viewed ? (
-            <span className="inline-flex items-center gap-0.5 text-label-secondary">
+            <span className="ml-auto inline-flex items-center gap-0.5 font-medium text-label-tertiary">
               <CheckIcon size={12} strokeWidth={2.5} aria-hidden />
               Read
             </span>
           ) : null}
+          {actions ? (
+            <div className={cx("relative z-10 flex items-center gap-1", !viewed && "ml-auto")}>{actions}</div>
+          ) : null}
         </div>
-      </div>
-      <div className="flex shrink-0 flex-col items-end justify-between gap-2">
-        {job.match ? <MatchBadge score={job.match.score} /> : <span />}
-        {actions ? <div className="relative z-10 flex items-center gap-1">{actions}</div> : null}
       </div>
     </article>
   );

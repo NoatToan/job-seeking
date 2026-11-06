@@ -3,12 +3,15 @@
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
 import { openToLabel, sortTech, sourceMeta, techInfo } from "@ujc/core";
 import {
+  Avatar,
   Badge,
   buttonClasses,
   Card,
+  cx,
   employmentLabel,
   ExternalLinkIcon,
   GlobeIcon,
+  MapPinIcon,
   matchBand,
   MatchBadge,
   Skeleton,
@@ -46,15 +49,26 @@ export function JobDetail({
   const source = sourceMeta(job.source).label;
   return (
     <article className="flex flex-col gap-5">
-      <div>
-        <h1 className={variant === "panel" ? "text-title2 text-label" : "text-title1 text-label"}>
-          <Highlighted text={job.title} terms={highlight} />
-        </h1>
-        <p className="mt-1 text-subheadline text-label-secondary">
-          {job.company}
-          {job.location ? ` · ${job.location}` : ""}
-        </p>
-      </div>
+      <header className="flex items-start gap-4">
+        <Avatar name={job.company || job.title} shape="rounded" size={56} className="rounded-2xl" />
+        <div className="min-w-0 flex-1">
+          <p className="text-subheadline font-semibold text-label">{job.company}</p>
+          <h1
+            className={cx(
+              "mt-0.5 font-display font-bold tracking-[-0.02em] text-label",
+              variant === "panel" ? "text-title2" : "text-title1",
+            )}
+          >
+            <Highlighted text={job.title} terms={highlight} />
+          </h1>
+          {job.location ? (
+            <p className="mt-1 inline-flex items-center gap-1 text-subheadline text-label-secondary">
+              <MapPinIcon size={14} aria-hidden />
+              {job.location}
+            </p>
+          ) : null}
+        </div>
+      </header>
 
       <div className="flex flex-wrap items-center gap-1.5">
         <SourceBadge source={job.source} />
@@ -74,7 +88,12 @@ export function JobDetail({
 
       <div className="flex flex-wrap items-center gap-2">
         {variant === "panel" ? (
-          <a href={applyHref} target="_blank" rel="noopener noreferrer" className={buttonClasses({ size: "md" })}>
+          <a
+            href={applyHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses({ size: "md", className: "rounded-full px-5" })}
+          >
             Apply on {source}
             <ExternalLinkIcon size={16} />
           </a>
@@ -101,13 +120,13 @@ export function JobDetail({
       ) : null}
 
       {job.techStack?.length ? (
-        <div>
+        <div className="hairline-t pt-5">
           <h2 className="text-headline text-label">Tech stack</h2>
           <ul aria-label="Tech stack" className="mt-2 flex flex-wrap gap-1.5">
             {sortTech(job.techStack).map((id) => (
               <li
                 key={id}
-                className="inline-flex items-center gap-1.5 rounded-control-sm bg-fill-tertiary px-2 py-1 text-footnote font-medium text-label"
+                className="inline-flex items-center gap-1.5 rounded-full border border-separator bg-background px-2.5 py-1 text-footnote font-medium text-label"
               >
                 <TechIcon id={id} size={14} />
                 {techInfo(id).label}
@@ -134,7 +153,7 @@ export function JobDetail({
         </Card>
       ) : null}
 
-      <div>
+      <div className="hairline-t pt-5">
         <h2 className="text-title3 text-label">About the role</h2>
         {loadingDescription ? (
           <div aria-busy="true" aria-label="Loading description" className="mt-3 flex flex-col gap-2">
@@ -143,7 +162,7 @@ export function JobDetail({
             ))}
           </div>
         ) : description ? (
-          <p className="mt-2 max-w-2xl whitespace-pre-line text-body text-label">
+          <p className="mt-2 max-w-2xl whitespace-pre-line text-body leading-relaxed text-label">
             <Highlighted text={description} terms={highlight} />
           </p>
         ) : (

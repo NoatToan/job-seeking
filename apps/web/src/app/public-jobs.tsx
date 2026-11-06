@@ -2,54 +2,17 @@
 
 import { useCallback } from "react";
 import Link from "next/link";
-import type { Job, PublicJobsPage, SourceInfo } from "@ujc/core";
-import { sourceMeta } from "@ujc/core";
-import {
-  Badge,
-  buttonClasses,
-  EmptyState,
-  JobCardSkeleton,
-  NavBar,
-  RefreshIcon,
-  Spinner,
-} from "@ujc/ui";
+import type { Job, PublicJobsPage } from "@ujc/core";
+import { buttonClasses, EmptyState, JobCardSkeleton, RefreshIcon, SparklesIcon, Spinner } from "@ujc/ui";
 import { getPublicJobs, getSources } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { useApi } from "@/lib/use-api";
 import { useInfiniteList } from "@/lib/use-infinite";
 import { useScrollRestoration } from "@/lib/view-cache";
-import { AccountMenu } from "@/app/nav";
+import { HomeHero, SourcesSummary } from "@/app/home-hero";
 import { JobBrowser } from "@/app/job-browser";
 import { JobFilterBar, useJobFilters } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
-
-function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
-  if (status === "error") return "danger";
-  if (status === "running") return "warning";
-  return "success";
-}
-
-/** One-line strip of every source and its latest crawl status, so a visitor can see at a glance
- * where the jobs below are coming from and whether any source is currently down. */
-function SourceStatusStrip({ sources }: { sources: SourceInfo[] }) {
-  if (sources.length === 0) return null;
-  return (
-    <div
-      role="status"
-      aria-label="Source status"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-footnote text-label-secondary"
-    >
-      {sources.map((s) => (
-        <span key={s.source} className="inline-flex items-center gap-1">
-          {sourceMeta(s.source).label}
-          <Badge tone={statusTone(s.status)} className="h-4 px-1.5 text-micro">
-            {s.status}
-          </Badge>
-        </span>
-      ))}
-    </div>
-  );
-}
 
 /**
  * `/` for a signed-out visitor: the public job catalogue (Slack request — "without logging in,
@@ -78,26 +41,31 @@ export function PublicJobs() {
 
   return (
     <>
-      <NavBar
-        wide
-        largeTitle={false}
-        title="Every job, from every source, in one place"
-        trailing={
+      <HomeHero
+        title={
           <>
-            <Link href="/login/" className={buttonClasses({ size: "sm", className: "hidden md:inline-flex" })}>
-              Sign in to get matches from your CV
-            </Link>
-            <div className="md:hidden">
-              <AccountMenu />
-            </div>
+            Find a tech job you&apos;ll{" "}
+            <span className="bg-[linear-gradient(90deg,#ea580c,#e11d48_55%,#9333ea)] bg-clip-text text-transparent">love</span>
+          </>
+        }
+        compactOnPhones
+        subtitle="Remote and relocation roles from Himalayas, We Work Remotely, Seek, Arc and more — in one place, refreshed every morning."
+        aside={
+          <>
+            <SourcesSummary sources={sources ?? []} />
+            <span className="hidden lg:inline-flex">
+              <Link href="/login/" className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
+                <SparklesIcon size={16} />
+                Sign in to get matches from your CV
+              </Link>
+            </span>
           </>
         }
       >
         <JobFilterBar filters={filters} sources={(sources ?? []).map((s) => s.source)} />
-        <SourceStatusStrip sources={sources ?? []} />
-      </NavBar>
+      </HomeHero>
 
-      <div className="flex w-full flex-col gap-4 px-4 pb-4 sm:px-6">
+      <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading jobs" className="flex flex-col gap-3">
             <JobCardSkeleton />

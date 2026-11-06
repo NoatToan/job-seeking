@@ -48,7 +48,8 @@ export function NavBar({ title, largeTitle = true, leading, trailing, children, 
     <>
       <header
         className={cx(
-          "sticky top-0 z-30 transition-[background-color,border-color,backdrop-filter] duration-300",
+          // Sticks under the app's top navigation when there is one (`--ujc-shell-top`, theme.css).
+          "sticky top-[var(--ujc-shell-top)] z-30 transition-[background-color,border-color,backdrop-filter] duration-300",
           showBarChrome ? "material-bar hairline-b" : "border-b border-transparent",
           className,
         )}
@@ -101,18 +102,80 @@ export interface BrandMarkProps {
   className?: string;
 }
 
-/** Logo: a sun rising over the horizon, in the tint. "Every search is a new morning." */
+/** Logo: a sun rising over the horizon on a sunrise gradient. "Every search is a new morning." */
 export function BrandMark({ name, className }: BrandMarkProps) {
   return (
     <span className={cx("inline-flex items-center gap-2.5", className)}>
-      <span aria-hidden className="flex size-8 items-center justify-center rounded-control bg-tint text-on-tint shadow-card">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <span
+        aria-hidden
+        className="flex size-8 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#fb923c_0%,#f43f5e_55%,#a855f7_100%)] text-white shadow-raised"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
           <path d="M5 17a7 7 0 0 1 14 0" />
           <path d="M2.5 20.5h19M12 4.5V7M4.6 9.6l1.7 1.7M19.4 9.6l-1.7 1.7" />
         </svg>
       </span>
-      <span className="text-headline text-label">{name}</span>
+      <span className="font-display text-[1.0625rem] font-bold tracking-[-0.02em] text-label">{name}</span>
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ TopNav */
+
+export interface TopNavProps {
+  items: ReadonlyArray<NavItem>;
+  activeKey: string;
+  /** Left: the BrandMark (usually wrapped in a link home). */
+  brand: ReactNode;
+  /** Right: account menu / sign-in buttons. */
+  trailing?: ReactNode;
+  linkAs?: ElementType;
+  label?: string;
+  className?: string;
+}
+
+/**
+ * Desktop top navigation (>= md), the way consumer job sites are laid out: brand on the left,
+ * a few text tabs, account on the right. Translucent and sticky; its height (56px) is what pages
+ * offset their own sticky bars by (`--ujc-shell-top`). Phones use the TabBar instead.
+ */
+export function TopNav({ items, activeKey, brand, trailing, linkAs: LinkAs = "a", label = "Main", className }: TopNavProps) {
+  return (
+    <header className={cx("sticky top-0 z-40 hidden h-14 material-bar hairline-b md:block", className)}>
+      <div className="flex h-full items-center gap-6 px-4 sm:px-6">
+        <div className="shrink-0">{brand}</div>
+        <nav aria-label={label} className="min-w-0 flex-1">
+          <ul className="flex items-center gap-1">
+            {items.map((item) => {
+              const active = item.key === activeKey;
+              return (
+                <li key={item.key}>
+                  <LinkAs
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cx(
+                      "relative inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-subheadline font-medium transition-colors duration-150 focus-ring",
+                      active ? "bg-label text-background" : "text-label-secondary hover:bg-fill-tertiary hover:text-label",
+                    )}
+                  >
+                    <span aria-hidden className="shrink-0 [&_svg]:size-[17px]">
+                      {item.icon}
+                    </span>
+                    {item.label}
+                    {item.badge ? (
+                      <span className="min-w-5 rounded-full bg-tint px-1.5 text-center text-micro text-on-tint tabular-nums">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </LinkAs>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        {trailing ? <div className="flex shrink-0 items-center gap-2">{trailing}</div> : null}
+      </div>
+    </header>
   );
 }
 

@@ -79,6 +79,9 @@
 
   /* Hairline: 1 device pixel where possible */
   --ujc-hairline: 1px;
+
+  /* Height of the app's sticky top navigation (TopNav, >= md). Page bars stick under it. */
+  --ujc-shell-top: 0px;
 }
 
 @media (min-resolution: 2dppx) {
@@ -369,6 +372,15 @@
     outline: 2px solid var(--ujc-tint);
     outline-offset: 2px;
   }
+}
+
+/* Sunrise wash behind page heroes: a faint orange -> rose -> violet glow over the page colour. */
+@utility hero-wash {
+  background-color: var(--ujc-background);
+  background-image:
+    radial-gradient(60rem 18rem at 0% 0%, color-mix(in srgb, #fb923c 16%, transparent), transparent 70%),
+    radial-gradient(50rem 18rem at 55% 0%, color-mix(in srgb, #f43f5e 9%, transparent), transparent 70%),
+    radial-gradient(40rem 18rem at 100% 0%, color-mix(in srgb, #a855f7 10%, transparent), transparent 70%);
 }
 
 /* ---------------------------------------------------------------- base */

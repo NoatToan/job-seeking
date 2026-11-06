@@ -8,6 +8,18 @@ Sunrise is a Cupertino-style system (iOS/macOS conventions, system font, grouped
 up for people who are job hunting. Job hunting is stressful and often lonely. The product should feel like a
 friend who is good at this and is on your side.
 
+## v2 shell (Slack: "looks like a personal site or an admin tool")
+
+- **Job-site layout, not a back office.** A sticky top navigation (brand, a few text tabs, account) replaces the
+  left sidebar on desktop. The home page opens with a `HomeHero`: a soft sunrise wash (`hero-wash`), a friendly
+  headline, one big search pill (`SearchField variant="hero"`) and a single row of filter pills (`PillSelect`,
+  `PillToggle` in `apps/web/src/app/pill-controls.tsx`).
+- **Operational detail stays one click away.** Per-source crawl status lives in the "N sources" pill, not in an
+  always-visible strip of `ok` / `error` badges.
+- **Rows are cards, quietly.** White cards with a hairline border, pastel company avatars, salary in green,
+  "via Source" as a dot + text; the selected job gets a tint border and a 6% tint wash.
+- Visible product name: **JobSeeking**.
+
 ## 1. Principles
 
 | # | Principle | What it means in practice |
@@ -256,7 +268,7 @@ Shadows are warm-tinted (brown, not grey). In dark mode, separate surfaces by li
 | Component | File | Notes |
 |---|---|---|
 | `NavBar` | `components/navigation.tsx` | Sticky; large title collapses into the inline title; `leading`/`trailing`/children slots |
-| `Sidebar`, `TabBar`, `BrandMark`, `NavItem` | `components/navigation.tsx` | Sidebar ≥ 768, tab bar < 768 (max 5 items), `linkAs` for Next `Link` |
+| `TopNav`, `TabBar`, `BrandMark`, `NavItem` (`Sidebar` kept for previews) | `components/navigation.tsx` | Top navigation ≥ 768 (56px, sets `--ujc-shell-top` for page bars), tab bar < 768 (max 5 items), `linkAs` for Next `Link` |
 | `Button`, `IconButton`, `Spinner`, `buttonClasses()` | `components/button.tsx` | filled / tinted / gray / plain / destructive; sm / md / lg; `loading` |
 | `TextField`, `SearchField`, `CodeField` | `components/fields.tsx` | SearchField clear (x) + Esc; CodeField = OTP (one input, `one-time-code`) |
 | `SegmentedControl` | `components/segmented-control.tsx` | Sliding thumb, keyboard arrows |
