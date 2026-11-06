@@ -440,6 +440,20 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
           onChange={f.setRemoteOnly}
           icon={<GlobeIcon size={15} strokeWidth={2} aria-hidden />}
         />
+        {/* One tap for the common case: hide jobs whose remote region excludes the candidate
+            (keeps "not stated"). The select next to it keeps the stricter "confirmed" option. */}
+        <PillToggle
+          label={t("filters.access.onlyMine")}
+          checked={f.access !== ""}
+          onChange={(on) => f.setAccess(on ? "open" : "")}
+          icon={
+            f.basedIn ? (
+              <span aria-hidden className="text-[0.95rem] leading-none">
+                {flagEmoji(f.basedIn)}
+              </span>
+            ) : undefined
+          }
+        />
         <PillSelect label={t("filters.access.label")} value={f.access} onChange={f.setAccess}>
           <option value="">{t("filters.access.any")}</option>
           <option value="open">{accessYou ? t("filters.access.open", { you: accessYou }) : t("filters.access.openWorldwide")}</option>

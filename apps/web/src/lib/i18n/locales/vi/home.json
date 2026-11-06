@@ -100,7 +100,8 @@
       "open": "Nhận {{you}} (+ chưa ghi vùng)",
       "openWorldwide": "Ẩn job giới hạn vùng",
       "confirmed": "Chắc chắn nhận {{you}}",
-      "confirmedWorldwide": "Chỉ job toàn cầu"
+      "confirmedWorldwide": "Chỉ job toàn cầu",
+      "onlyMine": "Phù hợp với tôi"
     },
     "mobile": {
       "button": "Bộ lọc",
