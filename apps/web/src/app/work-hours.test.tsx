@@ -42,7 +42,9 @@ describe("work hours", () => {
     useSessionMock.mockReturnValue(signedOut());
     window.localStorage.setItem("ujc:timezone", "UTC+07:00");
     render(<WorkHoursCard job={job(["UTC+00:00"])} />);
-    expect(screen.getByText(/16:00/).textContent).toContain("16:00–00:00 (+1 day)");
+    // "Your time" row: the job's 9–5 on the user's clock, next-day end marked.
+    expect(screen.getByText("Your time").nextElementSibling?.textContent).toBe("16:00–00:00 (+1) UTC+7");
+    expect(screen.getByText("Job's time").nextElementSibling?.textContent).toBe("09:00–17:00 UTC+0");
     expect(screen.getAllByText("Evening hours").length).toBeGreaterThan(0);
     expect(screen.getByText(/1h overlap with your 9–5/)).toBeTruthy();
   });
@@ -64,9 +66,10 @@ describe("work hours", () => {
         <WorkHoursBadge job={job(["Asia/Ho_Chi_Minh"])} />
       </>,
     );
-    expect(screen.getByText(/Same time zone · 09:00–17:00/)).toBeTruthy();
+    const badge = () => document.querySelector("[title]")?.textContent ?? "";
+    expect(badge()).toBe("09:00–17:00 VNT · Same time zone");
     fireEvent.change(screen.getByLabelText("Your time zone"), { target: { value: "America/New_York" } });
     expect(window.localStorage.getItem("ujc:timezone")).toBe("America/New_York");
-    expect(screen.getByText(/Night shift · \d\d:00–\d\d:00 E[SD]T/)).toBeTruthy();
+    expect(badge()).toMatch(/^\d\d:00–\d\d:00 E[SD]T · Night shift$/);
   });
 });
