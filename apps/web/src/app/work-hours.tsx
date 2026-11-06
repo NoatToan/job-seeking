@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Job } from "@ujc/core";
-import { Badge, Card, ClockIcon, FuzzySelect } from "@ujc/ui";
+import { Badge, Card, ClockIcon, FuzzySelect, MoonIcon, SunIcon } from "@ujc/ui";
 import type { SelectOption } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
@@ -19,6 +19,16 @@ import {
   zoneLabel,
   zoneOffsetMinutes,
 } from "@/lib/work-hours";
+
+/** Icon that reads at a glance next to the fit label: sun = daytime for you, clock = part of
+ * your day, moon = evening / night shift. Text stays next to it (icons support, never replace). */
+const FIT_ICONS: Record<FitLevel, typeof SunIcon> = {
+  same: SunIcon,
+  good: SunIcon,
+  partial: ClockIcon,
+  evening: MoonIcon,
+  night: MoonIcon,
+};
 
 /** Translated labels for `FitLevel` (lib/work-hours.ts `FIT_LABELS` stays English-only so it is
  * directly testable without an i18n instance). */
@@ -93,7 +103,10 @@ export function WorkHoursBadge({ job }: { job: Job }) {
   return (
     <Badge
       tone={FIT_TONES[fit.level]}
-      icon={<ClockIcon size={11} strokeWidth={2.25} />}
+      icon={(() => {
+        const Icon = FIT_ICONS[fit.level];
+        return <Icon size={11} strokeWidth={2.25} aria-hidden />;
+      })()}
       title={t("workHours.badgeTitle", {
         fit: fitLabels[fit.level],
         zone: zoneLabel(fit.zone),
@@ -130,7 +143,7 @@ const BAR_TONE: Record<string, string> = {
 /** 24-hour strip of the user's day: their 9–5 outlined, the job's hours filled in. */
 function DayTimeline({ start, end, tone }: { start: number; end: number; tone: string }) {
   return (
-    <div aria-hidden className="mt-3">
+    <div aria-hidden className="mt-2">
       <div className="relative h-3 overflow-hidden rounded-full bg-fill-tertiary">
         {daySegments(start, end).map((seg, i) => (
           <span
@@ -174,6 +187,7 @@ export function WorkHoursCard({ job }: { job: Job }) {
   const hours = Math.round((fit.overlapMinutes / 60) * 10) / 10;
   const diffHours = fit.diffMinutes / 60;
   const abbr = shortZoneName(zone);
+  const FitIcon = FIT_ICONS[fit.level];
   const ahead =
     fit.diffMinutes === 0
       ? t("workHours.sameClock")
@@ -186,9 +200,11 @@ export function WorkHoursCard({ job }: { job: Job }) {
         <p className="flex items-center gap-2 text-headline text-label">
           <ClockIcon size={18} aria-hidden /> {t("workHours.cardTitle")}
         </p>
-        <Badge tone={FIT_TONES[fit.level]}>{fitLabels[fit.level]}</Badge>
+        <Badge tone={FIT_TONES[fit.level]} icon={<FitIcon size={12} strokeWidth={2.25} aria-hidden />}>
+          {fitLabels[fit.level]}
+        </Badge>
       </div>
-      <dl className="mt-3 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
+      <dl className="mt-2 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
         <dt className="text-subheadline text-label-secondary">{t("workHours.yourTime")}</dt>
         <dd className="text-title3 font-semibold tabular-nums text-label">
           {userRange(fit.userStart, fit.userEnd)} <span className="text-headline text-label-secondary">{abbr}</span>

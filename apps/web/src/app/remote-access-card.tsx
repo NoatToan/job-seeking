@@ -81,11 +81,11 @@ export function RemoteAccessCard({ job }: { job: Job }) {
           {badge.label}
         </Badge>
       </div>
-      <p className="mt-2 text-body text-label">{statement}</p>
+      <p className="mt-1.5 text-body text-label">{statement}</p>
       {job.location ? (
         <p className="mt-1 text-footnote text-label-secondary">{t("remote.fromLocation", { location: job.location })}</p>
       ) : null}
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-subheadline text-label-secondary">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-subheadline text-label-secondary">
         <span>{t("remote.basedIn")}</span>
         <FuzzySelect
           label={t("remote.basedIn")}

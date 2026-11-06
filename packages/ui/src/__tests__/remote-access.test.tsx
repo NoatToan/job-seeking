@@ -14,6 +14,10 @@ describe("remoteAccess", () => {
     expect(remoteAccess(["US"], null).acceptsCandidate).toBeNull();
   });
 
+  it("puts what matches the candidate first", () => {
+    expect(remoteAccess(["AD", "AE", "VN"], "VN").places).toEqual(["VN", "AD", "AE"]);
+  });
+
   it("lists countries before regions", () => {
     expect(remoteAccess(["EUROPE", "GB"]).places).toEqual(["GB", "EUROPE"]);
   });
