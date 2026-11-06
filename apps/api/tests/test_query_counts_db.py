@@ -130,15 +130,16 @@ def _queries(client: TestClient, path: str) -> int:
 
 
 # Statements per request, independent of how many rows the response holds. Signed-in requests
-# include the one session lookup (`auth.session.lookup_user`).
+# include the one session lookup (`auth.session.lookup_user`); public routes skip it.
 SIGNED_IN = {
-    "/api/jobs": 2,  # session + page
-    "/api/jobs?country=VN&tech=python": 2,
+    # Public, CDN-cached routes never read the session (ujc_api.cache_control): page only.
+    "/api/jobs": 1,
+    "/api/jobs?country=VN&tech=python": 1,
     "/api/jobs/facets": 2,  # countries + tech
     "/api/sources": 1,
     "/api/feed": 3,  # session + preferences + page (with the match LEFT JOIN)
     "/api/feed?sort=match": 3,
-    "/api/jobs?sort=salary": 2,
+    "/api/jobs?sort=salary": 1,
     "/api/me": 2,  # session + one statement for profile, role, preferences and latest CV
     "/api/me/profile": 2,
     "/api/applications": 2,

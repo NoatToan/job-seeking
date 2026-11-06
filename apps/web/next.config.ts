@@ -18,8 +18,12 @@ async function githubStars(): Promise<number> {
   }
 }
 
+/** The commit being built (Vercel sets VERCEL_GIT_COMMIT_SHA at build time; the API function reads
+ * the same variable at run time and echoes it as `X-Build-Id`). See src/lib/build-id.ts. */
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.UJC_BUILD_ID ?? "";
+
 const nextConfig = async (): Promise<NextConfig> => ({
-  env: { NEXT_PUBLIC_GITHUB_STARS: String(await githubStars()) },
+  env: { NEXT_PUBLIC_GITHUB_STARS: String(await githubStars()), NEXT_PUBLIC_BUILD_ID: BUILD_ID },
   output: "export",
   trailingSlash: true,
   images: { unoptimized: true },

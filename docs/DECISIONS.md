@@ -377,3 +377,29 @@ Status: accepted. Code: `db/migrations/028_query_indexes.sql`, `apps/api/src/ujc
 - **contributor-box issues go upstream**, not into the vendored copy: vote counts computed as
   per-row subqueries, `OFFSET` paging with a separate `count(*)`, and `ILIKE` search. See
   PERFORMANCE.md "Upstream".
+
+
+## HTTP caching: public on the CDN, personal never (2026-11-07)
+
+Status: accepted. Code: `apps/api/src/ujc_api/cache_control.py`, `auth/ratelimit.py`,
+`routers/jobs.py`, `apps/web/src/lib/{build-id,view-cache,api}.ts`. Details:
+[`product/PERFORMANCE.md`](product/PERFORMANCE.md) "HTTP caching".
+
+- **Cache by route allow-list, not by cookie.** Only `/api/jobs`, `/api/jobs/{id}`,
+  `/api/jobs/facets`, `/api/sources` and `/api/feedback/stats` get `public, s-maxage,
+  stale-while-revalidate` (+ ETag). Everything else is `private, no-store`, signed in or not. The
+  old rule ("`no-store` only when a session cookie is present") let personal routes answer an
+  anonymous request with no `Cache-Control` at all and could never make a public route cacheable
+  for a signed-in visitor.
+- **Public handlers must not read the session.** `optional_user` was removed from the job routes
+  (it was unused). No `Vary: Cookie`: Vercel treats it as uncacheable, and the body doesn't vary.
+  Per-user state about jobs belongs in `/api/feed` or `/api/me/...`. The feedback board list and
+  item detail stay private because they carry the viewer's votes / authorship (contributor-box).
+- **Only 200s are cached**; errors, `Authorization` requests and anything with `Set-Cookie` are
+  `private, no-store`.
+- **Deploy invalidation relies on Vercel's per-deployment cache key** (documented), so no build
+  id in API URLs and no purge step. The SPA's in-memory view cache is dropped when an API response
+  carries a different `X-Build-Id` (commit sha) than the one the tab cached under. localStorage
+  only holds preferences / read history and is kept across deploys.
+- **No in-process response cache**; the one unbounded in-process map (rate-limiter keys per IP /
+  user) now expires keys and is capped at 10,000.

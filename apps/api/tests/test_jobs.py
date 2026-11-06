@@ -6,10 +6,7 @@ import pytest
 from fakes import FakeJobsConn
 from fastapi import HTTPException
 
-from ujc_api.auth.deps import AuthedUser
 from ujc_api.routers.jobs import get_job, get_sources, list_jobs
-
-USER = AuthedUser(id=1, email="person@example.com")
 
 
 def _job(**overrides) -> dict:
@@ -28,7 +25,7 @@ def _job(**overrides) -> dict:
 
 def test_get_job_returns_job_detail_with_description():
     conn = FakeJobsConn(jobs=[_job()])
-    body = get_job(1, user=USER, conn=conn)
+    body = get_job(1, conn=conn)
     assert body["id"] == "1"
     assert body["title"] == "Senior Engineer"
     assert body["description"] == "Full job description."
@@ -38,10 +35,10 @@ def test_job_dto_carries_working_timezones():
     conn = FakeJobsConn(
         jobs=[_job(timezones=["UTC-05:00", "UTC-04:00"], timezone_source="stated"), _job(id=2)]
     )
-    body = get_job(1, user=USER, conn=conn)
+    body = get_job(1, conn=conn)
     assert body["timezones"] == ["UTC-05:00", "UTC-04:00"]
     assert body["timezoneSource"] == "stated"
-    unknown = get_job(2, user=USER, conn=conn)
+    unknown = get_job(2, conn=conn)
     assert unknown["timezones"] is None
     assert unknown["timezoneSource"] is None
 
@@ -59,7 +56,7 @@ def test_job_dto_salary_falls_back_to_the_parsed_salary():
             _job(id=2, salary_text="Competitive", salary_source=None),
         ]
     )
-    body = get_job(1, user=USER, conn=conn)
+    body = get_job(1, conn=conn)
     assert body["salaryText"] == "EUR 60,000 - 75,000 / year"
     assert body["salary"] == {
         "min": 60000.0,
@@ -68,15 +65,15 @@ def test_job_dto_salary_falls_back_to_the_parsed_salary():
         "period": "year",
         "source": "description",
     }
-    board_text = get_job(2, user=USER, conn=conn)
+    board_text = get_job(2, conn=conn)
     assert board_text["salaryText"] == "Competitive"
     assert board_text["salary"] is None
 
 
 def test_get_job_works_without_a_session_too():
-    """`GET /api/jobs/{id}` is public: `optional_user` can be `None` (anonymous)."""
+    """`GET /api/jobs/{id}` is public and never reads the session."""
     conn = FakeJobsConn(jobs=[_job()])
-    body = get_job(1, user=None, conn=conn)
+    body = get_job(1, conn=conn)
     assert body["id"] == "1"
 
 
@@ -91,18 +88,18 @@ def test_get_job_carries_sections_and_level():
             _job(id=2, sections=None, level=None),
         ]
     )
-    body = get_job(1, user=USER, conn=conn)
+    body = get_job(1, conn=conn)
     assert body["sections"] == sections
     assert body["description"] == "Full job description."  # still there for the fallback
     assert (body["level"], body["levelSource"]) == ("senior", "title")
-    plain = get_job(2, user=USER, conn=conn)
+    plain = get_job(2, conn=conn)
     assert plain["sections"] is None
     assert (plain["level"], plain["levelSource"]) == (None, None)
 
 
 def test_list_jobs_carries_level_but_not_sections():
     conn = FakeJobsConn(jobs=[_job(level="intern", level_source="source", sections=[{}])])
-    (item,) = list_jobs(user=None, conn=conn)["items"]
+    (item,) = list_jobs(conn=conn)["items"]
     assert (item["level"], item["levelSource"]) == ("intern", "source")
     assert "sections" not in item
     assert "description" not in item
@@ -111,7 +108,7 @@ def test_list_jobs_carries_level_but_not_sections():
 def test_get_job_missing_raises_404():
     conn = FakeJobsConn(jobs=[])
     with pytest.raises(HTTPException) as exc_info:
-        get_job(999, user=USER, conn=conn)
+        get_job(999, conn=conn)
     assert exc_info.value.status_code == 404
 
 
@@ -123,7 +120,7 @@ def test_list_jobs_is_public_and_newest_first():
             _job(id=2, title="Newer", first_seen_at=base + timedelta(days=1)),
         ]
     )
-    body = list_jobs(user=None, conn=conn)
+    body = list_jobs(conn=conn)
     assert [item["title"] for item in body["items"]] == ["Newer", "Older"]
     assert body["nextCursor"] is None
 
@@ -138,7 +135,7 @@ def test_list_jobs_paginates_without_duplicates():
     seen_ids: list[str] = []
     cursor = None
     for _ in range(10):
-        body = list_jobs(cursor=cursor, limit=10, user=None, conn=conn)
+        body = list_jobs(cursor=cursor, limit=10, conn=conn)
         seen_ids.extend(item["id"] for item in body["items"])
         cursor = body["nextCursor"]
         if not cursor:
@@ -157,13 +154,13 @@ def test_list_jobs_filters_by_q_source_and_remote():
         ]
     )
 
-    by_q = list_jobs(q="Backend", user=None, conn=conn)
+    by_q = list_jobs(q="Backend", conn=conn)
     assert {item["id"] for item in by_q["items"]} == {"1", "3"}
 
-    by_source = list_jobs(source="himalayas", user=None, conn=conn)
+    by_source = list_jobs(source="himalayas", conn=conn)
     assert {item["id"] for item in by_source["items"]} == {"2", "3"}
 
-    by_remote = list_jobs(remote=True, user=None, conn=conn)
+    by_remote = list_jobs(remote=True, conn=conn)
     assert {item["id"] for item in by_remote["items"]} == {"1", "3"}
 
 
@@ -174,7 +171,7 @@ def test_list_jobs_never_includes_upwork():
             _job(id=2, title="Staff Engineer", source="weworkremotely"),
         ]
     )
-    body = list_jobs(user=None, conn=conn)
+    body = list_jobs(conn=conn)
     assert [item["id"] for item in body["items"]] == ["2"]
 
 

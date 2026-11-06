@@ -4,9 +4,11 @@ The SPA's `getPublicJobs`/`getJob`/`getSources` (apps/web/src/lib/api.ts) call t
 `PublicJobsPage`/`JobDetail`/`SourceInfo` (packages/core/src/api.ts) are the response shapes.
 
 `GET /api/jobs` and `GET /api/jobs/{id}` need no session: the public job catalogue (Slack request
-"the home page should still show all the jobs we have without logging in"). Both accept an
-*optional* session (`optional_user`) so a signed-in visitor's cookie is still honoured, but
-neither currently changes its response based on it — there's nothing owner-scoped in `jobs`.
+"the home page should still show all the jobs we have without logging in"). They deliberately do
+NOT read the session (no `optional_user`): these routes, `/api/jobs/facets` and `/api/sources` are
+CDN-cached for everyone (ujc_api.cache_control), so their output must be identical for every
+visitor. Anything per-user about a job (viewed, saved, votes, match score) belongs in a personal
+`/api/me/...` call; the signed-in, criteria-filtered list is `GET /api/feed`.
 """
 
 from typing import Any
@@ -14,7 +16,6 @@ from typing import Any
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 
-from ujc_api.auth.deps import AuthedUser, optional_user
 from ujc_api.db import get_conn
 from ujc_api.dto import (
     JOB_COLUMNS,
@@ -89,13 +90,12 @@ def list_jobs(
     based_in: str | None = None,
     sort: str | None = None,
     tz: str | None = None,
-    user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     """The public job catalogue: every job we've crawled, no sign-in required, newest first unless
     `sort` says otherwise (`newest` | `timezone` (+ `tz`, the viewer's IANA zone) | `salary`; see
     ujc_api.job_sort). Same keyset cursors as `GET /api/feed` (routers/feed.py), just without the
-    per-user keyword/eligibility filters (`user` is accepted but unused today)."""
+    per-user keyword/eligibility filters, and without reading the session at all."""
     limit = max(1, min(limit, MAX_LIMIT))
     plan = resolve_sort(sort, tz, allowed=PUBLIC_SORTS)
 
@@ -167,7 +167,6 @@ def get_job_facets(conn: psycopg.Connection = Depends(get_conn)) -> dict:
 @router.get("/api/jobs/{job_id}")
 def get_job(
     job_id: int,
-    user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     row = conn.execute(f"SELECT {JOB_DETAIL_COLUMNS} FROM jobs WHERE id = %s", (job_id,)).fetchone()

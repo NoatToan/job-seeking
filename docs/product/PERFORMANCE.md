@@ -224,3 +224,97 @@ Checked and not N+1:
   write it to a small table after each run. An index can't help a full `unnest … GROUP BY`.
 - Run `VACUUM (ANALYZE) jobs` after big backfills (`--recompute-derived`). Every crawl rewrites
   each seen row, so autovacuum has to keep up for the sources index-only scan to stay index-only.
+
+
+## HTTP caching (2026-11-07, branch `perf/caching`)
+
+Goal (user request): cache public data on the CDN, never cache anything per-user, no unbounded
+in-process caches, and every deploy starts clean. Code: `apps/api/src/ujc_api/cache_control.py`
+(policy + middleware), `apps/web/src/lib/build-id.ts`, `apps/web/src/lib/view-cache.ts`.
+Tests: `apps/api/tests/test_cache_control.py`, `apps/web/src/lib/view-cache.test.ts`.
+
+### Endpoint classes
+
+The policy is decided by **route**, never by who is asking: the CDN cache key is method + URL
+(query string included) + host + deployment, and never the `Cookie` header, so a cached response
+must be the same for everybody who sends that URL.
+
+| Class | Routes (GET) | `Cache-Control` on 200 |
+| --- | --- | --- |
+| Public, same for everyone | `/api/jobs/facets`, `/api/jobs/{id}` | `public, s-maxage=3600, stale-while-revalidate=86400` + weak `ETag` |
+| Public, varies by query only | `/api/jobs` (`q`, `source`, `remote`, `country`, `tech`, `days`/`hours`, `access`/`based_in`, `sort`/`tz`, `cursor`, `limit`) | `public, s-maxage=300, stale-while-revalidate=86400` + `ETag` |
+| Public, crawl status | `/api/sources` | `public, s-maxage=300, stale-while-revalidate=3600` + `ETag` |
+| Public roadmap counts | `/api/feedback/stats` | `public, s-maxage=300, stale-while-revalidate=3600` + `ETag` |
+| Personal | `/api/me*`, `/api/feed`, `/api/applications*`, `/api/me/viewed`, matches, profile, CVs, tokens, runners, platforms, connections, `/api/search/live`, `/api/auth/*` (incl. CSRF), digest unsubscribe | `private, no-store` |
+| Personal when signed in | `/api/feedback` (board list), `/api/feedback/{id}`, `/meta` — they carry the viewer's own vote / authorship / admin flag | `private, no-store` |
+| Operational | `/api/health`, `/api/ready`, anything unknown | `private, no-store` |
+
+A public route still answers `private, no-store` when the status isn't 200 (404/400/429 must not
+stick), when the request has `Authorization` (a personal access token from `apps/mcp`; Vercel
+never caches those requests anyway), or when the response sets a cookie. A handler that sets its
+own `Cache-Control` on a non-public route keeps it (CSRF `no-store`, screenshot `private, no-store`).
+
+Freshness: the crawl runs about daily, so lists and source status are fresh for 5 minutes and
+served stale (while the CDN refetches in the background) for up to a day / an hour. A job's
+detail and the facet counts barely move within an hour. Vercel strips `s-maxage` /
+`stale-while-revalidate` before the browser and sends `public, max-age=0, must-revalidate`, so
+browsers always revalidate; the `ETag` turns that into a body-less 304.
+
+### Personalisation splits
+
+- `GET /api/jobs` and `GET /api/jobs/{id}` no longer take `optional_user`: they never read the
+  session (it was accepted but unused, and cost a session `UPDATE` per signed-in request:
+  `test_query_counts_db.py` now pins them at 1 statement). The signed-in, criteria-filtered list
+  is `GET /api/feed` (personal, never cached); read state comes from `GET /api/me/viewed` and is
+  merged client-side (`lib/viewed.ts`). Anything else per user about a job (votes, saved,
+  match score) must come from a personal `/api/me/...` call, not from these routes.
+- `test_signed_in_request_gets_the_same_public_body` checks every public route returns the same
+  bytes and ETag with and without a session cookie, against a fake connection that raises on the
+  session-lookup SQL.
+
+### In-process memory
+
+- No response cache in the function: the CDN does it, keyed by URL, outside our memory.
+- `SlidingWindowRateLimiter` (OTP per-IP, unsafe-method per-IP, live-search per-user, Upwork) was
+  a `defaultdict` keyed by IP / user that never dropped a key: the one real "memory leak" here.
+  It is now an `OrderedDict` ordered by last hit; keys whose hits left the window are dropped as
+  they age out, with a hard cap of 10,000 keys (least recently seen evicted).
+- The `lru_cache`s in `job_sort` are bounded (`maxsize` 1 and 4) and hold time-zone tables, not
+  request data. Each deployment runs in fresh function instances, so they reset on deploy.
+
+### Invalidation on deploy
+
+- **CDN**: nothing to do. Vercel's cache key includes the unique deployment URL ("Since each
+  deployment has a different cache key, you can promote a new deployment to production without
+  affecting the cache of the previous deployment", vercel.com/docs/caching/cdn-cache/purge
+  "Cache keys"). A new production deployment therefore starts with an empty cache for
+  `/api/*`; no `?v=` parameter or purge API call is needed.
+- **Browser HTTP cache**: `max-age=0, must-revalidate` (see above), so every load revalidates
+  against the current deployment.
+- **SPA view cache** (`lib/view-cache.ts`, used by `useApi`/`useInfinite` `cacheKey`s): in
+  memory only, gone on reload. For a tab left open across a deploy, the API sends
+  `X-Build-Id: <VERCEL_GIT_COMMIT_SHA>` on every response and the SPA is built with the same
+  value as `NEXT_PUBLIC_BUILD_ID`. `apiFetch` passes the header to `noteServerBuild`, which clears
+  the whole view cache the first time a different build answers.
+- **localStorage** holds preferences and the user's own read history (`ujc:viewed`, theme,
+  time zone, based-in, list mode, hero collapse), not API responses, so it deliberately survives
+  deploys. There is no service worker.
+
+### Verify on production (after deploy)
+
+```sh
+H=https://job-seeking-remote.vercel.app
+# Public: first MISS, then HIT (or STALE while revalidating). GET, not -I: FastAPI GET routes
+# answer HEAD with 405.
+curl -s -D - -o /dev/null "$H/api/jobs/facets" | grep -iE 'x-vercel-cache|cache-control|etag|x-build-id'
+curl -s -D - -o /dev/null "$H/api/jobs/facets" | grep -i x-vercel-cache      # HIT
+# A session cookie doesn't change the cached answer:
+curl -s -D - -o /dev/null -H 'Cookie: ujc_session=x' "$H/api/jobs/facets" | grep -i x-vercel-cache
+# Personal: never cached.
+curl -s -D - -o /dev/null "$H/api/me" | grep -iE 'x-vercel-cache|cache-control'   # MISS, private
+# After the next deploy: the first request is a MISS again and x-build-id shows the new sha.
+```
+
+Local check (done on this branch with uvicorn + Postgres 14): the classes above produced exactly
+those headers; `If-None-Match` with the returned ETag gave `304`; `/api/jobs` with and without a
+session cookie returned identical bodies.

@@ -14,7 +14,7 @@ Scope: `apps/api` (FastAPI backend) and the static SPA's deployment headers (`ve
 | Any client | Exhaust server resources (large bodies, request floods) | `BodySizeLimitMiddleware` (1 MB default / 5 MB CV), `RateLimitMiddleware` (120/min/IP on unsafe methods), per-user live-search limit (30/min) |
 | Network attacker | Read cookies/tokens in transit, clickjack the SPA, inject scripts | HSTS, `Secure` session/CSRF cookies in production, CSP (`frame-ancestors 'none'`, same-origin `script-src`/`connect-src`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` |
 | Operator / on-call | Diagnose an incident without touching PII | Structured JSON logs keyed by `request_id` (never the query string); optional Sentry with a `before_send` scrubber (no request body, cookies, headers or query string) |
-| Shared/browser cache | Cache a response that contains one user's data | `Cache-Control: no-store` whenever the request carried the session cookie |
+| Shared/browser cache | Cache a response that contains one user's data | Per-route policy (`ujc_api/cache_control.py`): only an allow-list of routes whose output is identical for everyone is `public, s-maxage`; those handlers never read the session and never set cookies. Everything else is `private, no-store` (see PERFORMANCE.md "HTTP caching") |
 
 Non-goals for this issue (out of scope: `apps/api only + vercel.json`, see "Open items" below):
 `apps/worker`/`apps/crawler` observability, CI dependency scanning, backups, and the breach-notification
@@ -52,9 +52,9 @@ runbook.
 
 ### Security headers
 - **API responses** (`SecurityHeadersMiddleware`): `X-Content-Type-Options: nosniff`,
-  `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` on every response;
-  `Cache-Control: no-store` added whenever the request carried the session cookie (i.e. the
-  response may contain user-specific data).
+  `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY` on every response.
+  `Cache-Control` comes from `CacheControlMiddleware` (`ujc_api/cache_control.py`): `private,
+  no-store` on every route except the public allow-list, whatever cookies the request carried.
 - **Static SPA** (`vercel.json` `headers`, mirroring `deploy/Caddyfile` for the Docker deploy so
   both paths behave the same):
   - `Content-Security-Policy: default-src 'self'; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; img-src 'self' data: https://*.google-analytics.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://*.googletagmanager.com; frame-src https://www.googletagmanager.com; font-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`
