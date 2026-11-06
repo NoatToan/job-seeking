@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shape of a WordPress feed (e.g. Indeed Hiring Lab, ERE): summary in <description> with the
+     "appeared first on" boilerplate, full body in content:encoded. Text is made up for tests. -->
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+  <title>Example Hiring Research</title>
+  <link>https://research.example.com</link>
+  <item>
+    <title>Hiring demand cools as job postings slip in October</title>
+    <link>https://research.example.com/2026/11/05/hiring-demand-cools/?utm_source=rss&amp;utm_medium=rss#comments</link>
+    <dc:creator><![CDATA[Ada Analyst]]></dc:creator>
+    <pubDate>Thu, 05 Nov 2026 15:38:57 +0000</pubDate>
+    <guid isPermaLink="false">https://research.example.com/?p=101</guid>
+    <description><![CDATA[<p>Job postings fell for a third month as employers grew cautious about hiring.</p>
+<p>The post <a href="https://research.example.com/2026/11/05/hiring-demand-cools/">Hiring demand cools as job postings slip in October</a> appeared first on <a href="https://research.example.com">Example Hiring Research</a>.</p>]]></description>
+    <content:encoded><![CDATA[<p>FULL BODY SHOULD NEVER BE STORED IN EXCERPT MODE.</p><script>alert(1)</script>]]></content:encoded>
+  </item>
+  <item>
+    <title>Dive Brief style summary that is very long</title>
+    <link>https://research.example.com/2026/11/04/long-summary/</link>
+    <pubDate>Wed, 04 Nov 2026 10:00:00 +0000</pubDate>
+    <description><![CDATA[Dive Brief: - one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour twentyfive twentysix twentyseven twentyeight twentynine thirty thirtyone thirtytwo thirtythree thirtyfour thirtyfive thirtysix thirtyseven thirtyeight thirtynine forty fortyone fortytwo fortythree fortyfour fortyfive fortysix fortyseven fortyeight fortynine fifty fiftyone fiftytwo recruiting.]]></description>
+  </item>
+  <item>
+    <title>Duplicate of the first item via another tracking link</title>
+    <link>https://research.example.com/2026/11/05/hiring-demand-cools/?utm_campaign=x</link>
+    <pubDate>Thu, 05 Nov 2026 15:38:57 +0000</pubDate>
+  </item>
+  <item>
+    <title>Off-site link is dropped</title>
+    <link>https://evil.example.net/phish</link>
+    <pubDate>Thu, 05 Nov 2026 15:38:57 +0000</pubDate>
+  </item>
+  <item>
+    <title>Script link is dropped</title>
+    <link>javascript:alert(1)</link>
+  </item>
+  <item>
+    <title>Too old to ingest</title>
+    <link>https://research.example.com/2025/01/01/old/</link>
+    <pubDate>Wed, 01 Jan 2025 10:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title></title>
+    <link>https://research.example.com/2026/11/03/no-title/</link>
+  </item>
+</channel>
+</rss>

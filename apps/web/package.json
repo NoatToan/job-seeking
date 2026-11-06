@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node ../../scripts/seo-snapshot.mjs && next build",
+    "build": "node ../../scripts/migrate.mjs && node ../../scripts/seo-snapshot.mjs && node scripts/export-blog.mjs && next build",
     "build:app": "next build",
     "start": "next start",
     "lint": "eslint",

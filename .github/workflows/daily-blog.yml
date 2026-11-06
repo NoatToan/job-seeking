@@ -1,0 +1,64 @@
+name: Daily blog
+
+# Fetches the hiring / labour-market / careers feeds in apps/crawler/src/job_crawler/blog/sources.py
+# into Postgres and publishes the day's roundup post (templated, no LLM). The web app is a static
+# export, so new posts and republished articles go live on the next build: when something new was
+# stored and the VERCEL_DEPLOY_HOOK_URL secret is set, this triggers a production rebuild.
+
+on:
+  schedule:
+    - cron: "30 23 * * *" # 06:30 Asia/Ho_Chi_Minh, after the 05:00 job crawl (fresh related jobs)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Fetch and count only (no database writes, no deploy)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-blog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  blog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/crawler
+    # `secrets` can't be used in `if:`; expose them as env instead.
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Test blog pipeline
+        run: uv run pytest tests/test_blog_feeds.py tests/test_blog_body.py tests/test_blog_roundup.py -q
+
+      - name: Dry run
+        if: ${{ inputs.dry_run || env.DATABASE_URL == '' }}
+        run: uv run python -m job_crawler.blog --dry-run
+
+      - name: Fetch feeds and publish roundup
+        id: blog
+        if: ${{ !inputs.dry_run && env.DATABASE_URL != '' }}
+        run: uv run python -m job_crawler.blog
+
+      # The deploy hook URL is a secret (anyone holding it can trigger builds); it is only ever read
+      # from the environment, never echoed.
+      - name: Rebuild the site
+        if: ${{ steps.blog.outcome == 'success' && (steps.blog.outputs.published == 'true' || steps.blog.outputs.new_articles == 'true') && env.VERCEL_DEPLOY_HOOK_URL != '' }}
+        run: curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL" > /dev/null && echo "Deploy hook triggered"
+
+      - name: Rebuild skipped
+        if: ${{ steps.blog.outcome == 'success' && env.VERCEL_DEPLOY_HOOK_URL == '' }}
+        run: echo "VERCEL_DEPLOY_HOOK_URL is not set; new posts appear on the next deploy."

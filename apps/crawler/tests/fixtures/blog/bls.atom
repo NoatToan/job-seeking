@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Shape of a BLS release feed: Atom, the summary only in <content>, no <summary>.
+     Text is made up for tests. -->
+<feed xmlns="http://www.w3.org/2005/Atom"><id>bls.gov:feed:jolts</id><title>Job Openings and Labor Turnover Survey</title><updated>2026-11-03T09:20:35.968-05:00</updated><author><name>Bureau of Labor Statistics Publications</name></author><rights>US Bureau of Labor Statistics</rights>
+<entry><title>September job openings change little; quits increase</title><link href="https://www.bls.gov/news.release/archives/jolts_11032026.htm"/><id>jolts-2026_11_03__09_20_35</id><content>The number of job openings was little changed at 7.5 million in September. Quits increased to 3.4 million.</content><published>2026-11-03T09:20:35.968-05:00</published><updated>2026-11-03T09:20:35.968-05:00</updated><category>News Release</category></entry>
+</feed>

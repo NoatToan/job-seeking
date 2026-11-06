@@ -27,6 +27,16 @@ import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
 
+/** Blog tab icon (a newspaper; same 24px stroke style as the @ujc/ui icons). */
+function NewspaperIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M4 5.5h13v13a2 2 0 0 0 2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M17 9h3v9.5a2 2 0 0 1-4 0M7.5 9h6M7.5 12.5h6M7.5 16h4" />
+    </svg>
+  );
+}
+
 /** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
 export const BRAND_NAME = "JobSeeking";
 
@@ -39,6 +49,7 @@ function useNavItems(): NavItem[] {
       { key: "tracker", label: t("nav.tracker"), href: "/tracker/", icon: <KanbanIcon size={22} /> },
       { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
       { key: "connections", label: t("nav.connections"), href: "/connections/", icon: <LinkIcon size={22} /> },
+      { key: "blog", label: t("nav.blog"), href: "/blog/", icon: <NewspaperIcon /> },
     ],
     // `t` keeps its identity across language changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,6 +62,7 @@ function activeKeyFor(pathname: string): string {
   if (pathname.startsWith("/tracker")) return "tracker";
   if (pathname.startsWith("/cv")) return "cv";
   if (pathname.startsWith("/connections")) return "connections";
+  if (pathname.startsWith("/blog")) return "blog";
   if (pathname === "/") return "feed";
   return "";
 }
@@ -157,7 +169,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
   const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
-  const navItems = me ? allItems : allItems.filter((item) => item.key === "feed");
+  // Signed out: the public pages only (jobs, blog).
+  const navItems = me ? allItems : allItems.filter((item) => item.key === "feed" || item.key === "blog");
+  // The phone tab bar keeps its five signed-in tabs; the blog stays reachable from the TopNav.
+  const tabItems = me ? navItems.filter((item) => item.key !== "blog") : navItems;
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
@@ -200,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="flex-1">{children}</div>
       </div>
-      {showTabBar ? <TabBar items={navItems} activeKey={activeKey} linkAs={Link} /> : null}
+      {showTabBar ? <TabBar items={tabItems} activeKey={activeKey} linkAs={Link} /> : null}
     </div>
   );
 }

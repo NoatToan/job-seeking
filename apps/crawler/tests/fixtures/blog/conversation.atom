@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shape of a The Conversation topic feed: Atom, full HTML body in <content>, per-entry
+     <rights>, and the page-view counter <img>. Text is made up for tests. -->
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+  <title>Labour market – The Conversation</title>
+  <id>tag:theconversation.com,2011:/topics/labour-market</id>
+  <updated>2026-11-05T10:00:00Z</updated>
+  <entry>
+    <id>tag:theconversation.com,2011:article/1001</id>
+    <published>2026-11-05T10:00:00Z</published>
+    <updated>2026-11-05T10:00:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://theconversation.com/unemployment-rises-in-a-cooling-labour-market-1001"/>
+    <title>Unemployment rises in a cooling labour market</title>
+    <summary>Unemployment ticked up as hiring slowed.</summary>
+    <content type="html">&lt;p&gt;Unemployment rose to &lt;strong&gt;4.7%&lt;/strong&gt;, &lt;a href="https://www.abs.gov.au/stats"&gt;official data&lt;/a&gt; show.&lt;/p&gt;
+&lt;figure&gt;&lt;img src="https://images.example.com/chart.png" alt="chart"&gt;&lt;figcaption&gt;Image caption must go&lt;/figcaption&gt;&lt;/figure&gt;
+&lt;h2&gt;What next&lt;/h2&gt;
+&lt;ul&gt;&lt;li&gt;Fewer &lt;em&gt;openings&lt;/em&gt;&lt;/li&gt;&lt;li&gt;More applicants per job&lt;/li&gt;&lt;/ul&gt;
+&lt;script&gt;steal()&lt;/script&gt;&lt;iframe src="https://evil.example.net"&gt;&lt;/iframe&gt;
+&lt;p&gt;&lt;a href="javascript:alert(1)"&gt;bad link&lt;/a&gt; and &lt;a href="/relative-path"&gt;relative&lt;/a&gt;&lt;br&gt;next line&lt;/p&gt;
+&lt;img alt="The Conversation" height="1" src="https://counter.theconversation.com/content/1001/count.gif" width="1" /&gt;</content>
+    <author><name>Jane Economist, Professor of Economics, Example University</name></author>
+    <rights>Licensed as Creative Commons – attribution, no derivatives.</rights>
+  </entry>
+  <entry>
+    <id>tag:theconversation.com,2011:article/1002</id>
+    <published>2026-11-04T10:00:00Z</published>
+    <link rel="alternate" type="text/html" href="https://theconversation.com/a-differently-licensed-article-1002"/>
+    <title>A differently licensed article about careers</title>
+    <summary>This one is not under Creative Commons.</summary>
+    <content type="html">&lt;p&gt;Body that must not be republished.&lt;/p&gt;&lt;img src="https://counter.theconversation.com/content/1002/count.gif"/&gt;</content>
+    <author><name>John Author</name></author>
+    <rights>All rights reserved.</rights>
+  </entry>
+  <entry>
+    <id>tag:theconversation.com,2011:article/1003</id>
+    <published>2026-11-03T10:00:00Z</published>
+    <link rel="alternate" type="text/html" href="https://theconversation.com/no-counter-pixel-1003"/>
+    <title>An article without its counter pixel</title>
+    <summary>Remote work keeps changing.</summary>
+    <content type="html">&lt;p&gt;Body without the required counter.&lt;/p&gt;</content>
+    <rights>Licensed as Creative Commons – attribution, no derivatives.</rights>
+  </entry>
+</feed>
