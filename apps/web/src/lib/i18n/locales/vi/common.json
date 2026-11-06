@@ -25,6 +25,23 @@
       "worth": "Đáng xem",
       "long": "Ít phù hợp"
     },
+    "levels": {
+      "names": {
+        "intern": "Thực tập",
+        "junior": "Junior",
+        "mid": "Mid-level",
+        "senior": "Senior",
+        "lead": "Lead",
+        "manager": "Quản lý",
+        "director": "Giám đốc"
+      },
+      "aria": "Cấp bậc: {{level}}",
+      "from": {
+        "source": "theo trang tuyển dụng",
+        "title": "theo tên công việc",
+        "description": "đoán từ mô tả công việc"
+      }
+    },
     "remoteAccess": {
       "worldwide": "Remote · Toàn cầu",
       "only": "Remote · chỉ {{places}}",

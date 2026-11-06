@@ -26,6 +26,23 @@
       "worth": "Worth a look",
       "long": "Long shot"
     },
+    "levels": {
+      "names": {
+        "intern": "Intern",
+        "junior": "Junior",
+        "mid": "Mid-level",
+        "senior": "Senior",
+        "lead": "Lead",
+        "manager": "Manager",
+        "director": "Director"
+      },
+      "aria": "Level: {{level}}",
+      "from": {
+        "source": "from the job board",
+        "title": "from the job title",
+        "description": "guessed from the description"
+      }
+    },
     "remoteAccess": {
       "worldwide": "Remote · Worldwide",
       "only": "Remote · {{places}} only",

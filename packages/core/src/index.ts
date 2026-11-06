@@ -2,7 +2,9 @@ export * from "./sources";
 export * from "./api";
 export * from "./tech";
 export * from "./remote";
+export * from "./jd";
 import { COUNTRY_REGIONS, WORLDWIDE } from "./remote";
+import type { JobLevel } from "./jd";
 
 /** A job as the apps see it (one row of the jobs table). */
 export interface Job {
@@ -38,6 +40,10 @@ export interface Job {
   } | null;
   /** Tech ids found in the posting (job_crawler.techstack), e.g. ["nextjs", "react"]. */
   techStack?: string[];
+  /** Seniority (job_crawler.level); null/absent = not stated. */
+  level?: JobLevel | null;
+  /** Where `level` came from: the board's own field, the title, or the description text. */
+  levelSource?: "source" | "title" | "description" | null;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
 }

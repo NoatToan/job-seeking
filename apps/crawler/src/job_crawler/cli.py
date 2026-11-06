@@ -47,6 +47,19 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="tidy whitespace / bullets in every stored description (text.normalize_description),"
         " then exit",
     )
+    parser.add_argument(
+        "--backfill-sections",
+        action="store_true",
+        help="re-parse description sections and level (sections.py, level.py) on jobs parsed by"
+        " older rules (sections_version below sections.VERSION), in batches, then exit."
+        " Idempotent and resumable; --recompute-derived runs it too",
+    )
+    parser.add_argument(
+        "--batch",
+        type=int,
+        default=db.BACKFILL_BATCH,
+        help=f"rows per committed batch for --backfill-sections (default {db.BACKFILL_BATCH})",
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -75,8 +88,15 @@ def main(argv: list[str] | None = None) -> int:
             log.info("descriptions normalised on %d jobs", db.normalize_descriptions(conn))
             conn.close()
             return 0
+        if args.backfill_sections:
+            log.info("sections re-parsed on %d jobs", db.backfill_sections(conn, batch=args.batch))
+            conn.close()
+            return 0
         if args.recompute_derived:
             log.info("derived columns updated on %d jobs", db.recompute_derived(conn))
+            # The nightly recompute (daily-crawl.yml, or a host-side schedule) also brings
+            # sections / level up to the current rules version: a no-op once every row is on it.
+            log.info("sections re-parsed on %d jobs", db.backfill_sections(conn, batch=args.batch))
             conn.close()
             return 0
 

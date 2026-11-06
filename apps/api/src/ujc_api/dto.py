@@ -10,13 +10,15 @@ from job_crawler.salary import Salary
 JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
     " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source,"
-    " tech_stack, salary_min, salary_max, salary_currency, salary_period, salary_source"
+    " tech_stack, salary_min, salary_max, salary_currency, salary_period, salary_source,"
+    " level, level_source"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
 
-# `GET /api/jobs/{id}`: the `Job` columns plus `description` (packages/core `JobDetail`).
-JOB_DETAIL_COLUMNS = f"{JOB_COLUMNS}, description"
+# `GET /api/jobs/{id}`: the `Job` columns plus `description` and its parsed `sections`
+# (packages/core `JobDetail`).
+JOB_DETAIL_COLUMNS = f"{JOB_COLUMNS}, description, sections"
 
 # `GET /api/sources`: one row per `source`, the latest `crawl_runs` row for it (or NULLs if it
 # has none) and the total job count (see routers/jobs.py for the query).
@@ -64,6 +66,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         salary_currency,
         salary_period,
         salary_source,
+        level,
+        level_source,
     ) = row
     salary = (
         Salary(
@@ -106,15 +110,34 @@ def job_dto(row: tuple) -> dict[str, Any]:
         }
         if salary
         else None,
+        # Seniority (job_crawler.level): "intern" … "director"; `levelSource` = "source" (the
+        # board's own field), "title" or "description". null = not stated.
+        "level": level,
+        "levelSource": level_source if level else None,
+    }
+
+
+def _section_dto(section: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "key": section.get("key") or "other",
+        "heading": section.get("heading"),
+        "body": section.get("body") or "",
+        "summary": section.get("summary") or "",
     }
 
 
 def job_detail_dto(row: tuple) -> dict[str, Any]:
     """Maps one row selected with `JOB_DETAIL_COLUMNS` to the `JobDetail` shape (packages/core):
-    the `Job` fields plus `description`."""
-    *job_row, description = row
+    the `Job` fields plus `description` and `sections` (job_crawler.sections, posting order;
+    null when none were recognised — the app then shows `description` as is)."""
+    *job_row, description, sections = row
     dto = job_dto(tuple(job_row))
     dto["description"] = description
+    dto["sections"] = (
+        [_section_dto(s) for s in sections if isinstance(s, dict)]
+        if isinstance(sections, list) and sections
+        else None
+    )
     return dto
 
 

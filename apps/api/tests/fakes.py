@@ -166,6 +166,8 @@ class FakeJobsConn:
                         j.get("salary_currency"),
                         j.get("salary_period"),
                         j.get("salary_source"),
+                        j.get("level"),
+                        j.get("level_source"),
                     )
                     for j in rows
                 ]
@@ -199,7 +201,10 @@ class FakeJobsConn:
                             job.get("salary_currency"),
                             job.get("salary_period"),
                             job.get("salary_source"),
+                            job.get("level"),
+                            job.get("level_source"),
                             job.get("description"),
+                            job.get("sections"),
                         )
                     )
             return _Result(None)

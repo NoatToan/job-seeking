@@ -212,3 +212,69 @@ export const EyeIcon = createIcon(
     <circle cx="12" cy="12" r="3" />
   </>,
 );
+
+// --- Job description sections (apps/web job detail) -------------------------------------------
+export const BuildingIcon = createIcon(
+  "BuildingIcon",
+  <>
+    <rect x="4" y="2.5" width="16" height="19" rx="2" />
+    <path d="M9 21.5v-4h6v4M8.5 7h.01M12 7h.01M15.5 7h.01M8.5 11h.01M12 11h.01M15.5 11h.01M8.5 15h.01M15.5 15h.01" />
+  </>,
+);
+export const ListChecksIcon = createIcon(
+  "ListChecksIcon",
+  <>
+    <path d="m3 6 1.5 1.5L7.5 4.5M3 13l1.5 1.5 3-3M11 6h10M11 13h10M11 20h10" />
+    <path d="M4.5 20h.01" />
+  </>,
+);
+export const CodeIcon = createIcon("CodeIcon", <path d="m16 18 6-6-6-6M8 6l-6 6 6 6M14 4l-4 16" />);
+export const BanknoteIcon = createIcon(
+  "BanknoteIcon",
+  <>
+    <rect x="2" y="6" width="20" height="12" rx="2.5" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M6 12h.01M18 12h.01" />
+  </>,
+);
+export const GiftIcon = createIcon(
+  "GiftIcon",
+  <>
+    <rect x="3" y="8" width="18" height="4" rx="1" />
+    <path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+    <path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+  </>,
+);
+export const RouteIcon = createIcon(
+  "RouteIcon",
+  <>
+    <circle cx="6" cy="19" r="2.5" />
+    <circle cx="18" cy="5" r="2.5" />
+    <path d="M8.5 19H17a3.5 3.5 0 0 0 0-7H7a3.5 3.5 0 0 1 0-7h8.5" />
+  </>,
+);
+export const HeartIcon = createIcon(
+  "HeartIcon",
+  <path d="M19.5 13.5 12 21l-7.5-7.5a4.95 4.95 0 0 1 7-7l.5.5.5-.5a4.95 4.95 0 0 1 7 7z" />,
+);
+/** Two people: a management role (job level badge). */
+export const UsersIcon = createIcon(
+  "UsersIcon",
+  <>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20.5a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.5a6.5 6.5 0 0 1 3 6" />
+  </>,
+);
+/** A flag on a pole: director / executive level. */
+export const FlagIcon = createIcon(
+  "FlagIcon",
+  <path d="M4.5 21.5V3.5M4.5 4.5c3-1.5 5.5 1.5 8.5 0s5.5-1.5 6.5-.5v9c-1-1-3.5-1-6.5.5s-5.5-1.5-8.5 0" />,
+);
+/** A sprout: intern level. */
+export const SproutIcon = createIcon(
+  "SproutIcon",
+  <>
+    <path d="M12 21v-9" />
+    <path d="M12 12c0-4 3-7 8-7 0 4-3 7-8 7zM12 14c0-3.5-2.5-6-7-6 0 3.5 2.5 6 7 6z" />
+  </>,
+);

@@ -2,6 +2,7 @@
 // docs/product/ARCHITECTURE.md §5 (API surface): camelCase bodies, string ids, `{items,total,page,pageSize}`
 // list envelopes, and `{error:{code,message,fields?}}` error bodies.
 import type { Job } from "./index";
+import type { JdSection } from "./jd";
 
 /** A paginated list response, as returned by every `GET` list endpoint. */
 export interface Page<T> {
@@ -78,6 +79,9 @@ export interface TaskStatus {
 /** `GET /api/jobs/{id}`: a job plus its full description. */
 export interface JobDetail extends Job {
   description: string | null;
+  /** The description split into canonical sections (posting order); null/absent when none were
+   * recognised — show `description` as is. */
+  sections?: JdSection[] | null;
 }
 
 // --- Flow v2 (docs/product/FLOW_V2.md §4): email OTP, CV upload, feed, live search. -------------

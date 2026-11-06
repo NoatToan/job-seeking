@@ -6,7 +6,8 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from job_crawler import eligibility
-from job_crawler.derived import DERIVED_COLUMNS, derive
+from job_crawler import sections as jd_sections
+from job_crawler.derived import DERIVED_COLUMNS, PARSED_COLUMNS, derive, parse_posting
 from job_crawler.models import Board, JobRecord
 from job_crawler.text import normalize_description
 
@@ -14,9 +15,10 @@ log = logging.getLogger(__name__)
 
 ERROR_MAX_LEN = 2000
 
-_DERIVED_INSERT = ", ".join(DERIVED_COLUMNS)
-_DERIVED_VALUES = ", ".join(f"%({c})s" for c in DERIVED_COLUMNS)
-_DERIVED_UPDATE = "".join(f"  {c} = EXCLUDED.{c},\n" for c in DERIVED_COLUMNS)
+_WRITTEN = (*DERIVED_COLUMNS, *PARSED_COLUMNS)
+_DERIVED_INSERT = ", ".join(_WRITTEN)
+_DERIVED_VALUES = ", ".join(f"%({c})s" for c in _WRITTEN)
+_DERIVED_UPDATE = "".join(f"  {c} = EXCLUDED.{c},\n" for c in _WRITTEN)
 
 UPSERT_SQL = f"""
 INSERT INTO jobs (
@@ -79,6 +81,7 @@ def job_params(job: JobRecord) -> dict[str, Any]:
             salary_text=job.salary_text,
         )
     )
+    params.update(parse_posting(title=job.title, description=params["description"], raw=job.raw))
     return params
 
 
@@ -231,3 +234,41 @@ def recompute_derived(conn: psycopg.Connection) -> int:
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany(f"UPDATE jobs SET {sets} WHERE id = %s", changed)
     return len(changed)
+
+
+BACKFILL_BATCH = 500
+
+
+def backfill_sections(
+    conn: psycopg.Connection, *, batch: int = BACKFILL_BATCH, version: int | None = None
+) -> int:
+    """Re-parse description sections and level (`derived.parse_posting`) on every job whose
+    `sections_version` is below the current rules version (`sections.VERSION`). Works in batches
+    of `batch` rows, each committed on its own: idempotent (re-parsed rows carry the new version
+    and are skipped next time) and resumable (a crash or timeout loses at most one batch).
+    `FOR UPDATE SKIP LOCKED` lets two overlapping runs share the work. Returns rows updated."""
+    target = jd_sections.VERSION if version is None else version
+    total = 0
+    while True:
+        with conn.transaction():
+            rows = conn.execute(
+                "SELECT id, title, description, raw FROM jobs WHERE sections_version < %s"
+                " ORDER BY sections_version, id LIMIT %s FOR UPDATE SKIP LOCKED",
+                (target, max(1, batch)),
+            ).fetchall()
+            if not rows:
+                break
+            updates = []
+            for job_id, title, description, raw in rows:
+                parsed = parse_posting(title=title, description=description, raw=raw)
+                parsed["sections_version"] = target
+                updates.append((*(parsed[c] for c in PARSED_COLUMNS), job_id))
+            with conn.cursor() as cur:
+                cur.executemany(
+                    "UPDATE jobs SET sections = %s, sections_version = %s, level = %s,"
+                    " level_source = %s WHERE id = %s",
+                    updates,
+                )
+        total += len(rows)
+        log.info("sections backfill: %d jobs re-parsed so far", total)
+    return total

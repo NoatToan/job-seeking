@@ -12,6 +12,28 @@
     "foundInDescription": "Tìm thấy trong mô tả công việc",
     "fromDescription": "từ mô tả"
   },
+  "sections": {
+    "heading": "Mô tả công việc",
+    "aria": "Mô tả công việc theo từng phần",
+    "titles": {
+      "intro": "Tổng quan",
+      "about_company": "Về công ty",
+      "about_role": "Về vị trí này",
+      "responsibilities": "Công việc bạn sẽ làm",
+      "requirements": "Yêu cầu",
+      "nice_to_have": "Điểm cộng",
+      "tech_stack": "Công nghệ và công cụ",
+      "compensation": "Lương và thu nhập",
+      "benefits": "Phúc lợi",
+      "location_remote": "Địa điểm và giờ làm",
+      "hiring_process": "Quy trình tuyển dụng",
+      "other": "Thông tin thêm",
+      "equal_opportunity": "Cơ hội bình đẳng"
+    },
+    "showMore": "Xem thêm",
+    "showLess": "Thu gọn",
+    "postingHeading": "Trong tin tuyển dụng: {{heading}}"
+  },
   "view": {
     "title": "Chi tiết việc làm",
     "missingIdTitle": "Thiếu mã việc làm",
