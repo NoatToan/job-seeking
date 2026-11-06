@@ -305,6 +305,24 @@ describe("Home", () => {
     expect(current()).toBe("Job 2");
   });
 
+  it("keeps only ~50 rows around the viewport in the DOM for long lists", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const items = Array.from({ length: 200 }, (_, i) => job(String(i + 1), `Row ${i + 1}`));
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs")) return Promise.resolve(jsonResponse(200, { items, nextCursor: null }));
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Row 1")).toBeTruthy(), { timeout: 5000 });
+    const rows = screen.getByRole("list", { name: "Jobs" }).querySelectorAll("[role=listitem]");
+    expect(rows.length).toBeGreaterThan(20);
+    expect(rows.length).toBeLessThanOrEqual(60);
+    expect(screen.queryByText("Row 200")).toBeNull();
+  });
+
   it("filters by country from the facets list", async () => {
     useSessionMock.mockReturnValue(signedOutSession());
     const fetchMock = vi.fn((url: string) => {
