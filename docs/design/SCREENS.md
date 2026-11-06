@@ -11,26 +11,26 @@ Rules for every screen:
 - Copy lives in one strings module per screen (see voice and tone, DESIGN_SYSTEM §2).
 - Components are from `@ujc/ui`. Page background is `bg-grouped` unless noted.
 
-## 0. App shell
+## 0. App shell (v2: job-site layout, responsive + adaptive — DESIGN_SYSTEM §5.1)
 
 ```
-Desktop ≥768                                         Phone <768
-┌───────────┬──────────────────────────────────┐     ┌──────────────────────────┐
-│ ☀ Brand   │  ‹ Back        Feed        (LN)  │ ←  │        Feed        (LN)  │ ← NavBar, inline title
-│           │                                  │     │                          │   appears after scroll
-│ ▣ Feed 12 │  Good morning, Linh              │ ←  │ Good morning, Linh       │ ← large title (h1)
-│ ⌕ Search  │  12 new since yesterday          │     │ [⌕ Filter your feed   ]  │
-│ ▤ My CV   │  [⌕ Filter your feed        ] ⓧ  │     │ ┌──────────────────────┐ │
-│ ▥ Tracker │  ┌────────────────────────────┐  │     │ │ JobCard              │ │
-│           │  │ JobCard                    │  │     │ └──────────────────────┘ │
-│           │  └────────────────────────────┘  │     │                          │
-│───────────│                                  │     ├──────────────────────────┤
-│ (LN) Linh │                                  │     │ ▣Feed ⌕Search ▤CV ▥Track │ ← TabBar (material)
-└───────────┴──────────────────────────────────┘     └──────────────────────────┘
+Desktop ≥1024                                                    Phone <768
+┌──────────────────────────────────────────────────────────┐     ┌──────────────────────────┐
+│ ☀ JobSeeking  [Jobs] Search Tracker CV        (LN) / Sign in│ ← TopNav ≥768 (sticky, 56px)
+├──────────────────────────────────────────────────────────┤     │ ☀ JobSeeking     Sign in │ ← brand row in HomeHero
+│ Find a tech job you'll love          ● 11 sources ▾ [CTA] │     │ Find a tech job…         │
+│ [⌕ Job title, company or skill ] (Source▾)(Country▾)(Hours)…│   │ [⌕ Search             ]  │
+├────────────────────┬─────────────────────────────────────┤     │ (Source▾)(Country▾)(…) → │ ← pills scroll sideways
+│ ▢ Job row (sel.)   │  Detail panel: avatar, title, Apply │     │ ▢ Job row → pushed page  │
+│ ▢ Job row          │  working hours, tech, description   │     │ ▢ Job row                │
+│ (own scroll)       │  (own scroll)                       │     ├──────────────────────────┤
+└────────────────────┴─────────────────────────────────────┘     │ ▣Jobs ⌕Search ▥Track ▤CV │ ← TabBar
+                                                                 └──────────────────────────┘
+Tablet 768–1023: TopNav + HomeHero, one-column list; a row opens the job page (no squeezed side panel).
 ```
 
-- **Sidebar** (`Sidebar`, ≥ 768): BrandMark, nav items (Feed with a badge for new jobs, Search, My CV, Tracker when M4 lands), footer with Avatar + email; clicking it opens an account Sheet (Sign out, Delete CV, Privacy).
-- **TabBar** (`TabBar`, < 768): the same items (max 5). Content gets `pb-[calc(52px+env(safe-area-inset-bottom))]`.
+- **TopNav** (`TopNav`, ≥ 768): BrandMark, text tabs (Jobs, Live search, Tracker, My CV, Connections when signed in), account pill (opens the account Sheet) or "Sign in". Sets `--ujc-shell-top` so page bars stick under it.
+- **TabBar** (`TabBar`, < 768): the same items (max 5). The whole page column, footer included, gets `pb-[calc(52px+env(safe-area-inset-bottom))]`; on the job page the Apply bar height is used instead.
 - **NavBar**: `largeTitle` on top-level screens (Feed, Search, My CV, Tracker); inline title with a back button on pushed screens (job detail). Trailing slot: Avatar (phone) or contextual action.
 - **Toasts**: one `ToastProvider` at the root; toasts appear top-centre under the NavBar.
 - **Footer** (public pages only): source attribution ("Jobs by Adzuna"), Privacy, Terms. It is `text-footnote text-label-secondary`.
