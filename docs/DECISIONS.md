@@ -6,7 +6,7 @@ details behind individual features.
 
 ## Blog (hiring & career trends)
 
-Status: accepted, 2026-11-06. Code: `apps/crawler/src/job_crawler/blog/`, `db/migrations/021_blog.sql`,
+Status: accepted, 2026-11-06. Code: `apps/crawler/src/job_crawler/blog/`, `db/migrations/023_blog.sql`,
 `apps/web/src/app/blog/`, `apps/web/scripts/export-blog.mjs`, `.github/workflows/daily-blog.yml`.
 
 ### B1. Two republishing modes per source, decided by licence

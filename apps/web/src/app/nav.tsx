@@ -22,6 +22,8 @@ import {
   TopNav,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
+import { FeedbackWidget } from "@contributor-box/react";
+import { ContributorRoot } from "@/lib/contributor";
 import { LanguageSwitch } from "@/lib/i18n/provider";
 import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
@@ -75,6 +77,7 @@ function activeKeyFor(pathname: string): string {
 export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "pill" }) {
   const { me, signOut } = useSession();
   const { t } = useTranslation("common");
+  const { t: tc } = useTranslation("contributor");
   const [open, setOpen] = useState(false);
 
   if (!me && variant === "pill") {
@@ -138,6 +141,20 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
             onClick={() => setOpen(false)}
           />
           <ListRow
+            title={tc("nav.contribute")}
+            href="/contribute/"
+            linkAs={Link}
+            onClick={() => setOpen(false)}
+          />
+          {me.user.role === "admin" ? (
+            <ListRow
+              title={tc("nav.reviewFeedback")}
+              href="/admin/feedback/"
+              linkAs={Link}
+              onClick={() => setOpen(false)}
+            />
+          ) : null}
+          <ListRow
             title={t("nav.signOut")}
             destructive
             onClick={() => {
@@ -183,7 +200,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showTabBar = showChrome && !showApplyBar;
 
   return (
-    // `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop.
+    <ContributorRoot>
+    {/* `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop. */}
     <div className={cx("flex min-h-dvh flex-col", showChrome && "md:[--ujc-shell-top:3.5rem]")}>
       {showChrome ? (
         <TopNav
@@ -216,6 +234,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex-1">{children}</div>
       </div>
       {showTabBar ? <TabBar items={tabItems} activeKey={activeKey} linkAs={Link} /> : null}
+      {/* Contributor feedback button (D14) wherever the chrome shows; lifted above the phone tab
+          bar or the job page's Apply bar so it never covers them. */}
+      {showChrome ? (
+        <FeedbackWidget
+          className={cx(
+            showTabBar && "bottom-[calc(68px+env(safe-area-inset-bottom))] md:bottom-4",
+            showApplyBar && "bottom-[calc(100px+env(safe-area-inset-bottom))] sm:bottom-4",
+          )}
+        />
+      ) : null}
     </div>
+    </ContributorRoot>
   );
 }

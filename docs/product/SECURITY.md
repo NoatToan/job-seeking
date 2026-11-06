@@ -90,6 +90,38 @@ runbook.
   hook that drops the event's request body, cookies, headers and query string — only the method,
   path and exception survive, matching the "never log emails, CV text, cookies or tokens" rule.
 
+### Contributor feedback (`/api/feedback`, ARCHITECTURE.md D14)
+- **Admin role, server-side only.** `users.role` (`'user'`/`'admin'`, migration 021) or
+  `UJC_ADMIN_EMAILS`, evaluated on every request (`ujc_api.auth.admin`), never cached in the
+  session, never from a personal access token. Every admin action (`PATCH`, notes, `scope=all`
+  list, deleting someone else's item) returns 403 for non-admins; `/api/me`'s `role` only drives
+  what the SPA shows. First admin: env list or `python -m ujc_api.admin grant <email>`. No
+  passwords, no seeded accounts.
+- **Visibility.** New / under-review / rejected items are visible to their author and admins
+  only (404 to everyone else). Page URL, selector, element text, region, screenshot and user agent
+  are returned only to the author and admins, even for approved items; author identity only to
+  admins.
+- **Validation.** Pydantic models with `extra="forbid"` (clients cannot set status, author or
+  reviewer), length caps mirrored by DB CHECK constraints, NUL bytes rejected, page URLs limited to
+  http(s) or root-relative paths (no `javascript:`, `data:`, `//host`, `/\host`, credentials).
+  10 submissions per author per hour, counted in Postgres under an advisory lock.
+- **Screenshots.** JPEG/PNG/WebP data URL, at most 1.5 MB decoded; the stored type comes from
+  magic bytes, not the client. `POST /api/feedback` may carry a 2.2 MB body (`body_limit.py`); every
+  other route keeps 1 MB. Served only to the author/admins from
+  `GET /api/feedback/{id}/screenshot` with `nosniff`, `Cache-Control: private, no-store`,
+  `Content-Security-Policy: default-src 'none'; sandbox` and `Cross-Origin-Resource-Policy:
+  same-origin`. The widget leaves out its own UI, password inputs and anything marked
+  `data-contrib-exclude`.
+- **XSS.** All feedback text is rendered as React text (no `dangerouslySetInnerHTML`); page URLs
+  become links only after `safeHref` re-checks the scheme, with `rel="noopener noreferrer
+  nofollow"`.
+- **CSP: unchanged.** The screenshot preview is a `data:` image and stored screenshots load from
+  the same origin, both already allowed by `img-src 'self' data:`; html-to-image renders the DOM
+  locally (no new script, style or connect origins). Verified in Chrome against the exact
+  `vercel.json` headers.
+- **Privacy.** Account deletion cascades to the user's feedback, screenshots and votes;
+  `GET /api/me/export` includes the feedback they sent (without screenshot bytes).
+
 ### Already covered elsewhere (unchanged by this issue)
 - Consent, data export, account deletion, CV retention: M5-04 (`routers/me.py`
   `/api/me/consent`, `/export`, `DELETE /api/me`).

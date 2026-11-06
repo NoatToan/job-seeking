@@ -1,6 +1,6 @@
 /**
  * Blog snapshot: the JSON `scripts/export-blog.mjs` writes before `next build` (from the
- * `blog_*` tables, db/migrations/021_blog.sql). Pages read it at build time only; the deployed
+ * `blog_*` tables, db/migrations/023_blog.sql). Pages read it at build time only; the deployed
  * site has no database access.
  */
 

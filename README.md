@@ -24,6 +24,7 @@ Sources:
 | `packages/ui` | Shared React components (`JobCard`, `SourceBadge`), to be reused by the Expo app |
 | `db/migrations` | SQL migrations, the single schema for web and crawler |
 | `scripts/migrate.mjs` | Applies migrations (also runs in the Vercel build) |
+| `packages/contributor-box`, `apps/api/src/contributor_box` | **Vendored** from [`NoatToan/contributor-box`](https://github.com/NoatToan/contributor-box) by `pnpm contributor:sync` (see "Contributor") |
 
 ## Database
 
@@ -49,6 +50,33 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 - Daily crawl: `.github/workflows/daily-crawl.yml` (05:00 Vietnam time). Set the repository secrets `DATABASE_URL` (and optionally `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`).
 - Daily rebuild of the static job pages: create a Vercel Deploy Hook for `main` (Project → Settings → Git → Deploy Hooks) and save its URL as the repository secret `VERCEL_DEPLOY_HOOK_URL`; the daily crawl calls it when it finishes.
 - Daily blog: `.github/workflows/daily-blog.yml` (06:30 Vietnam time). Uses `DATABASE_URL`; optionally `VERCEL_DEPLOY_HOOK_URL` (a Vercel deploy hook for production) so new posts go live right away. See "Blog" below.
+
+## Contributor (feedback, feature ideas, admin review)
+
+Signed-in users send feedback from a floating button on any page: pick a type, point at an element
+or drag over an area, optionally attach a screenshot with that area highlighted; the page URL and
+element are captured automatically. `/contribute/` is the ideas board (vote on approved / planned /
+done items) plus the user's own submissions and their status. Admins review everything at
+`/admin/feedback/`: edit, set status, reply publicly, add internal or public notes.
+
+- **Admins**: `users.role = 'admin'` or an email in `UJC_ADMIN_EMAILS`. Grant from a machine with
+  `DATABASE_URL`: `cd apps/api && uv run python -m ujc_api.admin grant you@example.com` (the
+  account must have signed in once; `revoke` and `list` too).
+- **Source of truth**: the feature lives in the private repo
+  [`NoatToan/contributor-box`](https://github.com/NoatToan/contributor-box). Do not edit
+  `packages/contributor-box/`, `apps/api/src/contributor_box/`, `apps/api/tests/test_cb_*.py`,
+  `apps/api/tests/cb_fakes.py` or `db/migrations/022_feedback.sql` here. Change upstream, then:
+
+  ```bash
+  pnpm contributor:sync              # clone contributor-box@ref (contributor-box.config.json) and copy
+  pnpm contributor:sync -- --check   # verify the vendored copy matches upstream
+  pnpm contributor:sync -- --source ../contributor-box   # from a local checkout
+  ```
+
+  The sync writes `contributor-box.lock.json` (upstream commit + owned files), adds new upstream
+  migrations only when they are mapped in `contributor-box.config.json`, and never overwrites an
+  applied migration. Commit the result with the usual checks green. See
+  `docs/product/ARCHITECTURE.md` D14.
 
 ## Analytics
 

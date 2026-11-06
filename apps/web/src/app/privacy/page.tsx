@@ -20,6 +20,9 @@ export default function PrivacyPage() {
         <p className="text-body text-label-secondary">
           Your email address, the CV file you upload, the skills/keywords extracted from it, your
           job-search preferences (keywords, remote-only, country) and the applications you track.
+          If you send feedback, we also keep what you wrote, the page address and the part of the
+          page you pointed at, and the screenshot if you chose to attach one. Only you and our
+          admins can see that context.
         </p>
       </section>
 

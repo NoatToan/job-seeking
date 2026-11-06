@@ -9,6 +9,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, field_validator
 
+from ujc_api.auth.admin import user_role
 from ujc_api.auth.csrf import require_csrf
 from ujc_api.auth.deps import AuthedUser, current_user, require_jobs_read
 from ujc_api.auth.session import clear_auth_cookies
@@ -77,11 +78,14 @@ def _onboarded_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
 def get_me(
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
+    settings: Settings = Depends(app_settings),
 ) -> dict:
     return {
         "user": {
             "id": str(user.id),
             "email": user.email,
+            # Drives which screens the SPA shows; every admin route re-checks server-side.
+            "role": user_role(conn, settings, user),
             "aiConsentAt": _iso(_ai_consent_at(conn, user.id)),
             "onboardedAt": _iso(_onboarded_at(conn, user.id)),
         },
@@ -211,7 +215,8 @@ def get_export(
     user: AuthedUser = Depends(current_user), conn: psycopg.Connection = Depends(get_conn)
 ) -> Response:
     """A JSON download of everything the user owns: their account row, preferences, CV metadata
-    (extracted profile/keywords, never the file bytes), tracked applications and viewed jobs."""
+    (extracted profile/keywords, never the file bytes), tracked applications, viewed jobs and the
+    feedback they sent (without screenshot bytes)."""
     user_row = conn.execute(
         "SELECT id, email, created_at, last_login_at, ai_consent_at FROM users WHERE id = %s",
         (user.id,),
@@ -238,6 +243,12 @@ def get_export(
         (user.id,),
     ).fetchall()
 
+    feedback_rows = conn.execute(
+        "SELECT id, kind, title, body, status, page_url, admin_response, created_at, updated_at"
+        " FROM feedback_items WHERE author_id = %s ORDER BY created_at DESC",
+        (user.id,),
+    ).fetchall()
+
     export = {
         "user": {
             "id": str(uid),
@@ -250,6 +261,31 @@ def get_export(
         "cvs": [cv_dto(r) for r in cv_rows],
         "applications": [_export_application(r) for r in application_rows],
         "viewedJobs": [{"jobId": str(j), "viewedAt": _iso(v)} for j, v in view_rows],
+        # Contributor feedback the user sent (screenshot bytes are not exported, like CV files).
+        "feedback": [
+            {
+                "id": str(f_id),
+                "kind": kind,
+                "title": title,
+                "body": f_body,
+                "status": status,
+                "pageUrl": page_url,
+                "adminResponse": admin_response,
+                "createdAt": _iso(f_created),
+                "updatedAt": _iso(f_updated),
+            }
+            for (
+                f_id,
+                kind,
+                title,
+                f_body,
+                status,
+                page_url,
+                admin_response,
+                f_created,
+                f_updated,
+            ) in feedback_rows
+        ],
     }
     body = json.dumps(export, indent=2)
     return Response(
@@ -279,7 +315,8 @@ def delete_me(
     settings: Settings = Depends(app_settings),
 ) -> Response:
     """Hard-deletes the user; `ON DELETE CASCADE` on `sessions`, `user_cvs`, `user_preferences`,
-    `applications` and `job_views` removes everything else they own."""
+    `applications`, `job_views`, `feedback_items` (with screenshots) and `feedback_votes` removes
+    everything else they own."""
     conn.execute("DELETE FROM users WHERE id = %s", (user.id,))
     clear_auth_cookies(response, settings)
     response.status_code = 204

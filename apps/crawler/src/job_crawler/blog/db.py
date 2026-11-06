@@ -1,4 +1,4 @@
-"""Postgres access for the blog (tables from db/migrations/021_blog.sql)."""
+"""Postgres access for the blog (tables from db/migrations/023_blog.sql)."""
 
 import logging
 from datetime import datetime

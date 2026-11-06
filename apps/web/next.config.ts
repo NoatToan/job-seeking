@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,
   images: { unoptimized: true },
-  transpilePackages: ["@ujc/core", "@ujc/ui"],
+  transpilePackages: ["@ujc/core", "@ujc/ui", "@contributor-box/react"],
   turbopack: {
     rules: {
       "*.css": {

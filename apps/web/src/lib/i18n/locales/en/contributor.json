@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "contribute": "Contribute",
+    "reviewFeedback": "Review feedback"
+  },
+  "page": {
+    "title": "Contribute",
+    "subtitle": "Vote on ideas, suggest features and follow what you sent us.",
+    "adminTitle": "Review feedback",
+    "adminSubtitle": "Approve, plan and answer what people send."
+  }
+}

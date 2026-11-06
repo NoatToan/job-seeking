@@ -1,0 +1,12 @@
+{
+  "upstream": "https://github.com/NoatToan/contributor-box.git",
+  "ref": "main",
+  "targets": {
+    "react": "packages/contributor-box",
+    "python": "apps/api/src/contributor_box",
+    "pythonTests": "apps/api/tests",
+    "migrations": {
+      "001_feedback.sql": "db/migrations/022_feedback.sql"
+    }
+  }
+}

@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if not blog_db.tables_exist(conn):
-            log.error("blog tables missing: apply db/migrations/021_blog.sql (pnpm db:migrate)")
+            log.error("blog tables missing: apply db/migrations/023_blog.sql (pnpm db:migrate)")
             return 2
         new = blog_db.insert_articles(conn, articles)
         log.info("stored %d new articles", new)

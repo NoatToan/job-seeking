@@ -1,9 +1,9 @@
 // Writes the blog snapshot the static export renders (apps/web/.blog/snapshot.json), from the
-// blog_* tables (db/migrations/021_blog.sql). Runs before `next build` (package.json "build").
+// blog_* tables (db/migrations/023_blog.sql). Runs before `next build` (package.json "build").
 //
 // - DATABASE_URL unset (CI, Docker image, local without .env.local): writes an empty snapshot, so
 //   the build still succeeds and the blog shows "no posts yet".
-// - Blog tables missing (migration 021 not applied yet): same, with a warning.
+// - Blog tables missing (migration 023 not applied yet): same, with a warning.
 // - Any other database error fails the build on purpose: on Vercel a failed build keeps the
 //   previous deployment live, which is better than publishing a blog with every post gone.
 //
@@ -113,7 +113,7 @@ try {
   });
 } catch (err) {
   if (err?.code === "42P01") {
-    console.warn("export-blog: blog tables missing (apply db/migrations/021_blog.sql); empty blog");
+    console.warn("export-blog: blog tables missing (apply db/migrations/023_blog.sql); empty blog");
     await write(empty, "empty blog");
   } else {
     console.error(`export-blog: failed: ${err?.code ?? ""} ${err?.message ?? err}`);

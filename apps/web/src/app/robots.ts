@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       // Signed-in screens and tooling: nothing to index (each page also sets `noindex`).
-      disallow: ["/account/", "/cv/", "/tracker/", "/onboarding/", "/connections/", "/login/", "/search/", "/design/"],
+      disallow: ["/account/", "/cv/", "/tracker/", "/onboarding/", "/connections/", "/login/", "/search/", "/design/", "/contribute/", "/admin/"],
     },
     sitemap: [
       `${SITE_URL}/sitemap.xml`,
