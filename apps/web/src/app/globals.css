@@ -4,3 +4,11 @@
 @source "../../../../packages/ui/src";
 /* Contributor widget, board and admin UI (vendored from NoatToan/contributor-box). */
 @source "../../../../packages/contributor-box/src";
+
+/* The feedback button floats at z-60, above the app's modal sheets (z-50, aria-modal): hide it
+   while one is open, so it never covers a sheet's footer (the phone Filters view's Apply), never
+   escapes the sheet's focus trap and never adds a second Esc target. Its own panel is
+   aria-modal="false" and the element picker is excluded, so the widget never hides itself. */
+body:has([aria-modal="true"]) [data-contrib-widget]:not([data-testid="contrib-picker"]) {
+  display: none;
+}

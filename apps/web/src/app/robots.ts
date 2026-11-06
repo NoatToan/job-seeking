@@ -15,6 +15,8 @@ export default function robots(): MetadataRoute.Robots {
     },
     sitemap: [
       `${SITE_URL}/sitemap.xml`,
+      // Blog posts, topics and republished articles (app/sitemap-blog.xml/route.ts).
+      `${SITE_URL}/sitemap-blog.xml`,
       ...Array.from({ length: jobSitemapCount() }, (_, i) => `${SITE_URL}/jobs/sitemap/${i}.xml`),
     ],
   };

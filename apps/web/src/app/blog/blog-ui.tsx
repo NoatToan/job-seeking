@@ -6,11 +6,11 @@ import {
   articlePath,
   attributionText,
   formatDate,
-  jobPath,
   jsonLdString,
   postPath,
   topicPath,
 } from "@/lib/blog/model";
+import { relatedJobHref } from "@/lib/blog/job-link";
 import { topicBySlug, topicName } from "@/lib/blog/topics";
 import type { BlogArticle, BlogPost, Block, RelatedJob, Span } from "@/lib/blog/types";
 
@@ -160,7 +160,7 @@ export function RelatedJobs({ jobs, topics }: { jobs: RelatedJob[]; topics: stri
         <ul className="overflow-hidden rounded-card bg-grouped-secondary shadow-card">
           {jobs.map((job) => (
             <li key={job.id} className="border-b border-separator last:border-b-0">
-              <Link href={jobPath(job.id)} className="flex flex-col px-4 py-3 hover:bg-fill-tertiary focus-ring">
+              <Link href={relatedJobHref(job.id)} className="flex flex-col px-4 py-3 hover:bg-fill-tertiary focus-ring">
                 <span className="text-body font-medium text-label">{job.title}</span>
                 <span className="text-footnote text-label-secondary">
                   {[job.company, job.location, job.remote ? "Remote" : null].filter(Boolean).join(" · ")}
