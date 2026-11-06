@@ -427,14 +427,16 @@ class FakeWorkerConn:
             return _Result(None)
 
         if s.startswith("INSERT INTO user_matches"):
-            user_id, cv_id, job_id, score, summary, reasons, missing_skills = params
-            self.user_matches[(user_id, job_id)] = {
-                "cv_id": cv_id,
-                "score": score,
-                "summary": summary,
-                "reasons": reasons,
-                "missing_skills": missing_skills,
-            }
+            # One statement per run: `(user_id, cv_id, Jsonb([{job_id, score, ...}, ...]))`.
+            user_id, cv_id, rows = params
+            for m in rows.obj:
+                self.user_matches[(user_id, m["job_id"])] = {
+                    "cv_id": cv_id,
+                    "score": m["score"],
+                    "summary": m["summary"],
+                    "reasons": m["reasons"],
+                    "missing_skills": m["missing_skills"],
+                }
             return _Result(None)
 
         raise AssertionError(f"FakeWorkerConn: unexpected SQL: {sql!r}")

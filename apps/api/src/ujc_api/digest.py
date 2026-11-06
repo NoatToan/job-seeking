@@ -47,12 +47,32 @@ def verify_unsubscribe_token(settings: Settings, user_id: int, token: str) -> bo
     return hmac.compare_digest(expected, token)
 
 
+@dataclass(frozen=True)
+class FeedPrefs:
+    keywords: list[str]
+    remote_only: bool
+    candidate_country: str | None
+
+
 @dataclass
 class DueUser:
     id: int
     email: str
     tz: str
     last_digest_at: datetime | None
+    # The user's feed filters, read with the due-user scan so `run_digest` doesn't re-query
+    # `user_preferences` once per user (see `select_digest_jobs`).
+    prefs: FeedPrefs | None = None
+
+
+def load_feed_prefs(conn: psycopg.Connection, user_id: int) -> FeedPrefs:
+    row = conn.execute(
+        "SELECT keywords, remote_only, candidate_country FROM user_preferences WHERE user_id = %s",
+        (user_id,),
+    ).fetchone()
+    if row is None:
+        return FeedPrefs([], False, None)
+    return FeedPrefs(list(row[0] or []), bool(row[1]), row[2])
 
 
 def due_users(
@@ -61,7 +81,8 @@ def due_users(
     """Every user with `digest_enabled` whose local digest hour has passed `now_utc` today and
     who hasn't already received one today (in their own local calendar day)."""
     sql = (
-        "SELECT u.id, u.email, up.digest_tz, up.digest_hour, up.last_digest_at"
+        "SELECT u.id, u.email, up.digest_tz, up.digest_hour, up.last_digest_at,"
+        " up.keywords, up.remote_only, up.candidate_country"
         " FROM users u JOIN user_preferences up ON up.user_id = u.id"
         " WHERE up.digest_enabled = true"
     )
@@ -72,7 +93,7 @@ def due_users(
     rows = conn.execute(sql, params).fetchall()
 
     due: list[DueUser] = []
-    for user_id, email, tz_name, hour, last_digest_at in rows:
+    for user_id, email, tz_name, hour, last_digest_at, keywords, remote_only, country in rows:
         try:
             tz = ZoneInfo(tz_name)
         except (ZoneInfoNotFoundError, ValueError):
@@ -83,27 +104,26 @@ def due_users(
             continue
         if last_digest_at is not None and last_digest_at.astimezone(tz).date() >= local_now.date():
             continue
-        due.append(DueUser(id=user_id, email=email, tz=tz_name, last_digest_at=last_digest_at))
+        prefs = FeedPrefs(list(keywords or []), bool(remote_only), country)
+        due.append(
+            DueUser(id=user_id, email=email, tz=tz_name, last_digest_at=last_digest_at, prefs=prefs)
+        )
     return due
 
 
 def select_digest_jobs(
-    conn: psycopg.Connection, user_id: int, since: datetime
+    conn: psycopg.Connection, user_id: int, since: datetime, prefs: FeedPrefs | None = None
 ) -> list[dict[str, Any]]:
     """New jobs since `since` matching this user's feed filters (same keyword/remote/eligibility
     rules as `GET /api/feed` — see `ujc_api.feed_query`), ranked by match score when the user has
     one, newest first otherwise, capped at `MAX_JOBS`. Upwork is always excluded (never polled,
-    never scored, never digested — see docs/product/ARCHITECTURE.md D6).
+    never scored, never digested — see docs/product/ARCHITECTURE.md D6). `prefs` (from
+    `due_users`) saves a `user_preferences` lookup; it is read here when not given.
     """
-    prefs_row = conn.execute(
-        "SELECT keywords, remote_only, candidate_country FROM user_preferences WHERE user_id = %s",
-        (user_id,),
-    ).fetchone()
-    keywords: list[str] = list(prefs_row[0]) if prefs_row else []
-    remote_only: bool = bool(prefs_row[1]) if prefs_row else False
-    candidate_country: str | None = prefs_row[2] if prefs_row else None
-
-    clauses, params = feed_filter_clauses(keywords, remote_only, candidate_country)
+    prefs = prefs or load_feed_prefs(conn, user_id)
+    clauses, params = feed_filter_clauses(
+        prefs.keywords, prefs.remote_only, prefs.candidate_country
+    )
     clauses.append("source != 'upwork'")
     clauses.append("first_seen_at > %s")
     params.append(since)
@@ -148,7 +168,7 @@ def run_digest(
 
     for user in due_users(conn, now, only_email=only_email):
         since = user.last_digest_at or (now - FIRST_DIGEST_LOOKBACK)
-        jobs = select_digest_jobs(conn, user.id, since)
+        jobs = select_digest_jobs(conn, user.id, since, user.prefs)
 
         if not jobs:
             counts["skipped_empty"] += 1

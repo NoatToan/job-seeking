@@ -33,19 +33,14 @@ def create_session(conn: psycopg.Connection, user_id: int) -> str:
 def lookup_user(conn: psycopg.Connection, token: str) -> tuple[int, str] | None:
     """`(user_id, email)` for a valid, non-expired session, or `None`. Slides `expires_at`
     forward to `now() + 30 days` on every successful lookup (sliding expiry)."""
-    token_hash = _hash_token(token)
+    # One statement (was SELECT + UPDATE): every authenticated request runs this.
     row = conn.execute(
-        "SELECT s.user_id, u.email FROM sessions s JOIN users u ON u.id = s.user_id"
-        " WHERE s.token_hash = %s AND s.expires_at > now()",
-        (token_hash,),
+        "UPDATE sessions s SET expires_at = now() + interval '30 days' FROM users u"
+        " WHERE u.id = s.user_id AND s.token_hash = %s AND s.expires_at > now()"
+        " RETURNING s.user_id, u.email",
+        (_hash_token(token),),
     ).fetchone()
-    if row is None:
-        return None
-    conn.execute(
-        "UPDATE sessions SET expires_at = now() + interval '30 days' WHERE token_hash = %s",
-        (token_hash,),
-    )
-    return row
+    return (row[0], row[1]) if row else None
 
 
 def revoke_session(conn: psycopg.Connection, token: str) -> None:
