@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { Trans, useTranslation } from "react-i18next";
 import type { Job, PublicJobsPage } from "@ujc/core";
 import { buttonClasses, EmptyState, RefreshIcon, SparklesIcon, Spinner } from "@ujc/ui";
 import { getPublicJobs, getSources } from "@/lib/api";
@@ -38,6 +39,7 @@ export function PublicJobs({
 } = {}) {
   const { me } = useSession();
   const { openLogin } = useLoginGate();
+  const { t } = useTranslation("home");
   const filters = useJobFilters("public");
   const { data: sources, error: sourcesError } = useApi(getSources, [], { cacheKey: "sources" });
 
@@ -65,28 +67,31 @@ export function PublicJobs({
           me && signedIn ? (
             `${greeting()}, ${greetingName(me.user)}`
           ) : (
-            <>
-              Find a tech job you&apos;ll{" "}
-              <span className="bg-[image:var(--ujc-brand-text-gradient)] bg-clip-text text-transparent">love</span>
-            </>
+            <Trans
+              t={t}
+              i18nKey="hero.titleLove"
+              components={{ love: <span className="bg-[image:var(--ujc-brand-text-gradient)] bg-clip-text text-transparent" /> }}
+            />
           )
         }
         compactOnPhones
         subtitle={
           me && signedIn ? (
             <p>
-              Free search across every job we have — not filtered by your profile.{" "}
+              {t("hero.subtitleFreeSearch")}{" "}
               {me.latestCv ? null : (
-                <>
-                  <Link href="/cv/" className="rounded-control-sm font-medium text-tint hover:underline focus-ring">
-                    Upload your CV
-                  </Link>{" "}
-                  to get fit scores in <span className="font-medium">For you</span>.
-                </>
+                <Trans
+                  t={t}
+                  i18nKey="hero.uploadCv"
+                  components={{
+                    cvLink: <Link href="/cv/" className="rounded-control-sm font-medium text-tint hover:underline focus-ring" />,
+                    strong: <span className="font-medium" />,
+                  }}
+                />
               )}
             </p>
           ) : (
-            "Remote and relocation roles from Himalayas, We Work Remotely, Seek, Arc and more — in one place, refreshed every morning."
+            t("hero.subtitlePublic")
           )
         }
         aside={
@@ -98,7 +103,7 @@ export function PublicJobs({
             <span className={signedIn ? "hidden" : "hidden lg:inline-flex"}>
               <button type="button" onClick={() => openLogin()} className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
                 <SparklesIcon size={16} />
-                Sign in to get matches from your CV
+                {t("hero.signInCta")}
               </button>
             </span>
           </>
@@ -109,25 +114,25 @@ export function PublicJobs({
 
       <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
-          <JobBrowserSkeleton label="Loading jobs" actions={signedIn} />
+          <JobBrowserSkeleton label={t("list.loadingJobs")} actions={signedIn} />
         ) : error ? (
           <EmptyState
             tone="error"
             illustration="error"
-            title="We couldn't load jobs"
-            message="It's on our side, not yours. Check your connection and try again."
+            title={t("list.errorTitle")}
+            message={t("list.errorMessage")}
             action={
               <button type="button" onClick={retry} className={buttonClasses({ variant: "gray", size: "sm" })}>
                 <RefreshIcon size={16} />
-                Try again
+                {t("common:tryAgain")}
               </button>
             }
           />
         ) : initialized && items.length === 0 ? (
           <EmptyState
             illustration="search"
-            title="No jobs match yet"
-            message="Try a different search, or clear the filters."
+            title={t("list.emptyTitle")}
+            message={t("list.emptyMessage")}
             action={
               filters.activeCount ? (
                 <button
@@ -135,7 +140,7 @@ export function PublicJobs({
                   onClick={filters.clear}
                   className={buttonClasses({ variant: "gray", size: "sm" })}
                 >
-                  Clear filters
+                  {t("list.clearFilters")}
                 </button>
               ) : undefined
             }
@@ -158,7 +163,7 @@ export function PublicJobs({
                 ) : null}
                 {initialized && !nextCursor && items.length > 0 ? (
                   <p role="status" className="py-4 text-center text-footnote text-label-secondary">
-                    You&apos;ve reached the end — new jobs are crawled every day.
+                    {t("list.endPublic")}
                   </p>
                 ) : null}
               </>

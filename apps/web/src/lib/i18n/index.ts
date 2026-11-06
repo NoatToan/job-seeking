@@ -81,6 +81,17 @@ export function detectLanguage(): Language {
   return "en";
 }
 
+/**
+ * Inlined in <head> (root layout), runs before first paint. The static export is English, so a
+ * Vietnamese visitor would see English flash before React switches. When the language that
+ * `detectLanguage` will pick isn't English, this sets <html lang> and `data-i18n-pending`, which
+ * hides the page (globals.css) until `I18nProvider` has rendered in that language and removes the
+ * flag. A 1.5 s fallback shows the page anyway if JS never gets there.
+ */
+export const LANGUAGE_INIT_SCRIPT = `(function(){try{var d=document.documentElement,c=document.cookie.split("; ").find(function(x){return x.indexOf(${JSON.stringify(
+  `${LANGUAGE_COOKIE}=`,
+)})===0}),s=${JSON.stringify(LANGUAGES.map((l) => l.code))},p=function(v){v=(v||"").toLowerCase();for(var i=0;i<s.length;i++)if(v.indexOf(s[i])===0)return s[i];return null},l=p(c&&c.split("=")[1]);if(!l){var n=navigator.languages||[navigator.language];for(var j=0;j<n.length&&!l;j++)l=p(n[j])}l=l||"en";if(l!=="en"){d.lang=l;d.setAttribute("data-i18n-pending","");setTimeout(function(){d.removeAttribute("data-i18n-pending")},1500)}}catch(e){}})()`;
+
 /** Remembers an explicit choice for a year (only the switch writes it, so browser detection keeps
  * working for visitors who never picked). */
 export function saveLanguage(lng: Language): void {

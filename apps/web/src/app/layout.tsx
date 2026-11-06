@@ -8,6 +8,7 @@ import { SessionProvider } from "@/lib/session";
 import { LoginGateProvider } from "@/lib/login-modal";
 import { ThemeSync } from "@/lib/theme";
 import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme-core";
+import { LANGUAGE_INIT_SCRIPT } from "@/lib/i18n";
 import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { AppShell } from "./nav";
 import { ViewedSync } from "./viewed-sync";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* Appearance (System/Light/Dark) applied before first paint, no flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: LANGUAGE_INIT_SCRIPT }} />
       </head>
       {GTM_ID ? <GoogleTagManager gtmId={GTM_ID} /> : null}
       <body className="min-h-full bg-grouped text-label">

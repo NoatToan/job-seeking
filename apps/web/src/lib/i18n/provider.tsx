@@ -87,7 +87,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     };
     i18n.on("languageChanged", syncLang);
     // Saved choice (cookie) → browser language list → English.
-    void i18n.changeLanguage(detectLanguage());
+    void i18n.changeLanguage(detectLanguage()).then(() => {
+      // The page was hidden by LANGUAGE_INIT_SCRIPT until now (no English flash); show it after the
+      // re-render in the right language has painted.
+      requestAnimationFrame(() => document.documentElement.removeAttribute("data-i18n-pending"));
+    });
     return () => i18n.off("languageChanged", syncLang);
   }, []);
 

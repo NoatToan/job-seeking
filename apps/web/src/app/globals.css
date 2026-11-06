@@ -12,3 +12,9 @@
 body:has([aria-modal="true"]) [data-contrib-widget]:not([data-testid="contrib-picker"]) {
   display: none;
 }
+
+/* While the detected language isn't English, hide the English prerender until I18nProvider has
+   re-rendered in that language (LANGUAGE_INIT_SCRIPT sets the flag, the provider removes it). */
+html[data-i18n-pending] body {
+  visibility: hidden;
+}
