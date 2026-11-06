@@ -2,7 +2,7 @@
  * Public site identity for SEO (metadata, sitemap, robots, JSON-LD). `NEXT_PUBLIC_SITE_URL` is
  * read at build time; set it when the app moves to its own domain so canonical URLs follow.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unified-job-crawler.vercel.app").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://job-seeking-remote.vercel.app").replace(/\/$/, "");
 export const SITE_NAME = "JobSeeking";
 export const REPO_URL = "https://github.com/NoatToan/job-seeking";
 export const SITE_TITLE = "JobSeeking — remote & relocation tech jobs from every board";

@@ -131,7 +131,7 @@ def test_otp_email_is_branded_with_absolute_images_and_a_text_part(monkeypatch):
     assert body["subject"].startswith("482913")
     # The code is one unbroken string (copy-paste), images are absolute https (dev falls back).
     assert ">482913</div>" in body["html"]
-    assert "https://unified-job-crawler.vercel.app/email/logo.png" in body["html"]
-    assert "https://unified-job-crawler.vercel.app/email/banner.png" in body["html"]
+    assert "https://job-seeking-remote.vercel.app/email/logo.png" in body["html"]
+    assert "https://job-seeking-remote.vercel.app/email/banner.png" in body["html"]
     assert "482913" in body["text"]
     assert "$" not in body["html"]

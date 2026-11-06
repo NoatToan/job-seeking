@@ -39,7 +39,7 @@ describe("jobPostingJsonLd", () => {
       applicantLocationRequirements: [{ "@type": "Country", name: "DE" }],
       baseSalary: { currency: "EUR", value: { minValue: 70000, maxValue: 90000, unitText: "YEAR" } },
     });
-    expect(ld?.url).toBe("https://unified-job-crawler.vercel.app/jobs/senior-next-js-engineer-acme-42/");
+    expect(ld?.url).toBe("https://job-seeking-remote.vercel.app/jobs/senior-next-js-engineer-acme-42/");
     expect(ld).not.toHaveProperty("validThrough"); // no lastSeenAt given
     // Remote with known applicant countries: no office address.
     expect(ld).not.toHaveProperty("jobLocation");

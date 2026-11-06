@@ -33,7 +33,7 @@ class MailDeliveryFailed(Exception):
 
 # Images in emails must be absolute https URLs on a public host. A local `ujc_public_url` (dev)
 # falls back to production so a test email still shows them. Files: apps/web/public/email/.
-_PROD_ORIGIN = "https://unified-job-crawler.vercel.app"
+_PROD_ORIGIN = "https://job-seeking-remote.vercel.app"
 
 
 # Branded HTML body (string.Template: $code, $home, $logo, $banner, ...). Values are our

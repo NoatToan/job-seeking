@@ -4,7 +4,7 @@
 
 **Every remote and relocation tech job, from every board, in one fast feed, and ranked against your CV.**
 
-[![Live](https://img.shields.io/badge/live-unified--job--crawler.vercel.app-000?logo=vercel)](https://unified-job-crawler.vercel.app)
+[![Live](https://img.shields.io/badge/live-unified--job--crawler.vercel.app-000?logo=vercel)](https://job-seeking-remote.vercel.app)
 [![CI](https://github.com/NoatToan/job-seeking/actions/workflows/ci.yml/badge.svg)](https://github.com/NoatToan/job-seeking/actions/workflows/ci.yml)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=000)
@@ -12,9 +12,9 @@
 ![Postgres](https://img.shields.io/badge/Postgres-17-4169E1?logo=postgresql&logoColor=fff)
 ![Claude](https://img.shields.io/badge/AI-Claude-D97757?logo=anthropic&logoColor=fff)
 
-### [Try it live →](https://unified-job-crawler.vercel.app)
+### [Try it live →](https://job-seeking-remote.vercel.app)
 
-<a href="https://unified-job-crawler.vercel.app"><img src="docs/screenshots/home.png" alt="JobSeeking home: search and filters on top, the job list on the left with each row tinted by the time of day its hours fall on your clock, and the selected job's details on the right" width="100%"></a>
+<a href="https://job-seeking-remote.vercel.app"><img src="docs/screenshots/home.png" alt="JobSeeking home: search and filters on top, the job list on the left with each row tinted by the time of day its hours fall on your clock, and the selected job's details on the right" width="100%"></a>
 
 </div>
 
@@ -108,6 +108,6 @@ The full setup (deploy, workflows, blog sources, contributor sync, MCP and analy
 <div align="center">
 
 Built by **Tony Nguyen**. Open to work and happy to talk about how it's built.
-**[See it live](https://unified-job-crawler.vercel.app)** · **[Read the architecture](docs/product/ARCHITECTURE.md)**
+**[See it live](https://job-seeking-remote.vercel.app)** · **[Read the architecture](docs/product/ARCHITECTURE.md)**
 
 </div>
