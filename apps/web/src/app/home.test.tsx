@@ -248,6 +248,16 @@ describe("Home", () => {
     fireEvent.click(screen.getByRole("link", { name: "Job 2" }));
     await waitFor(() => expect(panel.textContent).toContain("About job 2"), { timeout: 5000 });
     expect(screen.getByText("Job 2", { selector: "a" }).closest("article")?.getAttribute("aria-current")).toBe("true");
+
+    // Arrow keys switch jobs: ← / ↑ = previous, → / ↓ = next.
+    const current = () => document.querySelector("article[aria-current='true'] h3")?.textContent;
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    await waitFor(() => expect(current()).toBe("Job 1"));
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await waitFor(() => expect(current()).toBe("Job 2"));
+    // Not while typing in the search box.
+    fireEvent.keyDown(screen.getByRole("searchbox", { name: "Search jobs" }), { key: "ArrowUp" });
+    expect(current()).toBe("Job 2");
   });
 
   it("filters by country from the facets list", async () => {
