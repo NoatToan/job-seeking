@@ -52,7 +52,7 @@ export function JobDetail({
   const source = sourceMeta(job.source).label;
   const { country: basedIn } = useBasedIn();
   return (
-    <article className="flex flex-col gap-5">
+    <article className="flex flex-col gap-4">
       <header className="flex items-start gap-4">
         <Avatar name={job.company || job.title} shape="rounded" size={56} className="rounded-2xl" />
         <div className="min-w-0 flex-1">
@@ -128,7 +128,7 @@ export function JobDetail({
       ) : null}
 
       {job.techStack?.length ? (
-        <div className="hairline-t pt-5">
+        <div className="hairline-t pt-4">
           <h2 className="text-headline text-label">Tech stack</h2>
           <ul aria-label="Tech stack" className="mt-2 flex flex-wrap gap-1.5">
             {sortTech(job.techStack).map((id) => (
@@ -161,7 +161,7 @@ export function JobDetail({
         </Card>
       ) : null}
 
-      <div className="hairline-t pt-5">
+      <div className="hairline-t pt-4">
         <h2 className="text-title3 text-label">About the role</h2>
         {loadingDescription ? (
           <div aria-busy="true" aria-label="Loading description" className="mt-3 flex flex-col gap-2">

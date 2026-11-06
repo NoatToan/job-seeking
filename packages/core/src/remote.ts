@@ -73,7 +73,9 @@ export function remoteAccess(openTo: string[] | null | undefined, basedIn?: stri
   const places = [...new Set([...countries, ...regions])];
   if (!basedIn) return { scope: "restricted", places, acceptsCandidate: null };
   const ok = new Set<string>([basedIn, ...(COUNTRY_REGIONS[basedIn] ?? [])]);
-  return { scope: "restricted", places, acceptsCandidate: places.some((p) => ok.has(p)) };
+  // What matches the candidate goes first, so a 90-country list reads "🇻🇳 VN, … +89", not "AD, AE…".
+  const ordered = [...places.filter((p) => ok.has(p)), ...places.filter((p) => !ok.has(p))];
+  return { scope: "restricted", places: ordered, acceptsCandidate: places.some((p) => ok.has(p)) };
 }
 
 /** Best guess of the country someone lives in from their IANA time zone (only zones we can map

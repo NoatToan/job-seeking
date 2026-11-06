@@ -331,7 +331,7 @@ export function JobBrowser({
       >
         {/* The border + radius live on the <aside>, the scrolling on this inner box, so the scrollbar
             sits inside the rounded frame instead of painting over its border. */}
-        <div className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-7">
+        <div className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
           {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
         </div>
       </aside>
