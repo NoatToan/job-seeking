@@ -16,6 +16,11 @@
           "apps/crawler/src/**",
           "apps/mcp/src/**",
           "db/migrations/**"
+        ],
+        "excludeFiles": [
+          "apps/web/**",
+          "packages/**",
+          "docs/**"
         ]
       }
     }
