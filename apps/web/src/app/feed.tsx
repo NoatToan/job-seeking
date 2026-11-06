@@ -191,6 +191,7 @@ function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
             highlight={highlightTerms({ q: filters.q, tech: filters.tech, keywords: feedKeywords })}
             signedIn={true}
             renderActions={(job) => <SaveJobButton jobId={job.id} />}
+            onNearEnd={nextCursor && !loading ? loadMore : undefined}
             footer={
               <>
                 {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}

@@ -144,6 +144,7 @@ export function PublicJobs({
             highlight={highlightTerms({ q: filters.q, tech: filters.tech })}
             signedIn={signedIn}
             renderActions={signedIn ? (job) => <SaveJobButton jobId={job.id} /> : undefined}
+            onNearEnd={nextCursor && !loading ? loadMore : undefined}
             footer={
               <>
                 {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}

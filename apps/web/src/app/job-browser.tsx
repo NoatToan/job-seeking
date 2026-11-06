@@ -23,6 +23,12 @@ const BOTTOM_GAP_PX = 16;
 const DETAIL_FETCH_DELAY_MS = 150;
 
 const NO_TERMS: readonly string[] = [];
+/** Load the next page once the user has scrolled through this share of the list (Slack: "load
+ * more at 70%, don't wait until I hit the bottom"). */
+const PRELOAD_AT = 0.7;
+/** After a keyboard / click selection, ignore the scroll-spy while the list scrolls the row into
+ * view, so the selection doesn't jump back to whatever row passes the top edge. */
+const SPY_PAUSE_MS = 500;
 
 export function jobHref(id: string): string {
   return `/jobs/view?id=${encodeURIComponent(id)}`;
@@ -109,6 +115,14 @@ export interface JobBrowserProps {
   footer?: ReactNode;
   /** Words to highlight in the detail panel (lib/highlight `highlightTerms`). */
   highlight?: readonly string[];
+  /** Called when the user has scrolled 70% of the way down (list on wide screens, window on
+   * phones). Pass it only while there is a next page and none is loading. */
+  onNearEnd?: () => void;
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName);
 }
 
 /**
@@ -126,6 +140,7 @@ export function JobBrowser({
   renderActions,
   footer,
   highlight = NO_TERMS,
+  onNearEnd,
 }: JobBrowserProps) {
   const [selectedId, setSelectedId] = useViewState<string | null>(`selected:${stateKey}`, null);
   const wide = useIsWide();
@@ -177,9 +192,10 @@ export function JobBrowser({
 
   // Scroll-spy: the first row that is at least half visible below the list's top edge is the
   // one "on top" (rows also snap to that edge, so it normally sits fully in view).
+  const spyPausedUntil = useRef(0);
   const pickTopRow = useCallback(() => {
     const el = scrollRef.current;
-    if (!el || !isWide()) return;
+    if (!el || !isWide() || Date.now() < spyPausedUntil.current) return;
     const line = el.getBoundingClientRect().top;
     for (const row of el.querySelectorAll<HTMLElement>("[data-job-id]")) {
       const rect = row.getBoundingClientRect();
@@ -209,11 +225,62 @@ export function JobBrowser({
     };
   }, [pickTopRow, scrollKey]);
 
+  // Preload the next page at 70%: the list's own scroll on wide screens, the window on phones.
+  const nearEndRef = useRef(onNearEnd);
+  useEffect(() => {
+    nearEndRef.current = onNearEnd;
+  }, [onNearEnd]);
+  useEffect(() => {
+    const el = scrollRef.current;
+    const check = () => {
+      const fire = nearEndRef.current;
+      if (!fire) return;
+      const [top, view, total] =
+        el && isWide()
+          ? [el.scrollTop, el.clientHeight, el.scrollHeight]
+          : [window.scrollY, window.innerHeight, document.documentElement.scrollHeight];
+      if (total > view && top + view >= total * PRELOAD_AT) fire();
+    };
+    el?.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("scroll", check, { passive: true });
+    return () => {
+      el?.removeEventListener("scroll", check);
+      window.removeEventListener("scroll", check);
+    };
+  }, []);
+
+  // Keyboard (wide screens): ↓ or → = next job, ↑ or ← = previous. Ignored while typing in a
+  // field or with modifier keys, so search, selects and browser shortcuts keep working.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isWide() || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
+      const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+      if (!step || jobs.length === 0) return;
+      // Leave arrows alone inside open popovers / dialogs (sliders, menus).
+      if (e.target instanceof HTMLElement && e.target.closest("[role=dialog],[role=listbox],[role=radiogroup]")) return;
+      e.preventDefault();
+      const current = jobs.findIndex((j) => j.id === (selectedRef.current ?? jobs[0]?.id));
+      const next = jobs[Math.max(0, Math.min(jobs.length - 1, current + step))];
+      if (!next) return;
+      spyPausedUntil.current = Date.now() + SPY_PAUSE_MS;
+      setSelectedId(next.id);
+      const rows = scrollRef.current?.querySelectorAll<HTMLElement>("[data-job-id]") ?? [];
+      Array.from(rows)
+        .find((row) => row.dataset.jobId === next.id)
+        ?.scrollIntoView?.({ block: "nearest" });
+      // Stepping onto the last loaded rows counts as reaching the end of the list.
+      if (jobs.indexOf(next) >= jobs.length * PRELOAD_AT) nearEndRef.current?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [jobs, setSelectedId]);
+
   const onSelect = useCallback(
     (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
       // Wide screens: show it in the panel. Phones, or ⌘/ctrl-click: follow the link.
       if (!isWide() || event.metaKey || event.ctrlKey || event.shiftKey) return;
       event.preventDefault();
+      spyPausedUntil.current = Date.now() + SPY_PAUSE_MS;
       setSelectedId(id);
       event.currentTarget.closest("[data-job-id]")?.scrollIntoView?.({ block: "nearest" });
     },
