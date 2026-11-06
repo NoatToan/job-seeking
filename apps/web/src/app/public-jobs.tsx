@@ -15,7 +15,7 @@ import { SaveJobButton } from "@/app/save-job-button";
 import { useSession } from "@/lib/session";
 import { firstName, greeting } from "@/app/feed";
 import { JobBrowser } from "@/app/job-browser";
-import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
+import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
 /**
@@ -56,6 +56,7 @@ export function PublicJobs({
   return (
     <>
       <HomeHero
+        collapsedSummary={<JobFilterSummary filters={filters} />}
         title={
           me && signedIn ? (
             `${greeting()}, ${firstName(me.user.email)}`

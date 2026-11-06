@@ -121,7 +121,11 @@
       "back": "Back",
       "done": "Done",
       "zoneError": "We couldn't save your time zone. It's set on this device; try again later to save it to your account."
-    }
+    },
+    "collapsedAll": "All jobs",
+    "collapsedFilters_one": "{{count}} filter",
+    "collapsedFilters_other": "{{count}} filters",
+    "collapsedEdit": "Edit search"
   },
   "country": {
     "label": "Country",

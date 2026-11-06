@@ -119,7 +119,11 @@
       "back": "Quay lại",
       "done": "Xong",
       "zoneError": "Không lưu được múi giờ vào tài khoản. Múi giờ đã được đặt trên thiết bị này; hãy thử lại sau."
-    }
+    },
+    "collapsedAll": "Tất cả việc làm",
+    "collapsedFilters_one": "{{count}} bộ lọc",
+    "collapsedFilters_other": "{{count}} bộ lọc",
+    "collapsedEdit": "Sửa tìm kiếm"
   },
   "country": {
     "label": "Quốc gia",

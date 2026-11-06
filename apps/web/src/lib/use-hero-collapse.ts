@@ -80,9 +80,10 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
   const onPointerLeave = useCallback(() => {
     clearTimeout(timer.current);
     const close = () => {
-      // A popover opened from the headline (e.g. the sources list) is portaled outside the hero:
-      // keep the headline open while it is.
-      if (rootRef.current?.querySelector('[data-hero-headline] [aria-expanded="true"]')) {
+      // Keep it open while the user is typing or picking in it (focus inside), or while a popover
+      // opened from it (sources list, a filter panel) is open; those are portaled outside the hero.
+      const root = rootRef.current;
+      if (root?.querySelector('[data-hero-headline] [aria-expanded="true"]') || root?.contains(document.activeElement)) {
         timer.current = setTimeout(close, PEEK_CLOSE_MS);
       } else setPeek(false);
     };

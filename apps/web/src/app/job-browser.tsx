@@ -189,14 +189,20 @@ export function JobBrowser({
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    const html = document.documentElement;
     const fit = () => {
       if (!isWide()) {
         root.style.height = "";
+        html.style.overflowY = "";
         return;
       }
       const top = root.getBoundingClientRect().top + window.scrollY;
-      const height = Math.max(MIN_BROWSER_HEIGHT_PX, window.innerHeight - top - BOTTOM_GAP_PX);
-      root.style.height = `${Math.round(height)}px`;
+      const room = window.innerHeight - top - BOTTOM_GAP_PX;
+      root.style.height = `${Math.round(Math.max(MIN_BROWSER_HEIGHT_PX, room))}px`;
+      // Full-screen: when the browser fits, the window never scrolls, so the hero folding or
+      // unfolding can't flash a window scrollbar mid-animation. A window too short for the
+      // minimum height still scrolls.
+      html.style.overflowY = room >= MIN_BROWSER_HEIGHT_PX ? "hidden" : "";
     };
     fit();
     window.addEventListener("resize", fit);
@@ -207,6 +213,7 @@ export function JobBrowser({
     return () => {
       window.removeEventListener("resize", fit);
       observer?.disconnect();
+      html.style.overflowY = "";
     };
   }, []);
 

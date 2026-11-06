@@ -23,6 +23,7 @@ export function HomeHero({
   aside,
   compactOnPhones = false,
   children,
+  collapsedSummary,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -32,6 +33,8 @@ export function HomeHero({
   compactOnPhones?: boolean;
   /** Search + filter bar. */
   children?: ReactNode;
+  /** One line shown in place of the headline and filters while they are folded (wide screens). */
+  collapsedSummary?: ReactNode;
 }) {
   const { t } = useTranslation("common");
   const rootRef = useRef<HTMLElement>(null);
@@ -42,8 +45,8 @@ export function HomeHero({
   const headlineId = useId();
   return (
     <section ref={rootRef} className="hero-wash hairline-b" onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
-      <div className={cx("flex w-full flex-col px-4 pt-4 pb-4 transition-[gap,padding] duration-300 ease-out motion-reduce:transition-none sm:px-6", collapsed ? "gap-0 md:pt-3" : "gap-3.5 md:pt-5")}>
-        <div className="flex items-center justify-between md:hidden">
+      <div className={cx("flex w-full flex-col px-4 pt-4 pb-4 transition-[padding] duration-300 ease-out motion-reduce:transition-none sm:px-6", collapsed ? "md:pt-2.5 md:pb-2.5" : "md:pt-5")}>
+        <div className="mb-3.5 flex items-center justify-between md:hidden">
           <Link href="/" aria-label={t("brand.homeAriaLabel", { name: BRAND_NAME })} className="rounded-control focus-ring">
             <BrandMark name={BRAND_NAME} />
           </Link>
@@ -52,7 +55,8 @@ export function HomeHero({
             <AccountMenu />
           </div>
         </div>
-        {/* Folds with a 1fr → 0fr row so the height animates without measuring it. */}
+        {/* Headline + search/filters fold together (1fr → 0fr, so the height animates without
+            measuring it); a one-line summary of the search takes their place. */}
         <div
           id={headlineId}
           data-hero-headline
@@ -62,7 +66,7 @@ export function HomeHero({
             collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
           )}
         >
-          <div className="min-h-0 overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-3.5 overflow-hidden">
             <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
               <div className="min-w-0">
                 <h1 className="font-display text-title1 font-bold tracking-[-0.025em] text-label md:text-[2rem] md:leading-tight">
@@ -70,35 +74,65 @@ export function HomeHero({
                 </h1>
                 {subtitle ? <div className={cx("mt-1 text-callout text-label-secondary", compactOnPhones && "hidden sm:block")}>{subtitle}</div> : null}
               </div>
-              {aside ? <div className="flex shrink-0 items-center gap-2">{aside}</div> : null}
+              <div className="flex shrink-0 items-center gap-2">
+                {aside}
+                {phone ? null : (
+                  <HeroToggle collapsed={false} onClick={toggle} controls={headlineId} label={t("hero.collapse")} />
+                )}
+              </div>
             </div>
+            {children}
           </div>
         </div>
-        {children || !phone ? (
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">{children}</div>
-            {phone ? null : (
+        {phone ? null : (
+          <div
+            aria-hidden={!collapsed}
+            inert={!collapsed}
+            className={cx(
+              "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+              collapsed ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+            )}
+          >
+            <div className="flex min-h-0 items-center gap-2 overflow-hidden">
               <button
                 type="button"
                 onClick={toggle}
-                aria-expanded={!collapsed}
-                aria-controls={headlineId}
-                aria-label={collapsed ? t("hero.expand") : t("hero.collapse")}
-                title={collapsed ? t("hero.expand") : t("hero.collapse")}
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-separator bg-background/80 text-label-secondary transition-colors duration-150 hover:bg-fill-tertiary hover:text-label focus-ring"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-1 py-1 text-left text-subheadline text-label-secondary hover:text-label focus-ring"
               >
-                <ChevronDownIcon
-                  size={16}
-                  strokeWidth={2.25}
-                  aria-hidden
-                  className={cx("transition-transform duration-200 motion-reduce:transition-none", !collapsed && "rotate-180")}
-                />
+                {collapsedSummary}
               </button>
-            )}
+              <HeroToggle collapsed onClick={toggle} controls={headlineId} label={t("hero.expand")} />
+            </div>
           </div>
-        ) : null}
+        )}
       </div>
     </section>
+  );
+}
+
+function HeroToggle({
+  collapsed,
+  onClick,
+  controls,
+  label,
+}: {
+  collapsed: boolean;
+  onClick: () => void;
+  controls: string;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={!collapsed}
+      aria-controls={controls}
+      aria-label={label}
+      title={label}
+      className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-separator bg-background/80 text-label-secondary transition-colors duration-150 hover:bg-fill-tertiary hover:text-label focus-ring"
+    >
+      <ChevronDownIcon size={16} strokeWidth={2.25} aria-hidden className={cx(!collapsed && "rotate-180")} />
+    </button>
   );
 }
 

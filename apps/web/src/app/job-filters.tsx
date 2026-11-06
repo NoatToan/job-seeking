@@ -14,6 +14,7 @@ import {
   GlobeIcon,
   RangeSlider,
   SearchField,
+  SearchIcon,
   SlidersIcon,
   TechIcon,
   useUiStrings,
@@ -496,5 +497,25 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** One line for the folded home hero: what is being searched and how many filters are on. */
+export function JobFilterSummary({ filters }: { filters: JobFilterState }) {
+  const { t } = useTranslation("home");
+  const query = filters.draftQ.trim();
+  return (
+    <>
+      <SearchIcon size={16} strokeWidth={2.25} aria-hidden className="shrink-0" />
+      <span className={cx("truncate", query ? "font-semibold text-label" : "font-medium")}>
+        {query ? `“${query}”` : t("filters.collapsedAll")}
+      </span>
+      {filters.activeCount ? (
+        <span className="shrink-0 rounded-full bg-tint-soft px-2 py-0.5 text-caption font-semibold text-tint-ink">
+          {t("filters.collapsedFilters", { count: filters.activeCount })}
+        </span>
+      ) : null}
+      <span className="sr-only">{t("filters.collapsedEdit")}</span>
+    </>
   );
 }

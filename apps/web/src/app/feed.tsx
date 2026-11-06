@@ -25,7 +25,7 @@ import { HomeHero } from "@/app/home-hero";
 import { pillClasses, PillToggle } from "@/app/pill-controls";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
-import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
+import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
@@ -97,6 +97,7 @@ function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
   return (
     <>
       <HomeHero
+        collapsedSummary={<JobFilterSummary filters={filters} />}
         title={title}
         aside={modeSwitch}
         subtitle={
