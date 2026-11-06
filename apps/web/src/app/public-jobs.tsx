@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Job, PublicJobsPage } from "@ujc/core";
 import { buttonClasses, EmptyState, JobCardSkeleton, RefreshIcon, SparklesIcon, Spinner } from "@ujc/ui";
@@ -10,6 +11,9 @@ import { useApi } from "@/lib/use-api";
 import { useInfiniteList } from "@/lib/use-infinite";
 import { useScrollRestoration } from "@/lib/view-cache";
 import { HomeHero, SourcesSummary } from "@/app/home-hero";
+import { SaveJobButton } from "@/app/save-job-button";
+import { useSession } from "@/lib/session";
+import { firstName, greeting } from "@/app/feed";
 import { JobBrowser } from "@/app/job-browser";
 import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
@@ -20,7 +24,16 @@ import { highlightTerms } from "@/lib/highlight";
  * endpoints (`GET /api/jobs`, `GET /api/sources`), so it never trips the global 401 handler and
  * never redirects to `/login` (see `lib/session.tsx` `isPublicRoute`).
  */
-export function PublicJobs() {
+export function PublicJobs({
+  signedIn = false,
+  modeSwitch,
+}: {
+  /** Signed in, "All jobs" mode: same catalogue, plus Track on each row and in the detail. */
+  signedIn?: boolean;
+  /** "All jobs | For you" switch (signed in only), shown in the hero. */
+  modeSwitch?: ReactNode;
+} = {}) {
+  const { me } = useSession();
   const filters = useJobFilters("public");
   const { data: sources } = useApi(getSources, [], { cacheKey: "sources" });
 
@@ -44,17 +57,38 @@ export function PublicJobs() {
     <>
       <HomeHero
         title={
-          <>
-            Find a tech job you&apos;ll{" "}
-            <span className="bg-[linear-gradient(90deg,#ea580c,#e11d48_55%,#9333ea)] bg-clip-text text-transparent">love</span>
-          </>
+          me && signedIn ? (
+            `${greeting()}, ${firstName(me.user.email)}`
+          ) : (
+            <>
+              Find a tech job you&apos;ll{" "}
+              <span className="bg-[linear-gradient(90deg,#ea580c,#e11d48_55%,#9333ea)] bg-clip-text text-transparent">love</span>
+            </>
+          )
         }
         compactOnPhones
-        subtitle="Remote and relocation roles from Himalayas, We Work Remotely, Seek, Arc and more — in one place, refreshed every morning."
+        subtitle={
+          me && signedIn ? (
+            <p>
+              Free search across every job we have — not filtered by your profile.{" "}
+              {me.latestCv ? null : (
+                <>
+                  <Link href="/cv/" className="rounded-control-sm font-medium text-tint hover:underline focus-ring">
+                    Upload your CV
+                  </Link>{" "}
+                  to get fit scores in <span className="font-medium">For you</span>.
+                </>
+              )}
+            </p>
+          ) : (
+            "Remote and relocation roles from Himalayas, We Work Remotely, Seek, Arc and more — in one place, refreshed every morning."
+          )
+        }
         aside={
           <>
+            {modeSwitch}
             <SourcesSummary sources={sources ?? []} />
-            <span className="hidden lg:inline-flex">
+            <span className={signedIn ? "hidden" : "hidden lg:inline-flex"}>
               <Link href="/login/" className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
                 <SparklesIcon size={16} />
                 Sign in to get matches from your CV
@@ -108,7 +142,8 @@ export function PublicJobs() {
             jobs={visible}
             stateKey="public"
             highlight={highlightTerms({ q: filters.q, tech: filters.tech })}
-            signedIn={false}
+            signedIn={signedIn}
+            renderActions={signedIn ? (job) => <SaveJobButton jobId={job.id} /> : undefined}
             footer={
               <>
                 {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}

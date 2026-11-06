@@ -170,23 +170,31 @@ describe("Home", () => {
     expect(jobsCallsFinal).toHaveLength(2);
   });
 
-  it("still renders Feed when signed in", async () => {
+  it("signed in without a CV: free search over all jobs, with a switch to the personal feed", async () => {
     useSessionMock.mockReturnValue(signedInSession());
     const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
       if (url.startsWith("/api/feed")) {
         return Promise.resolve(
           jsonResponse(200, { items: [job("1", "Feed Job")], nextCursor: null, keywords: ["react"] }),
         );
       }
-      return Promise.reject(new Error(`unexpected url ${url}`));
+      if (isJobsListCall(url)) {
+        return Promise.resolve(jsonResponse(200, { items: [job("2", "Any Job")], nextCursor: null }));
+      }
+      return Promise.resolve(jsonResponse(200, {}));
     });
     vi.stubGlobal("fetch", fetchMock);
 
     renderHome();
 
+    await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByText(/not filtered by your profile/)).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/feed"))).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("radio", { name: "For you" }));
     await waitFor(() => expect(screen.getByText("Feed Job")).toBeTruthy(), { timeout: 5000 });
-    const jobsCalls = fetchMock.mock.calls.filter(([u]) => isJobsListCall(u as string));
-    expect(jobsCalls).toHaveLength(0);
+    expect(window.localStorage.getItem("ujc:home-mode")).toBe("matches");
   });
 
   it("restores the list from the view cache on Back instead of refetching", async () => {
