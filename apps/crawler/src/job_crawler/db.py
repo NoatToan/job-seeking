@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import Any
 
 import psycopg
@@ -73,6 +74,7 @@ def job_params(job: JobRecord) -> dict[str, Any]:
             remote=job.remote,
             raw=job.raw,
             tags=job.tags,
+            salary_text=job.salary_text,
         )
     )
     return params
@@ -189,8 +191,11 @@ def recompute_derived(conn: psycopg.Connection) -> int:
     changed: list[tuple] = []
     # A server-side (named) cursor needs a transaction even on an autocommit connection.
     with conn.transaction(), conn.cursor(name="derived_recompute") as cur:
-        cur.execute(f"SELECT id, title, location, description, remote, raw, tags, {cols} FROM jobs")
-        for job_id, title, location, description, remote, raw, tags, *current in cur:
+        cur.execute(
+            f"SELECT id, title, location, description, remote, raw, tags, salary_text, {cols}"
+            " FROM jobs"
+        )
+        for job_id, title, location, description, remote, raw, tags, salary_text, *current in cur:
             fresh = derive(
                 title=title,
                 location=location,
@@ -198,8 +203,11 @@ def recompute_derived(conn: psycopg.Connection) -> int:
                 remote=remote,
                 raw=raw,
                 tags=list(tags or []),
+                salary_text=salary_text,
             )
             values = [fresh[c] for c in DERIVED_COLUMNS]
+            # NUMERIC columns come back as Decimal; compare as floats.
+            current = [float(v) if isinstance(v, Decimal) else v for v in current]
             if values != current:
                 changed.append((*values, job_id))
     sets = ", ".join(f"{c} = %s" for c in DERIVED_COLUMNS)

@@ -25,6 +25,15 @@ export interface Job {
   timezones?: string[] | null;
   /** "stated" = the posting says it; "location" = inferred from where the job is. */
   timezoneSource?: "stated" | "location" | null;
+  /** Structured salary (job_crawler.salary): amounts in `currency` per `period`. `source` =
+   * "source" (the board sent it) or "description" (found in the posting text). */
+  salary?: {
+    min: number | null;
+    max: number | null;
+    currency: string | null;
+    period: "year" | "month" | "week" | "day" | "hour" | null;
+    source: "source" | "description";
+  } | null;
   /** Tech ids found in the posting (job_crawler.techstack), e.g. ["nextjs", "react"]. */
   techStack?: string[];
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */

@@ -42,8 +42,9 @@ _TECH: dict[str, tuple[str, str]] = {
     "spring": ("backend", r"(?-i:\bSpring\s*(?:Boot|Framework|MVC|Cloud)\b)"),
     "go": (
         "backend",
-        r"\bgolang\b|(?-i:\bGo\b)(?=\s*(?:[,/)]|\(golang|developer|engineer|backend))"
-        r"|(?<=[(/,]\s)(?-i:Go\b)|(?<=[(/,])(?-i:Go\b)",
+        r"\bgolang\b|(?-i:\bGo\b)(?!-)(?=\s*(?:[,/)]|\(golang|developer|engineer|backend))"
+        # "(Go)", "Python, Go", "Go/Rust" — but not "Go-to-market".
+        r"|(?<=[(/,]\s)(?-i:Go\b)(?!-)|(?<=[(/,])(?-i:Go\b)(?!-)",
     ),
     "rust": ("backend", r"(?-i:\bRust\b)"),
     "ruby": ("backend", r"(?-i:\bRuby\b)"),

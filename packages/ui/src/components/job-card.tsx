@@ -223,6 +223,9 @@ export function JobListItem({
           <span className="font-medium">{job.company}</span>
           {job.location ? ` · ${job.location}` : ""}
         </p>
+        {job.salaryText ? (
+          <p className="mt-0.5 truncate text-footnote font-medium text-label">{job.salaryText}</p>
+        ) : null}
         {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-1.5" /> : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-label-secondary">
           <SourceBadge source={job.source} />
