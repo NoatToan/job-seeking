@@ -342,3 +342,38 @@ board's layout; and show each job's level with a recognisable badge. Code:
   IC ladder teal with a 1–4 bar meter, management amber with its own glyph; "Level: Senior" for
   screen readers. Theme tokens only. The list API carries `level`; a level filter was left out (the
   filter bar belongs to the sort/filter work).
+
+## Database audit: indexes and query counts (2026-11-07)
+
+Status: accepted. Code: `db/migrations/028_query_indexes.sql`, `apps/api/src/ujc_api/{worker,digest}.py`,
+`apps/api/src/ujc_api/auth/session.py`, `apps/api/src/ujc_api/routers/me.py`,
+`apps/api/tests/test_query_counts_db.py`. Details and EXPLAIN numbers: [`product/PERFORMANCE.md`](product/PERFORMANCE.md).
+
+- **An index is added only when EXPLAIN shows a gain** on a seeded 80k-job database.
+  Migration 027 adds three:
+  - `jobs (first_seen_at)` for the digest: 51 ms → 6 ms per user.
+  - `jobs (source, first_seen_at)` for the sources summary: 40 ms → 6 ms, index-only. It
+    replaces the redundant `jobs (source)`.
+  - A partial `tasks (locked_at) WHERE status = 'running'`, so the worker's requeue before every
+    poll no longer scans every done task.
+
+  Everything else already had a matching index, so there are no trigram or extra GIN indexes.
+- **Plain `CREATE INDEX`, not `CONCURRENTLY`**: both migrators run each file in a transaction,
+  where `CONCURRENTLY` can't run. At 5–10k jobs the lock lasts under a second during the Vercel
+  build. If `jobs` grows past a few hundred thousand rows, move index builds to a separate step
+  that runs outside a transaction.
+- **Unused indexes stay until production data says otherwise.** `jobs_posted_at_idx` and
+  `jobs_last_seen_at_idx` had no scans in the benchmark. Dropping them would not make crawler
+  updates HOT, so they stay until `pg_stat_user_indexes` in production shows whether they are
+  used.
+- **The number of queries per endpoint is part of the contract.** `test_query_counts_db.py`
+  pins the count for each list endpoint and fails if it grows with the data (N+1). Fixes made
+  during the audit:
+  - The `match_score` task writes all its matches in one statement.
+  - The digest no longer re-reads preferences for each user.
+  - `GET /api/me` is one statement (it was six).
+  - The session check on every signed-in request is one `UPDATE … RETURNING` (it was a
+    `SELECT` followed by an `UPDATE`).
+- **contributor-box issues go upstream**, not into the vendored copy: vote counts computed as
+  per-row subqueries, `OFFSET` paging with a separate `count(*)`, and `ILIKE` search. See
+  PERFORMANCE.md "Upstream".

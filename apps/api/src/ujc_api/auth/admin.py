@@ -26,6 +26,12 @@ def is_admin(conn: psycopg.Connection, settings: Settings, user: AuthedUser) -> 
     return bool(row and row[0] == "admin")
 
 
+def role_from(settings: Settings, user: AuthedUser, stored_role: str | None) -> str:
+    """`user_role` when the caller already read `users.role` (no extra lookup)."""
+    admin = user.email.strip().lower() in settings.admin_emails() or stored_role == "admin"
+    return "admin" if admin else "user"
+
+
 def user_role(conn: psycopg.Connection, settings: Settings, user: AuthedUser) -> str:
     return "admin" if is_admin(conn, settings, user) else "user"
 

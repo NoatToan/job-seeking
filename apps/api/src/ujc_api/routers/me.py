@@ -9,7 +9,7 @@ import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, field_validator
 
-from ujc_api.auth.admin import user_role
+from ujc_api.auth.admin import role_from
 from ujc_api.auth.csrf import require_csrf
 from ujc_api.auth.deps import AuthedUser, current_user, require_jobs_read
 from ujc_api.auth.session import clear_auth_cookies
@@ -31,12 +31,22 @@ _DEFAULT_DIGEST_HOUR = 7
 _DEFAULT_DIGEST_TZ = "Asia/Ho_Chi_Minh"
 
 
+_PREFERENCE_COLUMNS = (
+    "keywords, remote_only, candidate_country, digest_enabled, digest_hour, digest_tz"
+)
+
+
 def _preferences(conn: psycopg.Connection, user_id: int) -> dict:
     row = conn.execute(
-        "SELECT keywords, remote_only, candidate_country,"
-        " digest_enabled, digest_hour, digest_tz FROM user_preferences WHERE user_id = %s",
+        f"SELECT {_PREFERENCE_COLUMNS} FROM user_preferences WHERE user_id = %s",
         (user_id,),
     ).fetchone()
+    return _preferences_dto(row)
+
+
+def _preferences_dto(row: tuple | None) -> dict:
+    """`row`: `_PREFERENCE_COLUMNS` of the user's `user_preferences` row, or None (no row yet,
+    so the defaults)."""
     if row is None:
         return {
             "keywords": [],
@@ -57,14 +67,6 @@ def _preferences(conn: psycopg.Connection, user_id: int) -> dict:
     }
 
 
-def _latest_cv(conn: psycopg.Connection, user_id: int) -> dict | None:
-    row = conn.execute(
-        f"SELECT {CV_COLUMNS} FROM user_cvs WHERE user_id = %s ORDER BY created_at DESC LIMIT 1",
-        (user_id,),
-    ).fetchone()
-    return cv_dto(row) if row else None
-
-
 def _ai_consent_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
     row = conn.execute("SELECT ai_consent_at FROM users WHERE id = %s", (user_id,)).fetchone()
     return row[0] if row else None
@@ -75,12 +77,20 @@ def _onboarded_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
     return row[0] if row else None
 
 
-def _display_identity(conn: psycopg.Connection, user_id: int) -> tuple[str | None, str | None]:
-    """`(display_name, headline)` from the editable profile (`/api/me/profile`)."""
-    row = conn.execute(
-        "SELECT display_name, headline FROM users WHERE id = %s", (user_id,)
-    ).fetchone()
-    return (row[0], row[1]) if row else (None, None)
+# Everything `GET /api/me` shows, in one statement (it was six: profile, role, consent,
+# onboarding, preferences and latest CV, each its own lookup). The SPA calls it on every load.
+_ME_SQL = f"""
+SELECT u.display_name, u.headline, u.role, u.ai_consent_at, u.onboarded_at,
+       p.user_id IS NOT NULL, {", ".join("p." + c.strip() for c in _PREFERENCE_COLUMNS.split(","))},
+       cv.*
+FROM users u
+LEFT JOIN user_preferences p ON p.user_id = u.id
+LEFT JOIN LATERAL (
+  SELECT {CV_COLUMNS} FROM user_cvs c WHERE c.user_id = u.id ORDER BY c.created_at DESC LIMIT 1
+) cv ON TRUE
+WHERE u.id = %s
+"""
+_ME_WIDTH = 12 + len(CV_COLUMNS.split(","))
 
 
 @router.get("")
@@ -89,7 +99,10 @@ def get_me(
     conn: psycopg.Connection = Depends(get_conn),
     settings: Settings = Depends(app_settings),
 ) -> dict:
-    display_name, headline = _display_identity(conn, user.id)
+    # No row: the account was deleted mid-request; same output the separate lookups gave.
+    row = conn.execute(_ME_SQL, (user.id,)).fetchone() or (None,) * _ME_WIDTH
+    display_name, headline, role, ai_consent_at, onboarded_at, has_prefs = row[:6]
+    prefs_row, cv_row = row[6:12], row[12:]
     return {
         "user": {
             "id": str(user.id),
@@ -98,12 +111,12 @@ def get_me(
             "displayName": display_name,
             "headline": headline,
             # Drives which screens the SPA shows; every admin route re-checks server-side.
-            "role": user_role(conn, settings, user),
-            "aiConsentAt": _iso(_ai_consent_at(conn, user.id)),
-            "onboardedAt": _iso(_onboarded_at(conn, user.id)),
+            "role": role_from(settings, user, role),
+            "aiConsentAt": _iso(ai_consent_at),
+            "onboardedAt": _iso(onboarded_at),
         },
-        "preferences": _preferences(conn, user.id),
-        "latestCv": _latest_cv(conn, user.id),
+        "preferences": _preferences_dto(prefs_row if has_prefs else None),
+        "latestCv": cv_dto(cv_row) if cv_row[0] is not None else None,
     }
 
 

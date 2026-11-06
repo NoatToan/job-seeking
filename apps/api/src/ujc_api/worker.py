@@ -235,6 +235,26 @@ def _load_feed_candidates(conn: psycopg.Connection, user_id: int) -> list[scorer
     return [scorer.StoredJob(*r) for r in rows]
 
 
+# Writes every match of one `match_score` run in a single statement: the rows travel as one JSON
+# array (`jsonb_to_recordset` turns its arrays into the text[] columns).
+INSERT_MATCHES_SQL = """
+INSERT INTO user_matches (user_id, cv_id, job_id, score, summary, reasons, missing_skills)
+SELECT %s, %s, m.job_id, m.score, m.summary, m.reasons, m.missing_skills
+FROM jsonb_to_recordset(%s) AS m(
+  job_id BIGINT, score INTEGER, summary TEXT, reasons TEXT[], missing_skills TEXT[])
+"""
+
+
+def _match_row(r: scorer.MatchResult) -> dict[str, Any]:
+    return {
+        "job_id": r.job_id,
+        "score": r.score,
+        "summary": r.summary,
+        "reasons": list(r.reasons),
+        "missing_skills": list(r.missing_skills),
+    }
+
+
 def process_match_score(
     conn: psycopg.Connection,
     payload: dict[str, Any],
@@ -272,12 +292,10 @@ def process_match_score(
 
     with conn.transaction():
         conn.execute("DELETE FROM user_matches WHERE user_id = %s", (user_id,))
-        for r in results:
+        if results:
+            # One statement for the whole batch (was one INSERT per scored job).
             conn.execute(
-                "INSERT INTO user_matches"
-                " (user_id, cv_id, job_id, score, summary, reasons, missing_skills)"
-                " VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (user_id, cv_id, r.job_id, r.score, r.summary, r.reasons, r.missing_skills),
+                INSERT_MATCHES_SQL, (user_id, cv_id, Jsonb([_match_row(r) for r in results]))
             )
 
 
