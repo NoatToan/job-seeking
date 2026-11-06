@@ -155,6 +155,7 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
             onClick={() => setOpen(false)}
           />
           <ListRow title={t("nav.roadmap")} href="/roadmap/" linkAs={Link} onClick={() => setOpen(false)} />
+          <ListRow title={t("nav.releaseNotes")} href="/release-notes/" linkAs={Link} onClick={() => setOpen(false)} />
           <ListRow
             title={tc("nav.contribute")}
             href="/contribute/"

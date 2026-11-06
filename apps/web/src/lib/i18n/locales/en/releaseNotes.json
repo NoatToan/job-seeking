@@ -1,0 +1,39 @@
+{
+  "title": "Release notes",
+  "subtitle": "What changed on JobSeeking, day by day. AI writes these notes from every update to the site, using the code changes themselves.",
+  "activity": {
+    "label": "Activity",
+    "updates_one": "{{count}} update in the last 30 days",
+    "updates_other": "{{count}} updates in the last 30 days",
+    "days_one": "{{count}} release day",
+    "days_other": "{{count}} release days",
+    "commits_one": "{{count}} code change",
+    "commits_other": "{{count}} code changes",
+    "lastUpdate": "Last update {{date}}",
+    "heatmap": "Code changes per day, last 12 weeks",
+    "dayCommits_one": "{{date}}: {{count}} code change",
+    "dayCommits_other": "{{date}}: {{count}} code changes",
+    "dayNone": "{{date}}: no changes",
+    "less": "Less",
+    "more": "More"
+  },
+  "feed": "RSS feed",
+  "filter": {
+    "label": "Show",
+    "all": "All"
+  },
+  "category": {
+    "new": "New",
+    "improved": "Improved",
+    "fixed": "Fixed",
+    "under-the-hood": "Under the hood"
+  },
+  "latest": "Latest",
+  "commits_one": "{{count}} code change",
+  "commits_other": "{{count}} code changes",
+  "viewCode": "View code",
+  "screenshotAlt": "The site on {{date}}",
+  "empty": "No updates in this category yet.",
+  "whatsNew": "What's new",
+  "whatsNewLabel": "What's new: latest update {{date}}"
+}

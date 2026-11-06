@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { listings, snapshotDate } from "@/lib/seo-jobs";
 import { SITE_URL } from "@/lib/site";
 import { listingPath } from "./jobs/seo-ui";
+import { RELEASE_NOTES } from "@/lib/release-notes";
 
 export const dynamic = "force-static";
 
@@ -12,6 +13,7 @@ export const dynamic = "force-static";
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const built = snapshotDate();
+  const releaseDay = RELEASE_NOTES.entries[0]?.date;
   const listingUrls = (["tech", "country", "source"] as const).flatMap((kind) =>
     listings(kind).map((l) => ({ url: `${SITE_URL}${listingPath(kind, l.key)}`, lastModified: built })),
   );
@@ -20,6 +22,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/jobs/`, lastModified: built, changeFrequency: "daily", priority: 0.8 },
     ...listingUrls,
     { url: `${SITE_URL}/roadmap/`, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${SITE_URL}/release-notes/`, lastModified: releaseDay, changeFrequency: "daily", priority: 0.4 },
+    { url: `${SITE_URL}/release-notes/feed.xml`, lastModified: releaseDay, changeFrequency: "daily", priority: 0.1 },
     { url: `${SITE_URL}/privacy/`, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

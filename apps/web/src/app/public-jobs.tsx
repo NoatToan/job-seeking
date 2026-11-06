@@ -18,6 +18,7 @@ import { JobBrowser } from "@/app/job-browser";
 import { JobBrowserSkeleton, SourcesPillSkeleton } from "@/app/skeletons";
 import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
+import { WhatsNewChip } from "@/app/release-notes/whats-new-chip";
 
 /**
  * `/` for a signed-out visitor: the public job catalogue (Slack request — "without logging in,
@@ -91,6 +92,7 @@ export function PublicJobs({
             {modeSwitch}
             {/* Hold the pill's place while sources load, so the hero doesn't grow under the reader. */}
             {sources || sourcesError ? <SourcesSummary sources={sources ?? []} /> : <SourcesPillSkeleton />}
+            <WhatsNewChip />
             <span className={signedIn ? "hidden" : "hidden lg:inline-flex"}>
               <Link href="/login/" className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
                 <SparklesIcon size={16} />

@@ -1,0 +1,34 @@
+{
+  "title": "Có gì mới",
+  "subtitle": "Những thay đổi của JobSeeking theo từng ngày. AI viết các ghi chú này từ mỗi lần cập nhật trang, dựa trên chính thay đổi trong mã nguồn.",
+  "activity": {
+    "label": "Hoạt động",
+    "updates_other": "{{count}} cập nhật trong 30 ngày qua",
+    "days_other": "{{count}} ngày phát hành",
+    "commits_other": "{{count}} thay đổi mã nguồn",
+    "lastUpdate": "Cập nhật gần nhất {{date}}",
+    "heatmap": "Số thay đổi mã nguồn mỗi ngày, 12 tuần gần đây",
+    "dayCommits_other": "{{date}}: {{count}} thay đổi",
+    "dayNone": "{{date}}: không có thay đổi",
+    "less": "Ít",
+    "more": "Nhiều"
+  },
+  "feed": "Nguồn RSS",
+  "filter": {
+    "label": "Hiển thị",
+    "all": "Tất cả"
+  },
+  "category": {
+    "new": "Mới",
+    "improved": "Cải thiện",
+    "fixed": "Đã sửa",
+    "under-the-hood": "Phía sau"
+  },
+  "latest": "Mới nhất",
+  "commits_other": "{{count}} thay đổi mã nguồn",
+  "viewCode": "Xem mã nguồn",
+  "screenshotAlt": "Trang web ngày {{date}}",
+  "empty": "Chưa có cập nhật nào thuộc loại này.",
+  "whatsNew": "Có gì mới",
+  "whatsNewLabel": "Có gì mới: cập nhật gần nhất {{date}}"
+}

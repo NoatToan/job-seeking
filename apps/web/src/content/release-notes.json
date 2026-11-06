@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "date": "2026-11-07",
+      "slug": "2026-11-07",
+      "title": {
+        "en": "Sort your job lists and see the public roadmap",
+        "vi": "Sắp xếp danh sách việc làm và xem lộ trình công khai"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "Sort jobs by newest, time-zone fit or salary, and your feed by best CV match",
+          "vi": "Sắp xếp việc làm theo mới nhất, độ hợp múi giờ hoặc mức lương, và bảng tin theo độ phù hợp với CV"
+        },
+        {
+          "category": "new",
+          "en": "The Roadmap page shows community ideas as Under consideration, Planned and Done",
+          "vi": "Trang Lộ trình hiển thị ý tưởng của cộng đồng theo ba cột: Đang cân nhắc, Đã lên kế hoạch và Đã xong"
+        },
+        {
+          "category": "new",
+          "en": "Anyone can suggest an idea from the roadmap, and signed-in users can vote for what comes next",
+          "vi": "Ai cũng có thể gợi ý ý tưởng từ trang Lộ trình, người đã đăng nhập có thể bình chọn tính năng tiếp theo"
+        },
+        {
+          "category": "improved",
+          "en": "Jobs that accept candidates from your country get a green 'For you' stamp",
+          "vi": "Việc làm nhận ứng viên ở quốc gia của bạn có tem xanh 'Dành cho bạn'"
+        },
+        {
+          "category": "improved",
+          "en": "Save and Read on job rows are compact icons, and open sheets dim and blur the page behind",
+          "vi": "Nút Lưu và Đã xem trên mỗi việc làm gọn thành biểu tượng, bảng mở ra làm tối và mờ trang phía sau"
+        },
+        {
+          "category": "improved",
+          "en": "Working-hours labels are calmer: a neutral pill with a sun or moon icon for the shift time",
+          "vi": "Nhãn giờ làm gọn gàng hơn: nền trung tính kèm biểu tượng mặt trời hoặc mặt trăng theo ca làm"
+        },
+        {
+          "category": "new",
+          "en": "A GitHub link in the top bar leads to the site's open source code",
+          "vi": "Liên kết GitHub trên thanh trên cùng dẫn tới mã nguồn mở của trang"
+        },
+        {
+          "category": "under-the-hood",
+          "en": "The site has a new address, job-seeking-remote.vercel.app; the old one redirects there",
+          "vi": "Trang có địa chỉ mới job-seeking-remote.vercel.app, địa chỉ cũ tự chuyển hướng sang"
+        }
+      ],
+      "commits": {
+        "from": "35e1a9a15ea67dee896371acd0bb5e20b3de647a",
+        "to": "91767ae4acca53913919fba66843c6d04ac69e11",
+        "count": 10
+      }
+    },
+    {
+      "date": "2026-11-06",
+      "slug": "2026-11-06-2",
+      "title": {
+        "en": "Job pages on Google, a careers blog and dark mode",
+        "vi": "Trang việc làm trên Google, blog nghề nghiệp và chế độ tối"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "Every job has its own page search engines can find, plus job lists by tech, country and source",
+          "vi": "Mỗi việc làm có trang riêng để công cụ tìm kiếm tìm thấy, kèm danh sách theo công nghệ, quốc gia và nguồn"
+        },
+        {
+          "category": "new",
+          "en": "A hiring and career trends blog with a daily roundup of articles and related jobs",
+          "vi": "Blog xu hướng tuyển dụng và nghề nghiệp, có bản tổng hợp bài viết và việc làm liên quan mỗi ngày"
+        },
+        {
+          "category": "new",
+          "en": "Choose a System, Light or Dark appearance, and colours across the site now work in dark mode",
+          "vi": "Chọn giao diện Theo hệ thống, Sáng hoặc Tối; màu sắc trên toàn trang hiển thị đúng ở chế độ tối"
+        },
+        {
+          "category": "new",
+          "en": "Send feedback or an idea from any page with the feedback button, even without signing in",
+          "vi": "Gửi góp ý hoặc ý tưởng từ mọi trang bằng nút góp ý, kể cả khi chưa đăng nhập"
+        },
+        {
+          "category": "new",
+          "en": "An 'Open to me' toggle hides remote jobs that don't accept candidates from your country",
+          "vi": "Nút 'Phù hợp với tôi' ẩn các việc làm từ xa không nhận ứng viên ở quốc gia của bạn"
+        },
+        {
+          "category": "improved",
+          "en": "On phones, every filter opens in one view and applies together with a single tap",
+          "vi": "Trên điện thoại, mọi bộ lọc nằm trong một màn hình và áp dụng cùng lúc chỉ với một lần chạm"
+        },
+        {
+          "category": "improved",
+          "en": "Job rows show a small weather-style sky for the job's shift on your clock: sun, dusk or moon",
+          "vi": "Mỗi việc làm có hình bầu trời kiểu ứng dụng thời tiết theo ca làm trên giờ của bạn: ngày, hoàng hôn hay đêm"
+        },
+        {
+          "category": "improved",
+          "en": "Long job lists scroll smoothly, and loading placeholders match the page they turn into",
+          "vi": "Danh sách việc làm dài cuộn mượt hơn, khung chờ tải giống hệt trang sẽ hiện ra"
+        }
+      ],
+      "screenshot": "/release-notes/2026-11-06-home.jpg",
+      "commits": {
+        "from": "e989499c3f796ae52b352ea880770066760752fe",
+        "to": "30bea161bc496441ed2aaebe4642678e5826ea26",
+        "count": 27
+      }
+    },
+    {
+      "date": "2026-11-06",
+      "slug": "2026-11-06",
+      "title": {
+        "en": "Browse every job without an account",
+        "vi": "Xem mọi việc làm mà không cần tài khoản"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "The home page lists every job without signing in, with job details open beside the list",
+          "vi": "Trang chủ hiển thị mọi việc làm mà không cần đăng nhập, chi tiết việc làm mở ngay bên cạnh danh sách"
+        },
+        {
+          "category": "new",
+          "en": "Filter by country, tech stack, posting date (past hour to 30 days), working hours and remote region",
+          "vi": "Lọc theo quốc gia, công nghệ, thời gian đăng (từ 1 giờ đến 30 ngày), giờ làm và khu vực làm từ xa"
+        },
+        {
+          "category": "new",
+          "en": "Each job shows its working hours on your clock and whether its remote region accepts your country",
+          "vi": "Mỗi việc làm hiển thị giờ làm theo múi giờ của bạn và cho biết khu vực làm từ xa có nhận quốc gia của bạn không"
+        },
+        {
+          "category": "new",
+          "en": "Salaries are read from the job text when the board doesn't list one, and job rows show tech stack icons",
+          "vi": "Mức lương được lấy từ mô tả khi trang tuyển dụng không ghi, và mỗi việc làm có biểu tượng công nghệ"
+        },
+        {
+          "category": "new",
+          "en": "The site speaks English and Vietnamese, follows your browser's language and remembers your choice",
+          "vi": "Trang có tiếng Anh và tiếng Việt, tự theo ngôn ngữ trình duyệt và ghi nhớ lựa chọn của bạn"
+        },
+        {
+          "category": "improved",
+          "en": "A fresh look: a top navigation bar, a sunrise search header and friendlier job cards",
+          "vi": "Giao diện mới: thanh điều hướng trên cùng, ô tìm kiếm tông bình minh và thẻ việc làm thân thiện hơn"
+        },
+        {
+          "category": "improved",
+          "en": "Read jobs are dimmed, Back keeps your place, arrow keys switch jobs and searches are shareable links",
+          "vi": "Việc đã xem được làm mờ, nút Quay lại giữ nguyên vị trí, phím mũi tên chuyển việc và tìm kiếm chia sẻ được bằng link"
+        },
+        {
+          "category": "fixed",
+          "en": "Visitors with a Vietnamese browser no longer get the English site by mistake",
+          "vi": "Trình duyệt tiếng Việt không còn bị hiển thị nhầm trang tiếng Anh"
+        }
+      ],
+      "commits": {
+        "from": "7d9fb13185ea89f1d44e354a4773762af4383de4",
+        "to": "08ec53e2fd4eb9e6ae4f5ce8d7a6a6cf6c82cd02",
+        "count": 28
+      }
+    },
+    {
+      "date": "2026-11-02",
+      "slug": "2026-11-02",
+      "title": {
+        "en": "CV match scores, an application tracker and daily digests",
+        "vi": "Chấm điểm phù hợp với CV, theo dõi ứng tuyển và email hằng ngày"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "Track your applications on a board or a list, with status history, notes and a next-action date",
+          "vi": "Theo dõi hồ sơ ứng tuyển dạng bảng hoặc danh sách, có lịch sử trạng thái, ghi chú và ngày cần làm tiếp"
+        },
+        {
+          "category": "new",
+          "en": "Jobs in your feed get a match score against your CV, with a 'Why this score' explanation",
+          "vi": "Việc làm trong bảng tin được chấm điểm phù hợp với CV, kèm phần giải thích 'Vì sao có điểm này'"
+        },
+        {
+          "category": "new",
+          "en": "A three-step welcome guide helps first-time users upload a CV and set their keywords",
+          "vi": "Hướng dẫn ba bước giúp người dùng mới tải CV lên và đặt từ khoá"
+        },
+        {
+          "category": "new",
+          "en": "Get a daily email of new jobs that match your feed, at the hour you choose",
+          "vi": "Nhận email hằng ngày về việc làm mới phù hợp với bảng tin, vào giờ bạn chọn"
+        },
+        {
+          "category": "new",
+          "en": "Connect Adzuna with your own key, or pair a local runner that searches more boards from your computer",
+          "vi": "Kết nối Adzuna bằng khoá riêng, hoặc ghép nối trình chạy cục bộ để tìm thêm trang tuyển dụng từ máy của bạn"
+        },
+        {
+          "category": "new",
+          "en": "Your own Claude can read your feed and manage applications with a personal access token",
+          "vi": "Claude của riêng bạn có thể đọc bảng tin và quản lý hồ sơ ứng tuyển bằng mã truy cập cá nhân"
+        },
+        {
+          "category": "new",
+          "en": "Privacy controls: consent before AI reads your CV, a data export and self-serve account deletion",
+          "vi": "Quyền riêng tư: đồng ý trước khi AI đọc CV, xuất dữ liệu và tự xoá tài khoản"
+        },
+        {
+          "category": "under-the-hood",
+          "en": "Security hardening: stricter browser headers, rate limits and request size caps",
+          "vi": "Tăng cường bảo mật: header trình duyệt chặt chẽ hơn, giới hạn tần suất và kích thước yêu cầu"
+        }
+      ],
+      "commits": {
+        "from": "7fe15cc2d9c8801f8b803c514187a3c056878fc0",
+        "to": "05f1fa2535f9832255c6c2a5c02ffd57c0c9828e",
+        "count": 22
+      }
+    },
+    {
+      "date": "2026-10-30",
+      "slug": "2026-10-30",
+      "title": {
+        "en": "Sign in with an email code and get a personal feed",
+        "vi": "Đăng nhập bằng mã email và có bảng tin riêng"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "Sign in with a 6-digit code sent to your email, no password needed",
+          "vi": "Đăng nhập bằng mã 6 số gửi qua email, không cần mật khẩu"
+        },
+        {
+          "category": "new",
+          "en": "Upload your CV to pull out keywords, then edit them and set remote and country preferences",
+          "vi": "Tải CV lên để lấy từ khoá, sau đó chỉnh sửa và chọn ưu tiên làm từ xa và quốc gia"
+        },
+        {
+          "category": "new",
+          "en": "A personal job feed that keeps loading as you scroll",
+          "vi": "Bảng tin việc làm riêng, tự tải thêm khi bạn cuộn"
+        },
+        {
+          "category": "new",
+          "en": "Live search queries several job boards at once and merges the results",
+          "vi": "Tìm trực tiếp trên nhiều trang tuyển dụng cùng lúc và gộp kết quả"
+        },
+        {
+          "category": "improved",
+          "en": "A warm 'Sunrise' design across sign-in, CV, feed, search and job pages",
+          "vi": "Giao diện 'Bình minh' ấm áp cho các trang đăng nhập, CV, bảng tin, tìm kiếm và chi tiết việc làm"
+        }
+      ],
+      "commits": {
+        "from": "2b54cc4acd94c8577d1ae35f7259506f94ff2273",
+        "to": "85336c660c8d3514538f252950ebb5518b0ba975",
+        "count": 4
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "slug": "2026-10-29",
+      "title": {
+        "en": "Job search inside Claude and a new foundation",
+        "vi": "Tìm việc ngay trong Claude và nền tảng mới"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "A free job-search tool for Claude searches SEEK, We Work Remotely and Arc live",
+          "vi": "Công cụ tìm việc miễn phí cho Claude, tìm trực tiếp trên SEEK, We Work Remotely và Arc"
+        },
+        {
+          "category": "improved",
+          "en": "The jobs page gets a search box, a source filter, a remote toggle and paging",
+          "vi": "Trang việc làm có ô tìm kiếm, bộ lọc nguồn, nút chỉ làm từ xa và phân trang"
+        },
+        {
+          "category": "under-the-hood",
+          "en": "The site becomes a fast static app backed by its own API",
+          "vi": "Trang web trở thành ứng dụng tĩnh tải nhanh, chạy trên API riêng"
+        },
+        {
+          "category": "under-the-hood",
+          "en": "A shared design system with light and dark colours lays the ground for the new screens",
+          "vi": "Hệ thống thiết kế chung với màu sáng và tối, làm nền cho các màn hình mới"
+        }
+      ],
+      "commits": {
+        "from": "9189400c0df2112135edb2fa55fc86ce50656b4b",
+        "to": "c75ece4e806b82c80f3fb0233dff7c5322ca0185",
+        "count": 8
+      }
+    },
+    {
+      "date": "2026-10-27",
+      "slug": "2026-10-27",
+      "title": {
+        "en": "First CV fit scores",
+        "vi": "Điểm phù hợp với CV đầu tiên"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "Jobs can be scored against your latest CV, with the best fits listed first",
+          "vi": "Việc làm được chấm điểm theo CV mới nhất của bạn, việc phù hợp nhất xếp lên đầu"
+        },
+        {
+          "category": "improved",
+          "en": "Remote jobs are tagged with who can apply (worldwide, a region or a country) from their location text",
+          "vi": "Việc làm từ xa được gắn nhãn ai có thể ứng tuyển (toàn cầu, một khu vực hay một quốc gia) dựa trên địa điểm"
+        }
+      ],
+      "commits": {
+        "from": "c22133bb8ae7f5ed8d745deb31a199f47dd38f7b",
+        "to": "c22133bb8ae7f5ed8d745deb31a199f47dd38f7b",
+        "count": 1
+      }
+    },
+    {
+      "date": "2026-10-26",
+      "slug": "2026-10-26",
+      "title": {
+        "en": "Day one: tech jobs from many boards in one place",
+        "vi": "Ngày đầu tiên: việc làm công nghệ từ nhiều nơi về một chỗ"
+      },
+      "highlights": [
+        {
+          "category": "new",
+          "en": "A daily crawl collects remote tech jobs from We Work Remotely, Himalayas and company job boards",
+          "vi": "Mỗi ngày tự động thu thập việc làm công nghệ từ xa từ We Work Remotely, Himalayas và trang tuyển dụng của công ty"
+        },
+        {
+          "category": "new",
+          "en": "Every job shows the board it came from and links back to the original posting",
+          "vi": "Mỗi việc làm ghi rõ nguồn và dẫn về tin tuyển dụng gốc"
+        },
+        {
+          "category": "new",
+          "en": "Save search profiles with your keywords and see the jobs that match them",
+          "vi": "Lưu hồ sơ tìm kiếm với từ khoá của bạn và xem các việc làm phù hợp"
+        },
+        {
+          "category": "new",
+          "en": "Remotive joins the job sources",
+          "vi": "Thêm nguồn việc làm Remotive"
+        }
+      ],
+      "commits": {
+        "from": "bc54fe32330cd8c5aa5a5f84b7cde56b04a8456a",
+        "to": "ec9c24141b5f58bc076857679dfb69644640a0f9",
+        "count": 5
+      }
+    }
+  ]
+}

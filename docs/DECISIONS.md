@@ -201,3 +201,47 @@ Known data issue surfaced by the salary sort: a few salaries parsed from descrip
 wrong period (e.g. an intern's "R$ 1.350" monthly stipend stored as hourly, a "$200 meal voucher"
 read as $200/hour), which puts them at the top. That is a `job_crawler.salary` parsing bug to fix
 there, not in the sort.
+
+## Release notes (2026-11-07)
+
+Status: accepted. Code: `apps/web/src/app/release-notes/`, `apps/web/src/lib/release-notes.ts`,
+`apps/web/src/content/release-notes.json`, `scripts/release-notes/`, `.github/workflows/release-notes.yml`.
+Setup: [`DEVELOPMENT.md`](DEVELOPMENT.md) "Release notes".
+
+- **A committed JSON file, not a database or an API.** The page is part of the static export and
+  needs no backend; the history is reviewable in git and can be edited by hand. Each push to
+  `main` rebuilds the site anyway (Vercel is Git-connected), so the page is never staler than the
+  latest deploy.
+- **One entry per day, rewritten as the day goes on.** Commits are grouped by the local day
+  (`Asia/Ho_Chi_Minh`, where the team works) of the newest commit; a later push on the same day
+  sends Claude the earlier entry and gets back the full updated one. Per-push entries would turn a
+  busy day (55 commits on 2026-11-06) into dozens of tiny notes. A day can still be split by hand
+  (`2026-11-06` and `2026-11-06-2` in the backfill); the generator then keeps updating the newest.
+- **Only user-visible changes.** A cheap filter drops merges, `chore/docs/test/ci/style/build`
+  commits and commits that only touch docs, tests, CI or tooling, so most chore pushes never call
+  the API; the prompt tells Claude to skip internal names, guesses and invisible work, and it can
+  answer `skip: true`. At most 8 one-line highlights per entry, each in `en` and `vi`.
+- **Claude with structured output, validated twice.** `claude-sonnet-5` (named in the request; a
+  writing task, not a reasoning one) with `output_config.format` = a JSON Schema, then
+  `schema.mjs` checks lengths, single lines and categories (which JSON Schema in structured outputs
+  can't express), then the whole file is re-validated before it is written. Plain `fetch`, no SDK:
+  one request from a Node script in CI, no `node_modules` needed in the job.
+- **No loops.** The bot pushes with `GITHUB_TOKEN`, and GitHub never starts workflows from such
+  pushes; on top of that the job skips notes-only pushes (`paths-ignore`) and the bot actor, and
+  the script drops commits whose subject carries `[skip release-notes]` (the bot's subject does).
+  Only the subject counts, so docs that merely mention the marker don't hide a commit. The same
+  marker lets a human keep a commit out. Not `[skip ci]`: that would also skip the CI run.
+- **Fail soft, retry for free.** No key, an API error, a refusal or invalid output ends the run
+  with a notice or warning and exit 0. Nothing is lost: the anchor (`commits.to` of the newest
+  entry) only moves when an entry is written, so the next push covers the same commits.
+  `concurrency: release-notes` (no cancel) keeps two runs from writing at once, and the job checks
+  out the tip of `main` so a queued run covers the pushes it waited for; the push step rebases and
+  retries if `main` moved meanwhile.
+- **Backfill written by hand** (by Claude in the session that built this) from `git log`: 8 entries
+  from 2026-10-26 to 2026-11-07; the 2026-10-18 scratch commit is left out.
+- **Page.** Activity summary ("N updates in the last 30 days", counted from the visitor's own
+  date after hydration, from the build date before it), a 12-week commit-day strip, category
+  filter chips, a timeline with the latest entry highlighted, optional screenshot, a link to the
+  commits on GitHub, and an Atom feed (`feed.xml`, built at export time). Linked from a "What's new
+  · <date>" chip in the public home hero and from the account sheet; the TopNav was left alone
+  (other work touches it, and the chip already reaches signed-out visitors on every screen size).

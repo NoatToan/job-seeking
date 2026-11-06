@@ -152,6 +152,27 @@ A PR must pass all three jobs before merging.
 
 **Add a source:** append a `FeedSource` to `apps/crawler/src/job_crawler/blog/sources.py`. Leave `republish_mode="excerpt"` unless you have read the publisher's licence and it allows republication; then set `republish_mode="full"`, `licence_name`, `licence_url` (and `item_rights_pattern` / `pixel_pattern` if the licence has per-item rights or a required counter), and record the licence check in `docs/DECISIONS.md`. Add a trimmed fixture under `apps/crawler/tests/fixtures/blog/` with a parser test, then check it live: `cd apps/crawler && uv run python -m job_crawler.blog --dry-run --source <key>`. Topic keywords live in `topics.py` (mirrored in `apps/web/src/lib/blog/topics.ts`).
 
+## Release notes
+
+`/release-notes/` (public, in `sitemap.xml`, Atom feed at `/release-notes/feed.xml`) shows what shipped, one entry per day, from `apps/web/src/content/release-notes.json`. Each entry: `date`, `slug`, `title` and `highlights[]` (category `new` / `improved` / `fixed` / `under-the-hood`, one line each, `en` + `vi`), optional `screenshot` (a path under `apps/web/public/`) and `commits` (`from`, `to`, `count`). The rules live in `scripts/release-notes/schema.mjs` and a web test checks the committed file against them. Decisions: [`docs/DECISIONS.md`](DECISIONS.md) "Release notes".
+
+`.github/workflows/release-notes.yml` writes the entries on every push to `main`:
+
+1. Skips when the push only touches the notes file or comes from `github-actions[bot]`.
+2. `node scripts/release-notes/generate.mjs` reads the commits since the newest entry's `commits.to`, drops the bot's own commits and any commit whose subject (first line) contains `[skip release-notes]`, and stops if what is left is only chores / docs / tests / CI / merges.
+3. Otherwise it asks Claude (Messages API, `claude-sonnet-5`, structured JSON output) with the prompt in `scripts/release-notes/prompt.md`, validates the answer, and adds today's entry, or rewrites it when today already has one (days are counted in `Asia/Ho_Chi_Minh`).
+4. The workflow commits the file to `main` as `github-actions[bot]` ("Release notes for <date> [skip release-notes]"); the Git-connected Vercel project deploys it.
+
+| Setting | Kind | Needed | What |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | repository secret | yes | Claude API key. Without it every run ends with a notice and changes nothing. |
+| `RELEASE_NOTES_MODEL` | repository variable | no | Model id, default `claude-sonnet-5`. |
+| `RELEASE_NOTES_TZ` | repository variable | no | Time zone that decides the entry's day, default `Asia/Ho_Chi_Minh`. |
+
+The workflow pushes with the built-in `GITHUB_TOKEN` (`contents: write`). If `main` gets branch protection that blocks direct pushes, allow GitHub Actions to bypass it, or the runs end with a warning and nothing is lost: the anchor (`commits.to`) only moves when an entry is written, so the next push retries the same commits.
+
+By hand: `node scripts/release-notes/generate.mjs --dry-run` prints the prompt it would send; with `ANTHROPIC_API_KEY` set it writes the file (commit it yourself). To edit or split an entry, change the JSON directly (a second entry on the same day gets the slug `<date>-2`; the generator keeps updating the newest one); put `[skip release-notes]` in a commit's subject line to leave that commit out.
+
 ## Add a company board
 
 ```sql

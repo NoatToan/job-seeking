@@ -1,0 +1,74 @@
+name: Release notes
+
+# On every push to main, Claude writes (or extends) today's entry in
+# apps/web/src/content/release-notes.json from the commits since the newest entry, and the workflow
+# commits it back to main; the Git-connected Vercel project then deploys /release-notes/.
+# Script and prompt: scripts/release-notes/ (generate.mjs, prompt.md, schema.mjs).
+#
+# Secret: ANTHROPIC_API_KEY. Without it the run ends with a notice and changes nothing.
+# Variables (optional): RELEASE_NOTES_MODEL (default claude-sonnet-5), RELEASE_NOTES_TZ (default
+# Asia/Ho_Chi_Minh, where a day starts and ends).
+#
+# No loops: the bot commit is pushed with GITHUB_TOKEN, and GitHub never starts workflows for
+# pushes made with that token. Belt and braces, the job also skips when the push only touches the
+# notes file (paths-ignore) or when the actor is the bot, and the script leaves out every commit
+# whose subject carries [skip release-notes] (so a run on top of the bot's commit stops before
+# calling the API).
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - apps/web/src/content/release-notes.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One run at a time; a newer push waits (GitHub keeps one waiting run, which is enough because a
+# run covers every commit since the newest entry).
+concurrency:
+  group: release-notes
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The tip of main (not the pushed sha): a queued run then covers the pushes it waited for.
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Write the entry
+        id: notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RELEASE_NOTES_MODEL: ${{ vars.RELEASE_NOTES_MODEL }}
+          RELEASE_NOTES_TZ: ${{ vars.RELEASE_NOTES_TZ }}
+        run: node scripts/release-notes/generate.mjs
+
+      - name: Commit to main
+        if: steps.notes.outputs.changed == 'true'
+        env:
+          DATE: ${{ steps.notes.outputs.date }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/content/release-notes.json
+          git commit -m "Release notes for ${DATE} [skip release-notes]"
+          # main may have moved while Claude was writing; the bot only touches the notes file.
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "::warning::Could not push the release notes; the next push to main retries."
