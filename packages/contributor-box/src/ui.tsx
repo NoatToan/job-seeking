@@ -5,8 +5,11 @@
  * "Theme contract"). The host's Tailwind must scan this package (`@source`) and define the tokens.
  */
 
+import { useState } from "react";
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
-import type { FeedbackKind, FeedbackStatus } from "./types";
+import { useContributor } from "./context";
+import { safeHref } from "./safe-url";
+import type { FeedbackKind, FeedbackStatus, PublicAuthor, VoteValue } from "./types";
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
@@ -94,6 +97,18 @@ export const ChatIcon = ({ size }: { size?: number }) => (
   <Icon size={size}>
     <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
     <path d="M8.5 11h7M8.5 14h4" />
+  </Icon>
+);
+
+export const DownIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="m6 10 6 6 6-6" />
+  </Icon>
+);
+
+export const CommentIcon = ({ size }: { size?: number }) => (
+  <Icon size={size}>
+    <path d="M20 12a7 7 0 0 1-10.2 6.2L5 19l.9-4A7 7 0 1 1 20 12Z" />
   </Icon>
 );
 
@@ -188,4 +203,273 @@ export function relativeTime(iso: string | null, locale: string, now: number = D
     value /= size;
   }
   return "";
+}
+
+// --- people --------------------------------------------------------------------------------------
+
+/** Avatar tones (server `avatar.tone` 0–4) as theme token pairs, so dark mode follows the host. */
+const TONES = [
+  "bg-tint-soft text-tint-ink",
+  "bg-info-soft text-info-ink",
+  "bg-success-soft text-success-ink",
+  "bg-warning-soft text-warning-ink",
+  "bg-fill-secondary text-label",
+];
+
+/** What to call someone: their name, else the pseudonym in the page's language. */
+export function displayName(author: PublicAuthor | null | undefined, locale: string): string {
+  if (!author) return "";
+  if (author.name) return author.name;
+  if (author.pseudonym) return locale.startsWith("vi") ? author.pseudonym.vi : author.pseudonym.en;
+  return "";
+}
+
+export function Avatar({ author, size = 32 }: { author: PublicAuthor; size?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
+      className={cx(
+        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold leading-none",
+        TONES[author.avatar.tone % TONES.length] ?? TONES[0],
+      )}
+    >
+      {author.avatar.glyph}
+    </span>
+  );
+}
+
+/** Name plus badges: "Team", "Guest #123", "You". */
+export function AuthorName({ author, isMine }: { author: PublicAuthor; isMine?: boolean }) {
+  const { strings: s } = useContributor();
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <span className="min-w-0 truncate font-semibold text-label">{displayName(author, s.locale)}</span>
+      {author.team ? (
+        <span className="rounded-full bg-tint-soft px-1.5 text-caption font-medium text-tint-ink">{s.teamBadge}</span>
+      ) : null}
+      {author.kind === "guest" ? (
+        <span className="text-caption text-label-tertiary">
+          {s.guestBadge}
+          {author.tag ? ` #${author.tag}` : ""}
+        </span>
+      ) : null}
+      {isMine ? <span className="text-caption text-label-tertiary">· {s.you}</span> : null}
+    </span>
+  );
+}
+
+// --- votes ---------------------------------------------------------------------------------------
+
+export interface VoteState {
+  score: number;
+  myVote: VoteValue;
+}
+
+/** Score after the viewer changes their vote from `state.myVote` to `next`. */
+export function applyVote(state: VoteState, next: VoteValue): VoteState {
+  return { score: state.score - state.myVote + next, myVote: next };
+}
+
+/**
+ * Stack Overflow style "▲ score ▼". Clicking the pressed arrow again removes the vote; the other
+ * arrow switches it. Optimistic: the new score shows at once and rolls back if `onVote` throws.
+ * Signed out: with the host's `onRequireSignIn` the arrows stay and ask to sign in first, then
+ * cast that vote; with only `signInHref` the score links to sign-in.
+ */
+export function VoteControl({
+  score,
+  myVote,
+  canVote,
+  onVote,
+  label,
+  size = "md",
+  horizontal = false,
+}: VoteState & {
+  /** "▲ 3 ▼" in a row (comments) instead of a column (items). */
+  horizontal?: boolean;
+  canVote: boolean;
+  /** Persist the vote; resolve once the parent has the server's numbers. */
+  onVote: (value: VoteValue) => Promise<unknown>;
+  /** What is being voted on, for screen readers (e.g. the item title). */
+  label?: string;
+  size?: "md" | "sm";
+}) {
+  const { strings: s, signedIn, signInHref, onRequireSignIn, linkAs: Link } = useContributor();
+  const [optimistic, setOptimistic] = useState<VoteState | null>(null);
+  const [announce, setAnnounce] = useState("");
+  const shown = optimistic ?? { score, myVote };
+  const busy = optimistic !== null;
+  const suffix = label ? `: ${label}` : "";
+  const sm = size === "sm";
+
+  // Signed out with an in-place sign-in: the real arrows, which sign in and then vote.
+  const askFirst = !canVote && !signedIn && onRequireSignIn !== null;
+
+  if (!canVote && !askFirst) {
+    const scoreText = (
+      <span className={cx("flex items-center", horizontal ? "flex-row gap-1" : "flex-col")} aria-hidden="true" title={signedIn ? undefined : s.signInToVote}>
+        <UpIcon size={sm ? 12 : 14} />
+        {shown.score}
+      </span>
+    );
+    if (!signedIn && signInHref) {
+      return (
+        <Link
+          href={signInHref}
+          className={cx(
+            "flex shrink-0 flex-col items-center justify-center rounded-control bg-fill-tertiary px-2 font-semibold text-label-secondary tabular-nums transition-colors duration-150 hover:bg-fill-secondary focus-ring",
+            sm ? "min-h-9 min-w-9 text-caption" : "min-h-11 min-w-11 text-footnote",
+          )}
+        >
+          <span className="sr-only">{`${s.signInToVote} (${s.score(shown.score)})${suffix}`}</span>
+          {scoreText}
+        </Link>
+      );
+    }
+    return (
+      <span
+        className={cx(
+          "flex shrink-0 items-center justify-center px-1 font-semibold text-label-secondary tabular-nums",
+          horizontal ? "flex-row" : "flex-col",
+          sm ? "min-w-8 text-caption" : "min-w-11 text-footnote",
+        )}
+      >
+        <span className="sr-only">{s.score(shown.score)}</span>
+        {scoreText}
+      </span>
+    );
+  }
+
+  const cast = async (direction: 1 | -1) => {
+    if (busy) return;
+    if (askFirst) {
+      // After sign-in the parent refetches; the vote goes in with the visitor's new session.
+      onRequireSignIn?.(() => {
+        onVote(direction).then(
+          () => setAnnounce(s.score(score + direction)),
+          () => undefined,
+        );
+      });
+      return;
+    }
+    const next: VoteValue = shown.myVote === direction ? 0 : direction;
+    const after = applyVote(shown, next);
+    setOptimistic(after);
+    try {
+      await onVote(next);
+      setAnnounce(s.score(after.score));
+    } catch {
+      // Roll back: the parent never received new numbers, so the props still hold the old ones.
+      setAnnounce(s.score(score));
+    } finally {
+      setOptimistic(null);
+    }
+  };
+
+  const arrow = (direction: 1 | -1) => {
+    const pressed = shown.myVote === direction;
+    return (
+      <button
+        type="button"
+        aria-pressed={pressed}
+        aria-label={`${direction === 1 ? s.upvote : s.downvote}${suffix}`}
+        aria-disabled={busy || undefined}
+        title={askFirst ? s.signInToVote : undefined}
+        onClick={() => void cast(direction)}
+        className={cx(
+          "flex items-center justify-center rounded-control transition-colors duration-150 focus-ring",
+          sm ? "size-7" : "size-9",
+          pressed
+            ? direction === 1
+              ? "bg-tint text-on-tint"
+              : "bg-danger-soft text-danger-ink"
+            : "text-label-secondary hover:bg-fill-secondary",
+        )}
+      >
+        {direction === 1 ? <UpIcon size={sm ? 14 : 18} /> : <DownIcon size={sm ? 14 : 18} />}
+      </button>
+    );
+  };
+
+  return (
+    <div
+      className={cx(
+        "flex shrink-0 items-center rounded-control bg-fill-tertiary p-0.5",
+        horizontal ? "flex-row gap-0.5" : "flex-col",
+      )}
+      role="group"
+      aria-label={`${s.score(shown.score)}${suffix}`}
+    >
+      {arrow(1)}
+      <span
+        className={cx(
+          "font-semibold tabular-nums",
+          sm ? "text-caption" : "text-footnote",
+          shown.myVote === 1 ? "text-tint" : shown.myVote === -1 ? "text-danger" : "text-label",
+        )}
+        aria-hidden="true"
+      >
+        {shown.score}
+      </span>
+      {arrow(-1)}
+      <span className="sr-only" aria-live="polite">
+        {announce}
+      </span>
+    </div>
+  );
+}
+
+// --- plain text with links ----------------------------------------------------------------------
+
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi;
+const TRAILING = /[.,;:!?'")\]}]+$/;
+
+/** Splits text into plain runs and http(s) URLs (trailing punctuation stays text). */
+export function splitLinks(text: string): Array<{ text: string; href: string | null }> {
+  const out: Array<{ text: string; href: string | null }> = [];
+  let last = 0;
+  for (const match of text.matchAll(URL_RE)) {
+    let url = match[0];
+    const start = match.index ?? 0;
+    const trail = url.match(TRAILING)?.[0] ?? "";
+    // Keep a closing parenthesis that belongs to the URL, e.g. a Wikipedia link.
+    let cut = trail.length;
+    if (trail.startsWith(")") && (url.match(/\(/g)?.length ?? 0) > (url.slice(0, -trail.length).match(/\)/g)?.length ?? 0)) {
+      cut -= 1;
+    }
+    url = cut > 0 ? url.slice(0, -cut) : url;
+    const href = safeHref(url);
+    if (start > last) out.push({ text: text.slice(last, start), href: null });
+    out.push({ text: url, href });
+    last = start + url.length;
+  }
+  if (last < text.length) out.push({ text: text.slice(last), href: null });
+  return out;
+}
+
+/**
+ * User text rendered as text (React escapes it), with http(s) URLs as links marked
+ * `nofollow ugc noopener` so comments cannot pass on ranking or reach `window.opener`.
+ */
+export function LinkifiedText({ text, className }: { text: string; className?: string }) {
+  return (
+    <p className={cx("whitespace-pre-wrap break-words", className)}>
+      {splitLinks(text).map((part, i) =>
+        part.href ? (
+          <a
+            key={i}
+            href={part.href}
+            target="_blank"
+            rel="nofollow ugc noopener noreferrer"
+            className="break-all text-tint underline focus-ring rounded-sm"
+          >
+            {part.text}
+          </a>
+        ) : (
+          <span key={i}>{part.text}</span>
+        ),
+      )}
+    </p>
+  );
 }

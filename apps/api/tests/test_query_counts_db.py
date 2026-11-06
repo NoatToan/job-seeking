@@ -116,8 +116,8 @@ def _track(url: str, user_id: int, job_ids: list[int]) -> None:
             (user_id, len(job_ids)),
         ).fetchall()
         conn.execute(
-            "INSERT INTO feedback_votes (item_id, user_id)"
-            " SELECT i, %s FROM unnest(%s::bigint[]) i",
+            "INSERT INTO feedback_votes (item_id, user_id, value)"
+            " SELECT i, %s, 1 FROM unnest(%s::bigint[]) i",
             (user_id, [i[0] for i in items]),
         )
 
@@ -144,7 +144,7 @@ SIGNED_IN = {
     "/api/me/profile": 2,
     "/api/applications": 2,
     "/api/me/viewed": 2,
-    # session + admin role + count + page (vote counts are subqueries, not extra statements)
+    # session + admin role + count + page (scores and comment counts are stored columns)
     "/api/feedback?scope=board": 4,
     "/api/feedback?scope=mine&sort=top": 4,
 }
@@ -181,6 +181,10 @@ def test_list_endpoints_run_a_constant_number_of_queries(
     client.cookies.clear()
     assert _queries(client, "/api/jobs?remote=true") == 1
     assert _queries(client, "/api/feedback?scope=board") == 2  # count + page
+    # "Load more" is a keyset page: no count, one statement.
+    cursor = client.get("/api/feedback?scope=board&limit=1").json()["nextCursor"]
+    assert cursor
+    assert _queries(client, f"/api/feedback?scope=board&limit=1&cursor={cursor}") == 1
 
 
 def test_match_score_writes_all_matches_in_one_statement(migrated_database_url: str):

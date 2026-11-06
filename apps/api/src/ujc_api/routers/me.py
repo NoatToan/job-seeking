@@ -242,7 +242,7 @@ def get_export(
 ) -> Response:
     """A JSON download of everything the user owns: their account row, preferences, CV metadata
     (extracted profile/keywords, never the file bytes), tracked applications, viewed jobs and the
-    feedback they sent (without screenshot bytes)."""
+    feedback they sent (without screenshot bytes), their feedback comments and display name."""
     user_row = conn.execute(
         "SELECT id, email, created_at, last_login_at, ai_consent_at FROM users WHERE id = %s",
         (user.id,),
@@ -274,6 +274,16 @@ def get_export(
         " FROM feedback_items WHERE author_id = %s ORDER BY created_at DESC",
         (user.id,),
     ).fetchall()
+
+    # Comments the user wrote on feedback items (deleted ones have no text left to export).
+    comment_rows = conn.execute(
+        "SELECT id, item_id, parent_id, body, created_at, edited_at FROM feedback_comments"
+        " WHERE author_id = %s AND deleted_at IS NULL ORDER BY created_at DESC",
+        (user.id,),
+    ).fetchall()
+    display_name_row = conn.execute(
+        "SELECT display_name FROM feedback_identities WHERE user_id = %s", (user.id,)
+    ).fetchone()
 
     export = {
         "user": {
@@ -313,6 +323,18 @@ def get_export(
                 f_updated,
             ) in feedback_rows
         ],
+        "feedbackComments": [
+            {
+                "id": str(c_id),
+                "itemId": str(c_item),
+                "parentId": str(c_parent) if c_parent is not None else None,
+                "body": c_body,
+                "createdAt": _iso(c_created),
+                "editedAt": _iso(c_edited),
+            }
+            for (c_id, c_item, c_parent, c_body, c_created, c_edited) in comment_rows
+        ],
+        "feedbackDisplayName": display_name_row[0] if display_name_row else None,
     }
     body = json.dumps(export, indent=2)
     return Response(
@@ -342,8 +364,10 @@ def delete_me(
     settings: Settings = Depends(app_settings),
 ) -> Response:
     """Hard-deletes the user; `ON DELETE CASCADE` on `sessions`, `user_cvs`, `user_preferences`,
-    `applications`, `job_views`, `feedback_items` (with screenshots) and `feedback_votes` removes
-    everything else they own."""
+    `applications`, `job_views`, `feedback_items` (with screenshots), `feedback_votes`,
+    `feedback_comment_votes` and `feedback_identities` removes everything else they own. Their
+    feedback comments become "[deleted]" placeholders with the text cleared (a trigger on
+    `ON DELETE SET NULL`), so other people's replies stay in their threads."""
     conn.execute("DELETE FROM users WHERE id = %s", (user.id,))
     clear_auth_cookies(response, settings)
     response.status_code = 204

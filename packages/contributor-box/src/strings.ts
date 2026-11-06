@@ -116,6 +116,67 @@ export interface ContributorStrings {
   selectItem: string;
   emptyQueue: string;
   forbidden: string;
+  // Votes (Stack Overflow style)
+  upvote: string;
+  downvote: string;
+  /** Accessible name of the score next to the arrows, and the live announcement after a vote. */
+  score: (n: number) => string;
+  // Kind filter (roadmap)
+  kindFilterLabel: string;
+  /** Guests: "It's on the roadmap" link after sending. */
+  seeOnRoadmap: string;
+  // Comments
+  comments: string;
+  commentCount: (n: number) => string;
+  commentsEmpty: string;
+  commentLabel: string;
+  replyLabel: string;
+  commentPlaceholder: string;
+  replyPlaceholder: string;
+  postComment: string;
+  postReply: string;
+  posting: string;
+  reply: string;
+  replyingTo: (name: string) => string;
+  editComment: string;
+  deleteComment: string;
+  deleteCommentConfirm: string;
+  report: string;
+  reportPrompt: string;
+  reported: string;
+  hide: string;
+  unhide: string;
+  hiddenBadge: string;
+  dismissReports: string;
+  reportsCount: (n: number) => string;
+  deletedComment: string;
+  removedComment: string;
+  edited: string;
+  showMoreReplies: (n: number) => string;
+  showMoreComments: string;
+  commentsLocked: string;
+  signInToComment: string;
+  charsLeft: (n: number) => string;
+  commentError: string;
+  commentRateLimited: string;
+  // Identity
+  youAppearAs: string;
+  changeName: string;
+  displayNameLabel: string;
+  displayNameHint: string;
+  useGeneratedName: string;
+  nameRejected: string;
+  guestBadge: string;
+  teamBadge: string;
+  you: string;
+  // Admin moderation
+  lockComments: string;
+  lockCommentsHint: string;
+  queueItems: string;
+  queueReported: string;
+  emptyReported: string;
+  reportedOn: string;
+  reportReasons: string;
 }
 
 const en: ContributorStrings = {
@@ -158,7 +219,7 @@ const en: ContributorStrings = {
   submitting: "Sending…",
   sent: "Thank you!",
   sentDetail: "We got it. You can follow its status on the contributor page.",
-  sentDetailAnonymous: "We got it, thank you. The team reads every message.",
+  sentDetailAnonymous: "We got it, thank you. It's on the public roadmap, where others can vote and comment.",
   sendAnother: "Send another",
   seeAll: "See all ideas",
   signInPrompt: "Sign in to send feedback and vote on ideas.",
@@ -179,7 +240,7 @@ const en: ContributorStrings = {
   sortTop: "Most votes",
   allKinds: "All types",
   newIdea: "Suggest an idea",
-  emptyBoard: "No approved ideas yet. Be the first to suggest one.",
+  emptyBoard: "Nothing here yet. Be the first to suggest something.",
   emptyMine: "You haven't sent anything yet. Use the feedback button on any page.",
   loadMore: "Load more",
   loading: "Loading…",
@@ -194,14 +255,24 @@ const en: ContributorStrings = {
   deleteConfirm: "Delete this item? This can't be undone.",
   back: "Back",
   roadmapTitle: "Roadmap",
-  roadmapSubtitle: "What we're considering, what's planned and what has shipped. Vote for what matters to you.",
-  roadmapColumn: { approved: "Under consideration", planned: "Planned", done: "Done" },
+  roadmapSubtitle: "Every bug, piece of feedback and idea people send, from new to shipped. Vote and comment to shape what we build.",
+  roadmapColumn: {
+    new: "New",
+    under_review: "Under review",
+    approved: "Under consideration",
+    planned: "Planned",
+    done: "Done",
+  },
   roadmapColumnHint: {
-    approved: "Ideas we've accepted. Votes help us decide.",
+    new: "Just sent. Vote and comment to help us understand it.",
+    under_review: "The team is looking into it.",
+    approved: "Accepted. Votes help us decide what's next.",
     planned: "On the list to build.",
-    done: "Shipped.",
+    done: "Shipped or fixed.",
   },
   roadmapEmpty: {
+    new: "Nothing new right now.",
+    under_review: "Nothing under review.",
     approved: "Nothing under consideration right now.",
     planned: "Nothing planned yet.",
     done: "Nothing shipped yet.",
@@ -242,6 +313,60 @@ const en: ContributorStrings = {
   selectItem: "Select an item to review it.",
   emptyQueue: "Nothing here. Try another filter.",
   forbidden: "This page is for admins.",
+  upvote: "Upvote",
+  downvote: "Downvote",
+  score: (n) => `Score ${n}`,
+  kindFilterLabel: "Show",
+  seeOnRoadmap: "See it on the roadmap",
+  comments: "Comments",
+  commentCount: (n) => (n === 1 ? "1 comment" : `${n} comments`),
+  commentsEmpty: "No comments yet. Add yours to make this idea better.",
+  commentLabel: "Your comment",
+  replyLabel: "Your reply",
+  commentPlaceholder: "Share an idea, a use case or a concern…",
+  replyPlaceholder: "Write a reply…",
+  postComment: "Comment",
+  postReply: "Reply",
+  posting: "Posting…",
+  reply: "Reply",
+  replyingTo: (name) => `Replying to ${name}`,
+  editComment: "Edit",
+  deleteComment: "Delete",
+  deleteCommentConfirm: "Delete this comment? This can't be undone.",
+  report: "Report",
+  reportPrompt: "Why should a moderator look at this? (optional)",
+  reported: "Reported. A moderator will take a look.",
+  hide: "Hide",
+  unhide: "Unhide",
+  hiddenBadge: "Hidden",
+  dismissReports: "Dismiss reports",
+  reportsCount: (n) => (n === 1 ? "1 report" : `${n} reports`),
+  deletedComment: "[deleted]",
+  removedComment: "[removed by a moderator]",
+  edited: "edited",
+  showMoreReplies: (n) => (n === 1 ? "Show 1 more reply" : `Show ${n} more replies`),
+  showMoreComments: "Show more comments",
+  commentsLocked: "Comments are locked on this item.",
+  signInToComment: "Sign in to comment",
+  charsLeft: (n) => `${n} characters left`,
+  commentError: "We couldn't post that. Please try again.",
+  commentRateLimited: "You've commented a lot this hour. Please try again later.",
+  youAppearAs: "You'll appear as",
+  changeName: "Change",
+  displayNameLabel: "Display name",
+  displayNameHint: "Shown on your comments and feedback. Leave it empty to use the generated name.",
+  useGeneratedName: "Use generated name",
+  nameRejected: "That name can't be used. Try another one.",
+  guestBadge: "Guest",
+  teamBadge: "Team",
+  you: "You",
+  lockComments: "Lock comments",
+  lockCommentsHint: "Only admins can comment while locked.",
+  queueItems: "Items",
+  queueReported: "Reported comments",
+  emptyReported: "No reported comments. Nice.",
+  reportedOn: "On",
+  reportReasons: "Reasons",
 };
 
 const vi: ContributorStrings = {
@@ -285,7 +410,7 @@ const vi: ContributorStrings = {
   submitting: "Đang gửi…",
   sent: "Cảm ơn bạn!",
   sentDetail: "Chúng tôi đã nhận. Bạn có thể theo dõi trạng thái ở trang Đóng góp.",
-  sentDetailAnonymous: "Chúng tôi đã nhận, cảm ơn bạn. Nhóm đọc mọi góp ý.",
+  sentDetailAnonymous: "Chúng tôi đã nhận, cảm ơn bạn. Góp ý đã có trên lộ trình công khai để mọi người bình chọn và bình luận.",
   sendAnother: "Gửi thêm",
   seeAll: "Xem tất cả ý tưởng",
   signInPrompt: "Đăng nhập để gửi góp ý và bình chọn ý tưởng.",
@@ -306,7 +431,7 @@ const vi: ContributorStrings = {
   sortTop: "Nhiều bình chọn",
   allKinds: "Mọi loại",
   newIdea: "Đề xuất ý tưởng",
-  emptyBoard: "Chưa có ý tưởng nào được duyệt. Hãy là người đầu tiên đề xuất.",
+  emptyBoard: "Chưa có gì ở đây. Hãy là người đầu tiên đề xuất.",
   emptyMine: "Bạn chưa gửi gì. Dùng nút góp ý ở bất kỳ trang nào.",
   loadMore: "Xem thêm",
   loading: "Đang tải…",
@@ -320,14 +445,24 @@ const vi: ContributorStrings = {
   deleteConfirm: "Xóa mục này? Không thể hoàn tác.",
   back: "Quay lại",
   roadmapTitle: "Lộ trình",
-  roadmapSubtitle: "Những gì chúng tôi đang cân nhắc, đã lên kế hoạch và đã hoàn thành. Bình chọn cho điều bạn quan tâm.",
-  roadmapColumn: { approved: "Đang cân nhắc", planned: "Đã lên kế hoạch", done: "Đã xong" },
+  roadmapSubtitle: "Mọi lỗi, góp ý và ý tưởng mọi người gửi, từ lúc mới gửi đến khi hoàn thành. Bình chọn và bình luận để cùng định hướng sản phẩm.",
+  roadmapColumn: {
+    new: "Mới",
+    under_review: "Đang xem xét",
+    approved: "Đang cân nhắc",
+    planned: "Đã lên kế hoạch",
+    done: "Đã xong",
+  },
   roadmapColumnHint: {
-    approved: "Ý tưởng đã được chấp nhận. Bình chọn giúp chúng tôi quyết định.",
+    new: "Vừa được gửi. Bình chọn và bình luận để giúp chúng tôi hiểu rõ hơn.",
+    under_review: "Đội ngũ đang tìm hiểu.",
+    approved: "Đã chấp nhận. Bình chọn giúp chúng tôi chọn việc tiếp theo.",
     planned: "Đã vào danh sách sẽ làm.",
-    done: "Đã ra mắt.",
+    done: "Đã ra mắt hoặc đã sửa.",
   },
   roadmapEmpty: {
+    new: "Hiện chưa có gì mới.",
+    under_review: "Không có mục nào đang xem xét.",
     approved: "Hiện chưa có gì đang cân nhắc.",
     planned: "Chưa có gì trong kế hoạch.",
     done: "Chưa có gì hoàn thành.",
@@ -368,6 +503,60 @@ const vi: ContributorStrings = {
   selectItem: "Chọn một mục để duyệt.",
   emptyQueue: "Không có mục nào. Thử bộ lọc khác.",
   forbidden: "Trang này dành cho admin.",
+  upvote: "Ủng hộ",
+  downvote: "Không ủng hộ",
+  score: (n) => `Điểm ${n}`,
+  kindFilterLabel: "Hiển thị",
+  seeOnRoadmap: "Xem trên lộ trình",
+  comments: "Bình luận",
+  commentCount: (n) => `${n} bình luận`,
+  commentsEmpty: "Chưa có bình luận. Góp ý của bạn sẽ giúp ý tưởng này tốt hơn.",
+  commentLabel: "Bình luận của bạn",
+  replyLabel: "Trả lời của bạn",
+  commentPlaceholder: "Chia sẻ ý tưởng, tình huống sử dụng hoặc băn khoăn…",
+  replyPlaceholder: "Viết trả lời…",
+  postComment: "Bình luận",
+  postReply: "Trả lời",
+  posting: "Đang gửi…",
+  reply: "Trả lời",
+  replyingTo: (name) => `Trả lời ${name}`,
+  editComment: "Sửa",
+  deleteComment: "Xóa",
+  deleteCommentConfirm: "Xóa bình luận này? Không thể hoàn tác.",
+  report: "Báo cáo",
+  reportPrompt: "Vì sao quản trị viên nên xem bình luận này? (không bắt buộc)",
+  reported: "Đã báo cáo. Quản trị viên sẽ xem xét.",
+  hide: "Ẩn",
+  unhide: "Bỏ ẩn",
+  hiddenBadge: "Đã ẩn",
+  dismissReports: "Bỏ qua báo cáo",
+  reportsCount: (n) => `${n} báo cáo`,
+  deletedComment: "[đã xóa]",
+  removedComment: "[đã bị quản trị viên gỡ]",
+  edited: "đã sửa",
+  showMoreReplies: (n) => `Xem thêm ${n} trả lời`,
+  showMoreComments: "Xem thêm bình luận",
+  commentsLocked: "Bình luận cho mục này đã bị khóa.",
+  signInToComment: "Đăng nhập để bình luận",
+  charsLeft: (n) => `Còn ${n} ký tự`,
+  commentError: "Chưa gửi được. Vui lòng thử lại.",
+  commentRateLimited: "Bạn đã bình luận khá nhiều trong giờ này. Vui lòng thử lại sau.",
+  youAppearAs: "Bạn sẽ hiển thị là",
+  changeName: "Đổi",
+  displayNameLabel: "Tên hiển thị",
+  displayNameHint: "Hiển thị trên bình luận và góp ý của bạn. Để trống để dùng tên tự tạo.",
+  useGeneratedName: "Dùng tên tự tạo",
+  nameRejected: "Không dùng được tên này. Hãy thử tên khác.",
+  guestBadge: "Khách",
+  teamBadge: "Đội ngũ",
+  you: "Bạn",
+  lockComments: "Khóa bình luận",
+  lockCommentsHint: "Khi khóa, chỉ admin được bình luận.",
+  queueItems: "Mục góp ý",
+  queueReported: "Bình luận bị báo cáo",
+  emptyReported: "Không có bình luận nào bị báo cáo.",
+  reportedOn: "Trong",
+  reportReasons: "Lý do",
 };
 
 export const strings = { en, vi } as const;

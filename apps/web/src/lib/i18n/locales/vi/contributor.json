@@ -12,7 +12,10 @@
   },
   "roadmap": {
     "title": "Lộ trình",
-    "subtitle": "Ý tưởng và yêu cầu từ cộng đồng, cùng trạng thái của từng mục: đang cân nhắc, đã lên kế hoạch hay đã xong. Bình chọn cho điều bạn muốn có tiếp theo.",
+    "subtitle": "Mọi báo lỗi, góp ý và ý tưởng từ cộng đồng, từ lúc vừa gửi đến khi hoàn thành. Bình chọn và bình luận để ý tưởng tốt hơn, không cần tài khoản để xem hay bình luận.",
     "seeRoadmap": "Xem lộ trình"
+  },
+  "auth": {
+    "reason": "Đăng nhập để bình chọn, bình luận và theo dõi góp ý bằng tên của bạn."
   }
 }

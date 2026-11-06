@@ -77,7 +77,7 @@ describe("FeedbackWidget", () => {
   it("keeps the form compact: screenshot hint only once the screenshot is on, two-line details field", async () => {
     render(<FeedbackWidget capture={vi.fn(async () => SHOT)} />, { wrapper: wrap(fakeApi(), false, true) });
     fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
-    expect(screen.getByLabelText("Your name (optional)")).toBeTruthy();
+    expect(await screen.findByText("You'll appear as")).toBeTruthy();
     expect(screen.getByLabelText("Details (optional)").getAttribute("rows")).toBe("2");
     expect(screen.queryByText(/Only the visible part/)).toBeNull();
     const toggle = screen.getByLabelText(/Attach a screenshot/);
@@ -148,33 +148,41 @@ describe("FeedbackWidget", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/a lot this hour/);
   });
 
-  it("lets a guest send feedback with an optional name when anonymous feedback is on", async () => {
+  it("shows a guest the pseudonym they will appear as, and lets them change it", async () => {
     const api = fakeApi();
     render(<FeedbackWidget />, { wrapper: wrap(api, false, true) });
     fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
     expect(screen.getByText(/sending this as a guest/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Sign in to follow its status" }).getAttribute("href")).toBe("/login/");
+    expect(await screen.findByText("Brave Otter")).toBeTruthy();
+    expect(screen.getByText("Guest #123")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change: Display name" }));
+    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Minh" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.setDisplayName).toHaveBeenCalledWith("Minh"));
+    expect(await screen.findByText("Minh")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Dark mode please" } });
-    fireEvent.change(screen.getByLabelText("Your name (optional)"), { target: { value: "  Minh " } });
     fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
     await waitFor(() => expect(api.create).toHaveBeenCalled());
-    expect(vi.mocked(api.create).mock.calls[0][0]).toMatchObject({ title: "Dark mode please", authorName: "Minh" });
-    expect(await screen.findByText(/thank you/)).toBeTruthy();
-    // No "my feedback" / board link for a guest.
+    // The name lives on the visitor identity, not in the item request.
+    expect(vi.mocked(api.create).mock.calls[0][0]).not.toHaveProperty("authorName");
+    expect(await screen.findByText(/public roadmap/)).toBeTruthy();
+    // No "my feedback" link for a guest, but the roadmap where they can follow it.
     expect(screen.queryByRole("link", { name: "See all ideas" })).toBeNull();
+    expect(screen.getByRole("link", { name: "See it on the roadmap" }).getAttribute("href")).toBe("/roadmap/");
   });
 
-  it("sends no name when a guest leaves it empty, and signed-in users never see the field", async () => {
-    const api = fakeApi();
-    render(<FeedbackWidget />, { wrapper: wrap(api, false, true) });
-    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
-    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "No name" } });
-    fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
-    await waitFor(() => expect(api.create).toHaveBeenCalled());
-    expect(vi.mocked(api.create).mock.calls[0][0]).not.toHaveProperty("authorName");
+  it("shows the Vietnamese pseudonym, and signed-in users get no identity line", async () => {
+    const { strings } = await import("../strings");
+    render(<FeedbackWidget />, { wrapper: wrap(fakeApi(), false, true, strings.vi) });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi góp ý" }));
+    expect(await screen.findByText("Rái cá dũng cảm")).toBeTruthy();
+    expect(screen.getByText("Khách #123")).toBeTruthy();
     cleanup();
-    render(<FeedbackWidget />, { wrapper: wrap(fakeApi(), true, true) });
+    const api = fakeApi();
+    render(<FeedbackWidget />, { wrapper: wrap(api, true, true) });
     fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
-    expect(screen.queryByLabelText("Your name (optional)")).toBeNull();
+    expect(screen.queryByText("You'll appear as")).toBeNull();
+    expect(api.identity).not.toHaveBeenCalled();
   });
 });

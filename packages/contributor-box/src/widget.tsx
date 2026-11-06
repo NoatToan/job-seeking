@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { useContributor } from "./context";
+import { SignInAction, useContributor } from "./context";
 import { FeedbackForm, type CaptureFn } from "./form";
 import { WIDGET_ATTR } from "./selector";
 import type { FeedbackItem, FeedbackKind } from "./types";
@@ -39,7 +39,7 @@ export interface FeedbackWidgetProps {
  * an optional annotated screenshot. Page URL, title and viewport are attached automatically.
  */
 export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
-  const { strings: s, signedIn, allowAnonymous, signInHref, boardHref, linkAs: Link } = useContributor();
+  const { strings: s, signedIn, allowAnonymous, boardHref, roadmapHref, linkAs: Link } = useContributor();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [sent, setSent] = useState<FeedbackItem | null>(null);
@@ -112,7 +112,7 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
   return (
     <div
       {...{ [WIDGET_ATTR]: "" }}
-      className={cx("fixed right-4 bottom-4 z-[60] flex flex-col items-end gap-3 print:hidden", className)}
+      className={cx("fixed right-4 bottom-4 z-[45] flex flex-col items-end gap-3 print:hidden", className)}
     >
       {open ? (
         <div
@@ -138,14 +138,9 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
             {!signedIn && !allowAnonymous ? (
               <div className="flex flex-col gap-3">
                 <p className="text-subheadline text-label-secondary">{s.signInPrompt}</p>
-                {signInHref ? (
-                  <Link
-                    href={signInHref}
-                    className="inline-flex min-h-11 items-center justify-center rounded-control bg-tint px-4 text-subheadline font-semibold text-on-tint focus-ring"
-                  >
-                    {s.signIn}
-                  </Link>
-                ) : null}
+                <SignInAction className="inline-flex min-h-11 items-center justify-center rounded-control bg-tint px-4 text-subheadline font-semibold text-on-tint focus-ring">
+                  {s.signIn}
+                </SignInAction>
               </div>
             ) : sent ? (
               <div role="status" className="flex flex-col gap-3">
@@ -157,7 +152,7 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
                   <Button variant="gray" onClick={() => setSent(null)}>
                     {s.sendAnother}
                   </Button>
-                  {/* Guests have no "my feedback" to follow, and the board needs a session. */}
+                  {/* Guests have no "my feedback"; they follow it on the public roadmap. */}
                   {signedIn && boardHref ? (
                     <Link
                       href={boardHref}
@@ -165,6 +160,14 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
                       className="inline-flex min-h-11 items-center justify-center rounded-control bg-tint-soft px-4 text-subheadline font-semibold text-tint-ink focus-ring"
                     >
                       {s.seeAll}
+                    </Link>
+                  ) : !signedIn && roadmapHref ? (
+                    <Link
+                      href={roadmapHref}
+                      onClick={close}
+                      className="inline-flex min-h-11 items-center justify-center rounded-control bg-tint-soft px-4 text-subheadline font-semibold text-tint-ink focus-ring"
+                    >
+                      {s.seeOnRoadmap}
                     </Link>
                   ) : null}
                 </div>
@@ -174,14 +177,10 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
                 {!signedIn ? (
                   <p className="mb-2 text-footnote text-label-secondary">
                     {s.guestHint}
-                    {signInHref ? (
-                      <>
-                        {" "}
-                        <Link href={signInHref} className="font-medium text-tint hover:underline focus-ring">
-                          {s.guestSignIn}
-                        </Link>
-                      </>
-                    ) : null}
+                    {" "}
+                    <SignInAction className="font-medium text-tint hover:underline focus-ring">
+                      {s.guestSignIn}
+                    </SignInAction>
                   </p>
                 ) : null}
                 <FeedbackForm

@@ -161,8 +161,26 @@ def test_create_is_rate_limited_per_author_but_not_for_admins(client: TestClient
 # --- visibility ---------------------------------------------------------------------------
 
 
-def test_new_item_is_hidden_from_other_users(client: TestClient):
+def reject(client: TestClient, item_id: str) -> None:
+    resp = client.patch(
+        f"/api/feedback/{item_id}", json={"status": "rejected"}, headers=as_user(client, ADMIN)
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def test_new_item_is_public_without_context(client: TestClient):
     item = create(client)
+    seen = client.get(f"/api/feedback/{item['id']}", headers=as_user(client, OTHER))
+    assert seen.status_code == 200
+    assert seen.json()["context"] is None and seen.json()["author"] is None
+    assert seen.json()["byline"]["name"] == "user2"  # email local part, never the email
+    board = client.get("/api/feedback", headers=as_user(client, OTHER)).json()
+    assert [i["id"] for i in board["items"]] == [item["id"]]
+
+
+def test_rejected_item_is_hidden_from_other_users(client: TestClient):
+    item = create(client)
+    reject(client, item["id"])
     assert (
         client.get(f"/api/feedback/{item['id']}", headers=as_user(client, OTHER)).status_code == 404
     )
@@ -173,8 +191,9 @@ def test_new_item_is_hidden_from_other_users(client: TestClient):
 
 
 def test_board_status_filter_cannot_reveal_private_items(client: TestClient):
-    create(client)
-    resp = client.get("/api/feedback?scope=board&status=new", headers=as_user(client, OTHER))
+    item = create(client)
+    reject(client, item["id"])
+    resp = client.get("/api/feedback?scope=board&status=rejected", headers=as_user(client, OTHER))
     assert resp.json()["items"] == []
 
 
@@ -314,19 +333,35 @@ def test_admin_can_delete_note(client: TestClient, repo):
 # --- votes ----------------------------------------------------------------------------------
 
 
-def test_votes_only_on_public_items_and_are_idempotent(client: TestClient):
+def test_votes_are_up_or_down_on_public_items_only(client: TestClient):
     item = create(client)
     path = f"/api/feedback/{item['id']}/vote"
+    reject(client, item["id"])
     assert client.put(path, headers=as_user(client, AUTHOR)).status_code == 409
     assert client.put(path, headers=as_user(client, OTHER)).status_code == 404
     approve(client, item["id"])
+    # No body = upvote (what the endpoint always did); idempotent.
     first = client.put(path, headers=as_user(client, OTHER)).json()
-    again = client.put(path, headers=as_user(client, OTHER)).json()
-    assert first["voteCount"] == again["voteCount"] == 1
-    assert again["voted"] is True
+    again = client.put(path, json={"value": 1}, headers=as_user(client, OTHER)).json()
+    assert first["score"] == again["score"] == 1
+    assert again["myVote"] == 1 and again["upvotes"] == 1
+    # Switch to a downvote; another user's downvote stacks.
+    down = client.put(path, json={"value": -1}, headers=as_user(client, OTHER)).json()
+    assert (down["score"], down["upvotes"], down["downvotes"], down["myVote"]) == (-1, 0, 1, -1)
+    both = client.put(path, json={"value": -1}, headers=as_user(client, ADMIN)).json()
+    assert both["score"] == -2 and both["myVote"] == -1
     removed = client.delete(path, headers=as_user(client, OTHER)).json()
-    assert removed["voteCount"] == 0
-    assert removed["voted"] is False
+    assert removed["score"] == -1 and removed["myVote"] == 0
+    bad = client.put(path, json={"value": 2}, headers=as_user(client, OTHER))
+    assert bad.status_code == 422
+
+
+def test_board_top_sort_is_by_score(client: TestClient):
+    low, high = create(client, title="Low"), create(client, title="High")
+    client.put(f"/api/feedback/{low['id']}/vote", json={"value": -1}, headers=as_user(client, 3))
+    client.put(f"/api/feedback/{high['id']}/vote", headers=as_user(client, 3))
+    board = client.get("/api/feedback?sort=top", headers=as_user(client, 3)).json()
+    assert [i["title"] for i in board["items"]] == ["High", "Low"]
 
 
 # --- delete -------------------------------------------------------------------------------
@@ -336,7 +371,7 @@ def test_author_can_delete_only_while_new(client: TestClient):
     first = create(client)
     assert (
         client.delete(f"/api/feedback/{first['id']}", headers=as_user(client, OTHER)).status_code
-        == 404
+        == 403
     )
     assert (
         client.delete(f"/api/feedback/{first['id']}", headers=as_user(client, AUTHOR)).status_code
@@ -392,13 +427,18 @@ def test_anonymous_create_when_allowed(anon_client: TestClient, repo):
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert body["title"] == "Dark mode please"
-    assert body["isMine"] is False
+    # The visitor cookie ties the item to this visitor ("you"), without an account.
+    assert body["isMine"] is True
     assert body["canDelete"] is False
     assert body["context"] is None
     assert body["author"] is None
+    assert body["byline"]["kind"] == "guest" and body["byline"]["name"] == "Minh"
     stored = repo.items[int(body["id"])]
     assert stored["author_id"] is None
-    assert stored["author_name"] == "Minh"
+    # The typed name became the visitor's display name (same scheme as comments).
+    assert stored["author_name"] is None and stored["visitor_key"]
+    assert repo.names[("visitor", stored["visitor_key"])] == "Minh"
+    assert anon_client.cookies.get("cb_visitor")
     # The key is an HMAC of the first X-Forwarded-For hop, never the raw IP.
     assert stored["anon_key"] and "203.0.113.7" not in stored["anon_key"]
 
@@ -443,11 +483,33 @@ def test_admin_sees_anonymous_author_name(anon_client: TestClient):
         "/api/feedback", json={**IDEA, "authorName": "Minh"}, headers=anon_headers()
     ).json()
     seen = anon_client.get(f"/api/feedback/{created['id']}", headers=as_user(anon_client, ADMIN))
-    assert seen.json()["author"] == {"id": None, "email": None, "name": "Minh", "anonymous": True}
-    # Nobody but admins can see an anonymous item while it is new.
-    assert (
-        anon_client.get(f"/api/feedback/{created['id']}", headers=as_user(anon_client, OTHER))
-    ).status_code == 404
+    author = seen.json()["author"]
+    assert author["id"] is None and author["email"] is None and author["anonymous"] is True
+    assert author["name"].startswith("Minh (") and "#" in author["name"]
+    # Other users see the item (it is public while new) with the byline only.
+    other = anon_client.get(f"/api/feedback/{created['id']}", headers=as_user(anon_client, OTHER))
+    assert other.status_code == 200 and other.json()["author"] is None
+    assert other.json()["byline"]["name"] == "Minh"
+
+
+def test_anonymous_create_without_visitor_cookies_keeps_the_typed_name(repo):
+    client = TestClient(build_app(repo, allow_anonymous=True, visitor_cookies=False))
+    created = client.post(
+        "/api/feedback", json={**IDEA, "authorName": "Minh"}, headers=anon_headers()
+    ).json()
+    stored = repo.items[int(created["id"])]
+    assert stored["author_name"] == "Minh" and stored["visitor_key"] is None
+    assert created["byline"]["name"] == "Minh" and created["isMine"] is False
+    assert "cb_visitor" not in client.cookies
+
+
+def test_anonymous_create_rejects_reserved_names(anon_client: TestClient, repo):
+    resp = anon_client.post(
+        "/api/feedback", json={**IDEA, "authorName": "Admin"}, headers=anon_headers()
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["fields"]["authorName"] == "is reserved"
+    assert repo.items == {}
 
 
 def test_anonymous_rate_limit_per_key_and_total(anon_client: TestClient):
@@ -529,20 +591,26 @@ def test_signed_out_board_lists_public_items_without_private_fields(public_clien
     resp = public_client.get("/api/feedback?scope=board&sort=top")
     assert resp.status_code == 200, resp.text
     page = resp.json()
-    assert {i["status"] for i in page["items"]} == {"approved", "planned", "done"}
-    assert page["total"] == 3
+    assert {i["status"] for i in page["items"]} == {
+        "new",
+        "under_review",
+        "approved",
+        "planned",
+        "done",
+    }
+    assert page["total"] == 5
     for item in page["items"]:
-        assert item["voteCount"] == 1
-        assert item["voted"] is False
+        assert item["score"] == (1 if item["status"] in ("approved", "planned", "done") else 0)
+        assert item["myVote"] == 0
         assert item["canVote"] is False
         assert item["isMine"] is False
         assert item["canDelete"] is False
         assert item["context"] is None
         assert item["author"] is None
     # Default scope is the board too.
-    assert public_client.get("/api/feedback").json()["total"] == 3
+    assert public_client.get("/api/feedback").json()["total"] == 5
     # A status filter for a private status is empty, never a way in.
-    for status in ("new", "under_review", "rejected"):
+    for status in ("rejected",):
         resp = public_client.get(f"/api/feedback?scope=board&status={status}")
         assert resp.json()["items"] == []
     planned = public_client.get("/api/feedback?status=planned").json()["items"]
@@ -571,12 +639,13 @@ def test_signed_out_detail_public_only_with_public_notes(public_client: TestClie
     assert body["context"] is None
     assert body["author"] is None
     assert body["canVote"] is False
-    assert body["voted"] is False
+    assert body["myVote"] == 0
     notes = [n["body"] for n in body["notes"] if n["kind"] == "note"]
     assert notes == ["public note"]
     assert all(n["authorEmail"] is None for n in body["notes"])
-    for status in ("new", "under_review", "rejected"):
-        assert public_client.get(f"/api/feedback/{ids[status]}").status_code == 404
+    for status in ("new", "under_review"):
+        assert public_client.get(f"/api/feedback/{ids[status]}").status_code == 200
+    assert public_client.get(f"/api/feedback/{ids['rejected']}").status_code == 404
     assert public_client.get("/api/feedback/999").status_code == 404
 
 
@@ -595,17 +664,19 @@ def test_signed_out_still_cannot_vote_or_see_screenshots(public_client: TestClie
 def test_signed_in_reads_unchanged_with_public_board(public_client: TestClient):
     ids = seed_board(public_client)
     board = public_client.get("/api/feedback", headers=as_user(public_client, OTHER)).json()
-    assert all(i["voted"] and i["canVote"] for i in board["items"])
+    voted = [i for i in board["items"] if i["status"] in ("approved", "planned", "done")]
+    assert len(voted) == 3 and all(i["myVote"] == 1 and i["canVote"] for i in voted)
     mine = public_client.get("/api/feedback?scope=mine", headers=as_user(public_client, AUTHOR))
     assert mine.json()["total"] == 6
     # Admin still reads private items and context; the author still sees their own.
-    new_path = f"/api/feedback/{ids['new']}"
-    seen = public_client.get(new_path, headers=as_user(public_client, ADMIN)).json()
+    hidden_path = f"/api/feedback/{ids['rejected']}"
+    seen = public_client.get(hidden_path, headers=as_user(public_client, ADMIN)).json()
     assert seen["context"] is not None
     assert seen["author"] is not None
-    own = public_client.get(new_path, headers=as_user(public_client, AUTHOR))
+    own = public_client.get(hidden_path, headers=as_user(public_client, AUTHOR))
     assert own.json()["isMine"] is True
-    assert public_client.get(new_path, headers=as_user(public_client, OTHER)).status_code == 404
+    other = public_client.get(hidden_path, headers=as_user(public_client, OTHER))
+    assert other.status_code == 404
     everything = public_client.get("/api/feedback?scope=all", headers=as_user(public_client, ADMIN))
     assert everything.json()["total"] == 6
 
@@ -614,7 +685,10 @@ def test_stats_count_public_statuses_only(public_client: TestClient):
     seed_board(public_client)
     extra = create(public_client, title="Another planned")
     set_status(public_client, extra["id"], "planned")
-    expected = {"counts": {"approved": 1, "planned": 2, "done": 1}, "total": 4}
+    expected = {
+        "counts": {"new": 1, "under_review": 1, "approved": 1, "planned": 2, "done": 1},
+        "total": 6,
+    }
     assert public_client.get("/api/feedback/stats").json() == expected
     # Same numbers for everyone, admins included (private statuses are the admin queue's job).
     as_admin = public_client.get("/api/feedback/stats", headers=as_user(public_client, ADMIN))
@@ -624,7 +698,10 @@ def test_stats_count_public_statuses_only(public_client: TestClient):
 def test_stats_needs_sign_in_without_public_board(client: TestClient):
     assert client.get("/api/feedback/stats").status_code == 401
     resp = client.get("/api/feedback/stats", headers=as_user(client, OTHER))
-    assert resp.json() == {"counts": {"approved": 0, "planned": 0, "done": 0}, "total": 0}
+    assert resp.json() == {
+        "counts": {"new": 0, "under_review": 0, "approved": 0, "planned": 0, "done": 0},
+        "total": 0,
+    }
 
 
 def test_public_board_requires_optional_deps():
@@ -639,3 +716,45 @@ def test_public_board_requires_optional_deps():
     )
     with pytest.raises(ValueError):
         create_feedback_router(deps, public_board=True)
+
+
+# --- keyset pagination ------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("sort", ["top", "new"])
+def test_load_more_with_a_cursor(public_client: TestClient, sort: str):
+    ids = [create(public_client, title=f"Item number {n}", screenshot=None)["id"] for n in range(5)]
+    for voter in (3, 4):
+        public_client.put(f"/api/feedback/{ids[1]}/vote", headers=as_user(public_client, voter))
+    seen: list[str] = []
+    cursor = None
+    pages = 0
+    while True:
+        params = {"sort": sort, "limit": 2, **({"cursor": cursor} if cursor else {})}
+        page = public_client.get("/api/feedback", params=params).json()
+        pages += 1
+        # Counted on the first page only.
+        assert page["total"] == (5 if pages == 1 else None)
+        seen += [i["id"] for i in page["items"]]
+        cursor = page["nextCursor"]
+        if cursor is None:
+            break
+    assert sorted(seen) == sorted(ids) and len(seen) == 5
+    if sort == "top":
+        assert seen[0] == ids[1]
+    else:
+        assert seen == list(reversed(ids))
+
+
+def test_bad_cursors_are_400(public_client: TestClient):
+    create(public_client, screenshot=None)
+    create(public_client, screenshot=None)
+    first = public_client.get("/api/feedback", params={"sort": "new", "limit": 1}).json()
+    other_sort = public_client.get(
+        "/api/feedback", params={"sort": "top", "cursor": first["nextCursor"]}
+    )
+    assert other_sort.status_code == 400
+    assert other_sort.json()["detail"]["fields"] == {"cursor": "invalid cursor"}
+    for junk in ("x", "eyJzIjoibmV3In0", "!!!"):
+        resp = public_client.get("/api/feedback", params={"sort": "new", "cursor": junk})
+        assert resp.status_code == 400

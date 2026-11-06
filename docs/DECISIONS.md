@@ -478,3 +478,22 @@ source's official mark next to its name.
   images). `sourceSelectOption(id)` returns a `SelectOption` with `icon`, ready for the FuzzySelect
   conversion (branch `feat/fuzzy-selects`): replace
   `{ value: id, label: sourceMeta(id).label, keywords: id }` with `sourceSelectOption(id)`.
+
+## Feedback comments, votes and pseudonymous guests (2026-11-07)
+
+contributor-box DECISIONS 16-22 hold the reasoning; this is what job-seeking chose.
+
+- **Everything but `rejected` is public**, on the owner's request ("the roadmap must include the
+  feedback items too"): production's roadmap was empty because every item was still `new`.
+  Rejecting an item is how an admin hides it. Context and screenshots stay author/admin only.
+- **Votes are signed-in only** (+1 / −1 like Stack Overflow). Guest votes would be free to stuff
+  with fresh cookies. Existing votes became +1 (migration `029`, data kept).
+- **Guests may comment** under a pseudonym from a signed cookie (`UJC_SECRET_KEY`), with
+  per-visitor, per-IP and global hourly caps and a honeypot. No CAPTCHA until the caps are hit.
+- **Signing in happens in place**: the contributor UI calls the app's login modal
+  (`useLoginGate().openLogin`) with a reason, and the vote that triggered it is cast afterwards.
+- **`/roadmap/` is full width** (NavBar `wide`): five columns don't fit the 5xl column.
+- **Migration number**: upstream `003_feedback_comments.sql` is `029` here (025-028 were taken on
+  main). It adds stored scores and comment counts with triggers, the score index the board sorts
+  on, and keyset pagination, which closes the contributor-box items of the database audit except
+  `ILIKE` search.

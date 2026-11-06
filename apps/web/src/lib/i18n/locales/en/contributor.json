@@ -12,7 +12,10 @@
   },
   "roadmap": {
     "title": "Roadmap",
-    "subtitle": "Ideas and requests from the community, and where each one stands: under consideration, planned or done. Vote for what you want next.",
+    "subtitle": "Every bug report, piece of feedback and idea from the community, from just sent to shipped. Vote and comment to make ideas better, no account needed to read or comment.",
     "seeRoadmap": "See the roadmap"
+  },
+  "auth": {
+    "reason": "Sign in to vote, and to comment and follow your feedback under your own name."
   }
 }

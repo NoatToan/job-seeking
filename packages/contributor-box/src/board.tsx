@@ -1,42 +1,68 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CommentThread } from "./comments";
 import { useContributor } from "./context";
 import { FeedbackForm } from "./form";
 import { safeHref } from "./safe-url";
 import type { FeedbackItem, FeedbackKind, FeedbackNote, ListFeedbackQuery } from "./types";
 import { KINDS } from "./types";
-import { Button, Choice, cx, formatDate, KindBadge, StatusBadge, UpIcon } from "./ui";
+import {
+  AuthorName,
+  Avatar,
+  Button,
+  Choice,
+  CommentIcon,
+  formatDate,
+  KindBadge,
+  relativeTime,
+  StatusBadge,
+  VoteControl,
+} from "./ui";
 
 const PAGE = 20;
 
-/** Loads pages of `list(query)`; resets when the query key changes. */
+/**
+ * Loads pages of `list(query)`: the first page with its total, then "load more" with the server's
+ * keyset cursor (`nextCursor`; offset only for an older server). Resets when the query changes
+ * and when the visitor signs in or out (votes and permissions depend on the session).
+ */
 export function useFeedbackList(query: ListFeedbackQuery) {
-  const { api } = useContributor();
+  const { api, signedIn } = useContributor();
   const key = JSON.stringify(query);
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const requestId = useRef(0);
 
   const load = useCallback(
-    async (offset: number) => {
+    async (offset: number, after?: string) => {
       const id = ++requestId.current;
       setLoading(true);
       setError(false);
       try {
-        const page = await api.list({ ...(JSON.parse(key) as ListFeedbackQuery), limit: PAGE, offset });
+        const base = { ...(JSON.parse(key) as ListFeedbackQuery), limit: PAGE };
+        const page = await api.list(after ? { ...base, cursor: after } : { ...base, offset });
         if (id !== requestId.current) return;
-        setItems((prev) => (offset === 0 ? page.items : [...prev, ...page.items]));
-        setTotal(page.total);
+        const first = offset === 0 && !after;
+        setItems((prev) => {
+          if (first) return page.items;
+          // Scores move between pages; never show an item twice.
+          const seen = new Set(prev.map((i) => i.id));
+          return [...prev, ...page.items.filter((i) => !seen.has(i.id))];
+        });
+        if (page.total !== null && page.total !== undefined) setTotal(page.total);
+        setCursor(page.nextCursor);
       } catch {
         if (id === requestId.current) setError(true);
       } finally {
         if (id === requestId.current) setLoading(false);
       }
     },
-    [api, key],
+    // `signedIn`: refetch after an in-place sign-in so `myVote` / `canVote` match the session.
+    [api, key, signedIn],
   );
 
   useEffect(() => {
@@ -54,39 +80,42 @@ export function useFeedbackList(query: ListFeedbackQuery) {
   }, []);
 
   const reload = useCallback(() => load(0), [load]);
-  const loadMore = useCallback(() => load(items.length), [load, items.length]);
+  const loadMore = useCallback(() => load(items.length, cursor ?? undefined), [load, items.length, cursor]);
+  // `undefined`: an older server without cursors, so fall back to the total.
+  const hasMore = cursor === undefined ? items.length < total : cursor !== null;
 
-  return { items, total, loading, error, reload, loadMore, replace, removeItem };
+  return { items, total, hasMore, loading, error, reload, loadMore, replace, removeItem };
 }
 
-export function VoteButton({ item, onChange }: { item: FeedbackItem; onChange: (item: FeedbackItem) => void }) {
-  const { api, strings: s } = useContributor();
-  const [busy, setBusy] = useState(false);
-  if (!item.canVote) return null;
+/**
+ * "▲ score ▼" for an item. Signed-in viewers vote (optimistically, rolled back on failure);
+ * signed-out viewers see the score linking to sign-in.
+ */
+export function ItemVotes({ item, onChange }: { item: FeedbackItem; onChange: (item: FeedbackItem) => void }) {
+  const { api } = useContributor();
   return (
-    <button
-      type="button"
-      aria-pressed={item.voted}
-      aria-label={`${item.voted ? s.unvote : s.vote} (${s.votes(item.voteCount)})`}
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          onChange(await api.vote(item.id, !item.voted));
-        } catch {
-          // Leave the count unchanged; the button stays usable for another try.
-        } finally {
-          setBusy(false);
-        }
-      }}
-      className={cx(
-        "flex min-h-11 min-w-11 shrink-0 flex-col items-center justify-center rounded-control px-2 text-footnote font-semibold tabular-nums transition-colors duration-150 focus-ring",
-        item.voted ? "bg-tint text-on-tint" : "bg-fill-tertiary text-label hover:bg-fill-secondary",
-      )}
-    >
-      <UpIcon size={14} />
-      {item.voteCount}
-    </button>
+    <VoteControl
+      score={item.score}
+      myVote={item.myVote}
+      canVote={item.canVote}
+      label={item.title}
+      onVote={async (value) => onChange(await api.vote(item.id, value))}
+    />
+  );
+}
+
+/** Kept for hosts that imported it: the vote control of an item. */
+export const VoteButton = ItemVotes;
+
+/** "💬 3" on a card. */
+export function CommentCount({ count }: { count: number }) {
+  const { strings: s } = useContributor();
+  return (
+    <span className="inline-flex items-center gap-1 text-caption text-label-tertiary tabular-nums" title={s.commentCount(count)}>
+      <CommentIcon size={13} />
+      <span aria-hidden="true">{count}</span>
+      <span className="sr-only">{s.commentCount(count)}</span>
+    </span>
   );
 }
 
@@ -127,7 +156,7 @@ function ItemCard({
   const { strings: s } = useContributor();
   return (
     <li className="flex gap-3 rounded-card border border-separator bg-grouped-secondary p-4 shadow-card">
-      <VoteButton item={item} onChange={onChange} />
+      <ItemVotes item={item} onChange={onChange} />
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left focus-ring rounded-control">
         <span className="block truncate text-headline text-label">{item.title}</span>
         {item.body ? (
@@ -138,8 +167,11 @@ function ItemCard({
         <span className="mt-2 flex flex-wrap items-center gap-1.5">
           <KindBadge kind={item.kind} label={s.kind[item.kind]} />
           <StatusBadge status={item.status} label={s.status[item.status]} />
-          {!item.canVote ? (
-            <span className="text-caption text-label-tertiary">{s.votes(item.voteCount)}</span>
+          <CommentCount count={item.commentCount} />
+          {item.byline ? (
+            <span className="truncate text-caption text-label-tertiary">
+              {item.byline.name ?? item.byline.pseudonym?.[s.locale.startsWith("vi") ? "vi" : "en"]}
+            </span>
           ) : null}
         </span>
       </button>
@@ -147,27 +179,9 @@ function ItemCard({
   );
 }
 
-/**
- * Vote count for a viewer who cannot vote. Signed out (and a sign-in link configured): a pill
- * linking to sign-in, so the count doubles as the "sign in to vote" hint. Otherwise plain text.
- */
+/** Score for a viewer who cannot vote (signed out: links to sign-in). Kept for hosts. */
 export function VoteCount({ item }: { item: FeedbackItem }) {
-  const { strings: s, signedIn, signInHref, linkAs: Link } = useContributor();
-  if (!signedIn && signInHref) {
-    return (
-      <Link
-        href={signInHref}
-        className="flex min-h-11 min-w-11 shrink-0 flex-col items-center justify-center rounded-control bg-fill-tertiary px-2 text-footnote font-semibold text-label-secondary tabular-nums transition-colors duration-150 hover:bg-fill-secondary focus-ring"
-      >
-        <span className="sr-only">{`${s.signInToVote} (${s.votes(item.voteCount)})`}</span>
-        <span aria-hidden="true" className="flex flex-col items-center" title={s.signInToVote}>
-          <UpIcon size={14} />
-          {item.voteCount}
-        </span>
-      </Link>
-    );
-  }
-  return <span className="shrink-0 text-caption text-label-tertiary tabular-nums">{s.votes(item.voteCount)}</span>;
+  return <VoteControl score={item.score} myVote={0} canVote={false} label={item.title} onVote={async () => undefined} />;
 }
 
 /** Detail of one item (body, team reply, public history; context for the author and admins). */
@@ -185,7 +199,7 @@ export function ItemDetail({
   /** Label of the button that calls `onBack`. Default "‹ Back". */
   backLabel?: string;
 }) {
-  const { api, strings: s, signedIn } = useContributor();
+  const { api, strings: s } = useContributor();
   const [item, setItem] = useState<FeedbackItem | null>(null);
   const [error, setError] = useState(false);
 
@@ -218,16 +232,22 @@ export function ItemDetail({
       {item ? (
         <article className="flex flex-col gap-4 rounded-card border border-separator bg-grouped-secondary p-4 shadow-card">
           <div className="flex items-start gap-3">
-            <VoteButton item={item} onChange={update} />
-            {/* Signed out on a public item: the count, linking to sign-in. */}
-            {!item.canVote && !signedIn ? <VoteCount item={item} /> : null}
+            <ItemVotes item={item} onChange={update} />
             <div className="min-w-0 flex-1">
               <h2 className="break-words text-title3 text-label">{item.title}</h2>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <KindBadge kind={item.kind} label={s.kind[item.kind]} />
                 <StatusBadge status={item.status} label={s.status[item.status]} />
-                <span className="text-caption text-label-tertiary">{formatDate(item.createdAt)}</span>
+                <time dateTime={item.createdAt} title={formatDate(item.createdAt, s.locale)} className="text-caption text-label-tertiary">
+                  {relativeTime(item.createdAt, s.locale)}
+                </time>
               </div>
+              {item.byline ? (
+                <p className="mt-2 flex items-center gap-1.5 text-footnote">
+                  <Avatar author={item.byline} size={20} />
+                  <AuthorName author={item.byline} isMine={item.isMine} />
+                </p>
+              ) : null}
             </div>
           </div>
           {item.body ? <p className="whitespace-pre-wrap break-words text-body text-label">{item.body}</p> : null}
@@ -265,6 +285,12 @@ export function ItemDetail({
               <NoteList notes={item.notes} />
             </div>
           ) : null}
+          <div className="border-t border-separator pt-4">
+            <CommentThread
+              itemId={item.id}
+              onCountChange={(delta) => update({ ...item, commentCount: Math.max(0, item.commentCount + delta) })}
+            />
+          </div>
           {item.canDelete ? (
             <div>
               <Button
@@ -399,7 +425,7 @@ export function ContributorBoard() {
           ))}
         </ul>
         {list.loading ? <p className="py-4 text-center text-footnote text-label-tertiary">{s.loading}</p> : null}
-        {!list.loading && list.items.length < list.total ? (
+        {!list.loading && list.hasMore ? (
           <div className="pt-3 text-center">
             <Button variant="gray" onClick={() => void list.loadMore()}>
               {s.loadMore}

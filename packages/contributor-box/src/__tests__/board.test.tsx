@@ -6,18 +6,44 @@ import { fakeApi, makeItem, wrap } from "./helpers";
 afterEach(cleanup);
 
 describe("ContributorBoard", () => {
-  it("lists the board sorted by votes and toggles a vote", async () => {
+  it("lists the board by score and votes up, then switches to down", async () => {
     const api = fakeApi({
-      list: vi.fn(async () => ({ items: [makeItem({ id: "1", title: "Dark mode", voteCount: 2 })], total: 1, limit: 20, offset: 0 })),
+      list: vi.fn(async () => ({ items: [makeItem({ id: "1", title: "Dark mode", score: 2, commentCount: 4 })], total: 1, limit: 20, offset: 0 })),
     });
     render(<ContributorBoard />, { wrapper: wrap(api) });
     expect(await screen.findByText("Dark mode")).toBeTruthy();
     expect(api.list).toHaveBeenCalledWith({ scope: "board", sort: "top", kind: undefined, limit: 20, offset: 0 });
-    const vote = screen.getByRole("button", { name: /^Vote \(2 votes\)/ });
-    expect(vote.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(vote);
-    await waitFor(() => expect(api.vote).toHaveBeenCalledWith("1", true));
-    expect((await screen.findByRole("button", { name: /Remove vote/ })).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("4 comments")).toBeTruthy();
+    const up = screen.getByRole("button", { name: "Upvote: Dark mode" });
+    const down = screen.getByRole("button", { name: "Downvote: Dark mode" });
+    expect(up.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(up);
+    await waitFor(() => expect(api.vote).toHaveBeenCalledWith("1", 1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Upvote: Dark mode" }).getAttribute("aria-pressed")).toBe("true"));
+    expect(screen.getByRole("group", { name: "Score 3: Dark mode" })).toBeTruthy();
+    expect(screen.getByText("Score 3")).toBeTruthy(); // live region
+    fireEvent.click(down);
+    await waitFor(() => expect(api.vote).toHaveBeenLastCalledWith("1", -1));
+    await waitFor(() => expect(screen.getByRole("group", { name: "Score 1: Dark mode" })).toBeTruthy());
+  });
+
+  it("shows the new score at once and rolls back when the vote fails", async () => {
+    let fail: (e: Error) => void = () => undefined;
+    const api = fakeApi({
+      list: vi.fn(async () => ({ items: [makeItem({ id: "1", title: "Dark mode", score: 2 })], total: 1, limit: 20, offset: 0 })),
+      vote: vi.fn(
+        () =>
+          new Promise<never>((_, reject) => {
+            fail = reject;
+          }),
+      ),
+    });
+    render(<ContributorBoard />, { wrapper: wrap(api) });
+    fireEvent.click(await screen.findByRole("button", { name: "Upvote: Dark mode" }));
+    expect(screen.getByRole("group", { name: "Score 3: Dark mode" })).toBeTruthy();
+    fail(new Error("offline"));
+    await waitFor(() => expect(screen.getByRole("group", { name: "Score 2: Dark mode" })).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Upvote: Dark mode" }).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("switches to My feedback and shows the empty state", async () => {
@@ -28,7 +54,7 @@ describe("ContributorBoard", () => {
     expect(api.list).toHaveBeenLastCalledWith({ scope: "mine", sort: "new", kind: undefined, limit: 20, offset: 0 });
   });
 
-  it("opens a detail with the team reply and history, rendering text (never HTML)", async () => {
+  it("opens a detail with the team reply, history and comments, rendering text (never HTML)", async () => {
     const evil = '<img src=x onerror="alert(1)">';
     const api = fakeApi({
       list: vi.fn(async () => ({ items: [makeItem({ id: "5", title: evil })], total: 1, limit: 20, offset: 0 })),
@@ -63,6 +89,10 @@ describe("ContributorBoard", () => {
     // Unsafe page URL is shown as text, not as a link.
     expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
     expect(screen.getByAltText(/Screenshot/).getAttribute("src")).toBe("/api/feedback/5/screenshot");
+    // Byline (display name) and the comment thread.
+    expect(screen.getAllByText("jane").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { name: "Comments" })).toBeTruthy();
+    await waitFor(() => expect(api.comments).toHaveBeenCalledWith("5", { offset: 0, limit: 20 }));
   });
 
   it("submits a new idea without page context", async () => {

@@ -1,10 +1,17 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
+const { useSessionMock, openLoginMock } = vi.hoisted(() => ({
+  useSessionMock: vi.fn(),
+  openLoginMock: vi.fn(),
+}));
 
 vi.mock("@/lib/session", () => ({
   useSession: () => useSessionMock(),
+}));
+
+vi.mock("@/lib/login-modal", () => ({
+  useLoginGate: () => ({ openLogin: openLoginMock, requireLogin: vi.fn() }),
 }));
 
 import { FeedbackWidget } from "@contributor-box/react";
@@ -24,8 +31,20 @@ const planned = {
   body: "",
   status: "planned",
   adminResponse: "Next sprint",
-  voteCount: 4,
-  voted: false,
+  score: 4,
+  upvotes: 4,
+  downvotes: 0,
+  myVote: 0,
+  commentCount: 2,
+  commentsLocked: false,
+  byline: {
+    kind: "guest",
+    name: null,
+    pseudonym: { en: "Brave Otter", vi: "Rái cá dũng cảm" },
+    tag: "123",
+    avatar: { glyph: "O", tone: 1 },
+    team: false,
+  },
   isMine: false,
   canVote: false,
   canDelete: false,
@@ -43,7 +62,9 @@ describe("Roadmap page", () => {
       "fetch",
       vi.fn((url: string) => {
         if (url.startsWith("/api/feedback/stats")) {
-          return Promise.resolve(jsonResponse(200, { counts: { approved: 0, planned: 1, done: 0 }, total: 1 }));
+          return Promise.resolve(
+            jsonResponse(200, { counts: { new: 0, under_review: 0, approved: 0, planned: 1, done: 0 }, total: 1 }),
+          );
         }
         if (url.startsWith("/api/feedback?")) {
           const items = url.includes("status=planned") ? [planned] : [];
@@ -69,10 +90,23 @@ describe("Roadmap page", () => {
     expect(await screen.findByText("Salary filter in VND")).toBeTruthy();
     const urls = vi.mocked(fetch).mock.calls.map(([u]) => String(u));
     expect(urls).toContain("/api/feedback?scope=board&status=planned&sort=top&limit=20&offset=0");
+    // New and under-review feedback is public too (only `rejected` is hidden).
+    expect(urls).toContain("/api/feedback?scope=board&status=new&sort=top&limit=20&offset=0");
+    expect(urls).toContain("/api/feedback?scope=board&status=under_review&sort=top&limit=20&offset=0");
+    expect(screen.getByRole("heading", { name: "New" })).toBeTruthy();
+    expect(screen.getByText("2 comments")).toBeTruthy();
+    expect(screen.getByText("Brave Otter")).toBeTruthy();
     expect(urls).toContain("/api/feedback/stats");
     expect(await screen.findByText("1 item on the roadmap")).toBeTruthy();
-    const hint = screen.getByRole("link", { name: "Sign in to vote (4 votes)" });
-    expect(hint.getAttribute("href")).toMatch(/^\/login\/?\?next=/);
+    // Signed out, the arrows stay and open the login modal in place (then cast the vote).
+    const up = screen.getByRole("button", { name: "Upvote: Salary filter in VND" });
+    expect(up.getAttribute("title")).toBe("Sign in to vote");
+    fireEvent.click(up);
+    expect(openLoginMock).toHaveBeenCalledWith({
+      reason: "Sign in to vote, and to comment and follow your feedback under your own name.",
+      onSignedIn: expect.any(Function),
+    });
+    expect(screen.queryByRole("link", { name: /Sign in to vote/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Contribute" })).toBeNull();
 
     // "Suggest an idea" opens the feedback widget as a guest, with "Feature idea" selected.

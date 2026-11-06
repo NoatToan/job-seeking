@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ItemDetail, useFeedbackList, VoteButton, VoteCount } from "./board";
+import { CommentCount, ItemDetail, ItemVotes, useFeedbackList } from "./board";
 import { useContributor } from "./context";
-import type { FeedbackItem, FeedbackStats, RoadmapStatus } from "./types";
-import { ROADMAP_STATUSES } from "./types";
-import { Button, formatDate, KindBadge, relativeTime, StatusBadge } from "./ui";
+import type { FeedbackItem, FeedbackKind, FeedbackStats, RoadmapStatus } from "./types";
+import { KINDS, ROADMAP_STATUSES } from "./types";
+import { Button, Choice, displayName, formatDate, KindBadge, relativeTime, StatusBadge } from "./ui";
 import { openFeedbackWidget } from "./widget";
 
 export interface RoadmapProps {
@@ -17,7 +17,13 @@ export interface RoadmapProps {
 }
 
 /** Done shows the newest first; the open columns show what people want most first. */
-const SORT: Record<RoadmapStatus, "top" | "new"> = { approved: "top", planned: "top", done: "new" };
+const SORT: Record<RoadmapStatus, "top" | "new"> = {
+  new: "top",
+  under_review: "top",
+  approved: "top",
+  planned: "top",
+  done: "new",
+};
 
 function RoadmapCard({
   item,
@@ -47,13 +53,17 @@ function RoadmapCard({
             {item.adminResponse}
           </p>
         ) : null}
-        {when ? (
-          <time dateTime={when} title={formatDate(when, s.locale)} className="mt-2 block text-caption text-label-tertiary">
-            {relativeTime(when, s.locale)}
-          </time>
-        ) : null}
+        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-label-tertiary">
+          {when ? (
+            <time dateTime={when} title={formatDate(when, s.locale)}>
+              {relativeTime(when, s.locale)}
+            </time>
+          ) : null}
+          <CommentCount count={item.commentCount} />
+          {item.byline ? <span className="min-w-0 truncate">{displayName(item.byline, s.locale)}</span> : null}
+        </span>
       </div>
-      {item.canVote ? <VoteButton item={item} onChange={onChange} /> : <VoteCount item={item} />}
+      <ItemVotes item={item} onChange={onChange} />
     </li>
   );
 }
@@ -73,7 +83,7 @@ function Column({
     <section
       aria-labelledby={headingId}
       aria-busy={list.loading}
-      className="flex w-[85%] max-w-sm shrink-0 snap-start flex-col gap-3 rounded-card bg-fill-tertiary p-3 sm:w-80 md:w-auto md:max-w-none md:shrink"
+      className="flex w-[85%] max-w-sm shrink-0 snap-start flex-col gap-3 rounded-card bg-fill-tertiary p-3 sm:w-80 xl:w-auto xl:max-w-none xl:shrink"
     >
       <header className="flex flex-col gap-1 px-1">
         <div className="flex items-center justify-between gap-2">
@@ -110,7 +120,7 @@ function Column({
         </ul>
       ) : null}
       {list.loading ? <p className="py-2 text-center text-footnote text-label-tertiary">{s.loading}</p> : null}
-      {!list.loading && list.items.length < list.total ? (
+      {!list.loading && list.hasMore ? (
         <Button variant="gray" size="sm" onClick={() => void list.loadMore()}>
           {s.loadMore}
         </Button>
@@ -148,7 +158,7 @@ function DetailDialog({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-scrim sm:items-center sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[48] flex items-end justify-center bg-scrim sm:items-center sm:p-6" onClick={onClose}>
       <div
         ref={panelRef}
         role="dialog"
@@ -165,20 +175,31 @@ function DetailDialog({
 }
 
 /**
- * Public roadmap: one column per public status (under consideration = `approved`, `planned`,
- * `done`), each sorted like the board, with vote buttons for signed-in users and a sign-in hint
- * for everyone else. Columns sit side by side from `md`, and scroll horizontally with snapping on
- * phones. A card opens the item's detail in a dialog.
+ * Public roadmap: one column per public status (`new`, `under_review`, under consideration =
+ * `approved`, `planned`, `done`), each sorted like the board (score, or newest for done), with a
+ * kind filter, "▲ score ▼" for signed-in users and a sign-in hint for everyone else. Columns sit
+ * side by side from `xl`, and scroll horizontally with snapping below that. A card opens the
+ * item's detail (with comments) in a dialog.
  *
- * Signed-out visitors need the server's `public_board=True`; private statuses (`new`,
- * `under_review`, `rejected`) never appear here.
+ * Signed-out visitors need the server's `public_board=True`; `rejected` (how admins take an item
+ * off the board) never appears here.
  */
 export function Roadmap({ onSuggest }: RoadmapProps = {}) {
   const { api, strings: s } = useContributor();
-  const approved = useFeedbackList({ scope: "board", status: "approved", sort: SORT.approved });
-  const planned = useFeedbackList({ scope: "board", status: "planned", sort: SORT.planned });
-  const done = useFeedbackList({ scope: "board", status: "done", sort: SORT.done });
-  const lists: Record<RoadmapStatus, ReturnType<typeof useFeedbackList>> = { approved, planned, done };
+  const [kind, setKind] = useState<FeedbackKind | "all">("all");
+  const k = kind === "all" ? {} : { kind };
+  const fresh = useFeedbackList({ scope: "board", status: "new", sort: SORT.new, ...k });
+  const reviewing = useFeedbackList({ scope: "board", status: "under_review", sort: SORT.under_review, ...k });
+  const approved = useFeedbackList({ scope: "board", status: "approved", sort: SORT.approved, ...k });
+  const planned = useFeedbackList({ scope: "board", status: "planned", sort: SORT.planned, ...k });
+  const done = useFeedbackList({ scope: "board", status: "done", sort: SORT.done, ...k });
+  const lists: Record<RoadmapStatus, ReturnType<typeof useFeedbackList>> = {
+    new: fresh,
+    under_review: reviewing,
+    approved,
+    planned,
+    done,
+  };
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -195,17 +216,15 @@ export function Roadmap({ onSuggest }: RoadmapProps = {}) {
     };
   }, [api]);
 
-  const { replace: replaceApproved } = approved;
-  const { replace: replacePlanned } = planned;
-  const { replace: replaceDone } = done;
-  // A vote in the dialog updates the card in whichever column holds it.
+  const replacers = [fresh.replace, reviewing.replace, approved.replace, planned.replace, done.replace];
+  // A vote or comment in the dialog updates the card in whichever column holds it.
   const replaceEverywhere = useCallback(
     (item: FeedbackItem) => {
-      replaceApproved(item);
-      replacePlanned(item);
-      replaceDone(item);
+      for (const replace of replacers) replace(item);
     },
-    [replaceApproved, replacePlanned, replaceDone],
+    // The `replace` functions are stable (useCallback with no deps).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    replacers,
   );
   const close = useCallback(() => {
     setOpenId(null);
@@ -213,14 +232,16 @@ export function Roadmap({ onSuggest }: RoadmapProps = {}) {
   }, []);
 
   const suggest = onSuggest === false ? null : (onSuggest ?? (() => openFeedbackWidget({ kind: "idea" })));
-  const total = stats?.total ?? ROADMAP_STATUSES.reduce((n, st) => n + lists[st].total, 0);
+  // With a kind filter the stats (all kinds) no longer match; sum the filtered columns instead.
+  const columnsTotal = ROADMAP_STATUSES.reduce((n, st) => n + lists[st].total, 0);
+  const total = kind === "all" && stats ? stats.total : columnsTotal;
   const loadingAny = ROADMAP_STATUSES.some((st) => lists[st].loading);
 
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-subheadline text-label-secondary" aria-live="polite">
-          {stats || !loadingAny ? s.roadmapTotal(total) : s.loading}
+          {(kind === "all" && stats) || !loadingAny ? s.roadmapTotal(total) : s.loading}
         </p>
         {suggest ? (
           <Button variant="filled" size="sm" onClick={suggest}>
@@ -228,9 +249,16 @@ export function Roadmap({ onSuggest }: RoadmapProps = {}) {
           </Button>
         ) : null}
       </div>
+      <Choice
+        name="roadmap-kind"
+        label={s.kindFilterLabel}
+        value={kind}
+        onChange={setKind}
+        options={[{ value: "all" as const, label: s.allKinds }, ...KINDS.map((k) => ({ value: k, label: s.kind[k] }))]}
+      />
       {/* `contain-paint`: without it mobile browsers widen the layout viewport to the columns'
           full width (page-level horizontal scroll) despite the row's own overflow scrolling. */}
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 contain-paint md:grid md:snap-none md:grid-cols-3 md:items-start md:overflow-visible md:pb-0 md:contain-none">
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 contain-paint xl:grid xl:snap-none xl:grid-cols-5 xl:items-start xl:overflow-visible xl:pb-0 xl:contain-none">
         {ROADMAP_STATUSES.map((status) => (
           <Column
             key={status}

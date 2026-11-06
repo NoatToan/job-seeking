@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { NoteList, useFeedbackList } from "./board";
+import { CommentThread } from "./comments";
 import { useContributor } from "./context";
 import { safeHref } from "./safe-url";
 import type {
@@ -11,9 +12,22 @@ import type {
   FeedbackMeta,
   FeedbackStatus,
   NoteVisibility,
+  ReportedComment,
 } from "./types";
 import { KINDS, STATUSES } from "./types";
-import { Button, cx, formatDate, inputClasses, KindBadge, Label, StatusBadge } from "./ui";
+import {
+  AuthorName,
+  Button,
+  Choice,
+  cx,
+  formatDate,
+  inputClasses,
+  KindBadge,
+  Label,
+  LinkifiedText,
+  relativeTime,
+  StatusBadge,
+} from "./ui";
 
 /** "email", "Name (Anonymous)" or "Anonymous". */
 export function authorLabel(item: FeedbackItem, anonymous: string): string {
@@ -134,7 +148,7 @@ function Editor({ item, onSaved, onDeleted }: { item: FeedbackItem; onSaved: (i:
         <StatusBadge status={item.status} label={s.status[item.status]} />
         <span>
           {s.author}: {authorLabel(item, s.anonymous)} · {s.createdAt}: {formatDate(item.createdAt)} ·{" "}
-          {s.votes(item.voteCount)}
+          {s.score(item.score)} · {s.commentCount(item.commentCount)}
         </span>
       </div>
 
@@ -181,6 +195,29 @@ function Editor({ item, onSaved, onDeleted }: { item: FeedbackItem; onSaved: (i:
       </form>
 
       <ContextBlock item={item} />
+
+      <label className="flex cursor-pointer items-start gap-2 text-subheadline text-label">
+        <input
+          type="checkbox"
+          className="mt-1 size-4 shrink-0 accent-tint"
+          checked={item.commentsLocked}
+          aria-describedby={`${uid}-lock-hint`}
+          onChange={async (e) => {
+            const locked = e.target.checked;
+            try {
+              onSaved(await api.update(item.id, { commentsLocked: locked }));
+            } catch {
+              setState("error");
+            }
+          }}
+        />
+        <span>
+          {s.lockComments}
+          <span id={`${uid}-lock-hint`} className="block text-footnote text-label-tertiary">
+            {s.lockCommentsHint}
+          </span>
+        </span>
+      </label>
 
       <section className="flex flex-col gap-2">
         <h3 className="text-footnote font-semibold text-label-secondary">{s.notes}</h3>
@@ -229,6 +266,14 @@ function Editor({ item, onSaved, onDeleted }: { item: FeedbackItem; onSaved: (i:
         </form>
       </section>
 
+      <div className="border-t border-separator pt-4">
+        <CommentThread
+          key={`${item.id}-${item.commentsLocked}`}
+          itemId={item.id}
+          onCountChange={(delta) => onSaved({ ...item, commentCount: Math.max(0, item.commentCount + delta) })}
+        />
+      </div>
+
       <div>
         <Button
           size="sm"
@@ -264,6 +309,7 @@ export function AdminReview() {
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
+  const [queue, setQueue] = useState<"items" | "reported">("items");
 
   useEffect(() => {
     let alive = true;
@@ -280,6 +326,26 @@ export function AdminReview() {
   if (!meta) return <p className="text-subheadline text-label-secondary">{s.loading}</p>;
   if (!meta.isAdmin) return <p role="alert" className="text-subheadline text-label-secondary">{s.forbidden}</p>;
   return (
+    <div className="flex flex-col gap-4">
+      <Choice
+        name="admin-queue"
+        label={s.adminTitle}
+        value={queue}
+        onChange={setQueue}
+        options={[
+          { value: "items", label: s.queueItems },
+          { value: "reported", label: s.queueReported },
+        ]}
+      />
+      {queue === "reported" ? (
+        <ReportedQueue
+          onOpenItem={(id) => {
+            setQueue("items");
+            setStatus("all");
+            void api.get(id).then(setSelected, () => undefined);
+          }}
+        />
+      ) : (
     <AdminQueue
       status={status}
       setStatus={setStatus}
@@ -292,6 +358,110 @@ export function AdminReview() {
       selected={selected}
       setSelected={setSelected}
     />
+      )}
+    </div>
+  );
+}
+
+/** Comments people reported, most reported first: hide, delete, dismiss, or open the item. */
+function ReportedQueue({ onOpenItem }: { onOpenItem: (itemId: string) => void }) {
+  const { api, strings: s } = useContributor();
+  const [rows, setRows] = useState<ReportedComment[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState(false);
+
+  const load = async (offset: number) => {
+    setError(false);
+    try {
+      const page = await api.reportedComments({ offset, limit: 20 });
+      setRows((prev) => (offset === 0 || !prev ? page.comments : [...prev, ...page.comments]));
+      setTotal(page.total);
+    } catch {
+      setError(true);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+
+  const settle = async (row: ReportedComment, action: () => Promise<unknown>) => {
+    const before = rows;
+    // Optimistic: the comment leaves the queue now and comes back if the call fails.
+    setRows((prev) => prev?.filter((r) => r.id !== row.id) ?? prev);
+    setTotal((t) => Math.max(0, t - 1));
+    try {
+      await action();
+    } catch {
+      setRows(before);
+      setTotal((t) => t + 1);
+      setError(true);
+    }
+  };
+
+  if (!rows && !error) return <p className="text-subheadline text-label-secondary">{s.loading}</p>;
+  return (
+    <section className="flex flex-col gap-3" aria-label={s.queueReported}>
+      {error ? <p role="alert" className="text-footnote text-danger">{s.errorGeneric}</p> : null}
+      {rows && rows.length === 0 ? (
+        <p className="rounded-card bg-grouped-secondary p-6 text-center text-subheadline text-label-secondary">{s.emptyReported}</p>
+      ) : null}
+      <ul className="flex flex-col gap-3">
+        {rows?.map((row) => (
+          <li key={row.id} className="flex flex-col gap-2 rounded-card border border-separator bg-grouped-secondary p-4 shadow-card">
+            <div className="flex flex-wrap items-center gap-2 text-footnote text-label-secondary">
+              <span>{s.reportedOn}:</span>
+              <button type="button" className="font-medium text-tint hover:underline focus-ring rounded-sm" onClick={() => onOpenItem(row.item.id)}>
+                {row.item.title}
+              </button>
+              <StatusBadge status={row.item.status} label={s.status[row.item.status]} />
+              <span className="rounded-full bg-danger-soft px-1.5 text-caption font-medium text-danger-ink">
+                {s.reportsCount(row.reportCount ?? 0)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-footnote">
+              {row.author ? <AuthorName author={row.author} /> : null}
+              <time dateTime={row.createdAt} className="text-caption text-label-tertiary">
+                {relativeTime(row.createdAt, s.locale)}
+              </time>
+            </div>
+            <LinkifiedText text={row.body ?? ""} className="text-subheadline text-label" />
+            {row.reasons.length > 0 ? (
+              <p className="text-footnote text-label-secondary">
+                {s.reportReasons}: {row.reasons.join(" · ")}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="tinted" onClick={() => void settle(row, () => api.setCommentHidden(row.item.id, row.id, true))}>
+                {s.hide}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (!window.confirm(s.deleteCommentConfirm)) return;
+                  void settle(row, () => api.deleteComment(row.item.id, row.id));
+                }}
+              >
+                {s.deleteComment}
+              </Button>
+              <Button size="sm" variant="plain" onClick={() => void settle(row, () => api.dismissReports(row.item.id, row.id))}>
+                {s.dismissReports}
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {rows && rows.length < total ? (
+        <div className="text-center">
+          <Button size="sm" variant="gray" onClick={() => void load(rows.length)}>
+            {s.loadMore}
+          </Button>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -393,7 +563,7 @@ function AdminQueue(props: {
             <p className="p-4 text-center text-footnote text-label-tertiary">{s.emptyQueue}</p>
           ) : null}
           {list.loading ? <p className="py-3 text-center text-footnote text-label-tertiary">{s.loading}</p> : null}
-          {!list.loading && list.items.length < list.total ? (
+          {!list.loading && list.hasMore ? (
             <div className="pt-2 text-center">
               <Button size="sm" variant="gray" onClick={() => void list.loadMore()}>
                 {s.loadMore}

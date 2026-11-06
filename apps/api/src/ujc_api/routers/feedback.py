@@ -1,16 +1,21 @@
-"""Contributor feature: feedback, feature ideas and admin review under `/api/feedback`.
+"""Contributor feature: feedback, feature ideas, comments and admin review under `/api/feedback`.
 
 The endpoints, validation and authorisation rules live in the vendored `contributor_box` package
 (NoatToan/contributor-box, synced by `pnpm contributor:sync`; do not edit it here). This module
-only plugs in job-seeking's session auth, CSRF check, admin role and pooled connection.
+only plugs in job-seeking's session auth, CSRF check, admin role, pooled connection and secret.
 
-Anonymous feedback is on (`allow_anonymous=True`): signed-out visitors can submit (create only),
-CSRF-protected with the cookie from `GET /api/auth/csrf`, rate-limited by contributor-box per
-`anonymous_key` (HMAC of the client IP with `UJC_SECRET_KEY`; the raw IP is never stored).
+Anonymous feedback is on (`allow_anonymous=True`): signed-out visitors can submit, CSRF-protected
+with the cookie from `GET /api/auth/csrf`, rate-limited by contributor-box per `anonymous_key`
+(HMAC of the client IP with `UJC_SECRET_KEY`; the raw IP is never stored).
 
 The public board is on too (`public_board=True`), for the public `/roadmap/` page: signed-out
-visitors can read `GET /api/feedback?scope=board`, `GET /api/feedback/stats` and the detail of an
-approved / planned / done item, with public fields only. Voting and everything else need a session.
+visitors can read the board, stats, and the detail and comments of any item that is not
+`rejected` (contributor-box DECISIONS 16), with public fields only.
+
+Anonymous comments are on (`allow_anonymous_comments=True`): a signed-out visitor comments under
+a pseudonym ("Brave Otter #123") derived from the `cb_visitor` cookie, an HttpOnly random id
+signed with `UJC_SECRET_KEY` (`Secure` except in local development, like the session cookie).
+Votes always need a session.
 """
 
 import hashlib
@@ -19,7 +24,12 @@ import hmac
 import psycopg
 from fastapi import Depends, Request
 
-from contributor_box import FeedbackDeps, PgFeedbackRepository, create_feedback_router
+from contributor_box import (
+    FeedbackDeps,
+    PgFeedbackRepository,
+    VisitorCookies,
+    create_feedback_router,
+)
 from ujc_api.auth.admin import is_admin, viewer_is_admin
 from ujc_api.auth.csrf import require_csrf
 from ujc_api.auth.deps import AuthedUser, current_user, optional_user
@@ -46,6 +56,12 @@ def anonymous_key(request: Request, settings: Settings = Depends(app_settings)) 
     return hmac.new(settings.ujc_secret_key.encode(), message, hashlib.sha256).hexdigest()
 
 
+def visitor_cookies(settings: Settings = Depends(app_settings)) -> VisitorCookies:
+    """The anonymous visitor cookie, signed with `UJC_SECRET_KEY` (a key rotation gives every
+    visitor a new pseudonym, which is acceptable)."""
+    return VisitorCookies(settings.ujc_secret_key, secure=settings.ujc_env != "development")
+
+
 router = create_feedback_router(
     FeedbackDeps(
         current_user=current_user,
@@ -55,7 +71,9 @@ router = create_feedback_router(
         optional_user=optional_user,
         optional_viewer_is_admin=optional_viewer_is_admin,
         anonymous_key=anonymous_key,
+        visitor_cookies=visitor_cookies,
     ),
     allow_anonymous=True,
     public_board=True,
+    allow_anonymous_comments=True,
 )

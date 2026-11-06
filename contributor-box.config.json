@@ -7,7 +7,8 @@
     "pythonTests": "apps/api/tests",
     "migrations": {
       "001_feedback.sql": "db/migrations/022_feedback.sql",
-      "002_feedback_anonymous.sql": "db/migrations/024_feedback_anonymous.sql"
+      "002_feedback_anonymous.sql": "db/migrations/024_feedback_anonymous.sql",
+      "003_feedback_comments.sql": "db/migrations/029_feedback_comments.sql"
     }
   }
 }

@@ -97,7 +97,18 @@ def test_full_flow_through_host_auth(make_client):
     item_id = item["id"]
     assert item["context"]["hasScreenshot"] is True
 
-    # Private until approved; 404 in the host's error shape.
+    # Public on arrival (contributor-box DECISIONS 16), without context, with the email's local
+    # part as the byline (never the email).
+    seen_new = other.get(f"/api/feedback/{item_id}").json()
+    assert seen_new["context"] is None and seen_new["author"] is None
+    assert seen_new["byline"]["name"] == "author"
+    assert "example.com" not in str(seen_new["byline"])
+
+    # Rejected = off the board; 404 in the host's error shape.
+    rejected = admin.patch(
+        f"/api/feedback/{item_id}", json={"status": "rejected"}, headers=admin_csrf
+    )
+    assert rejected.status_code == 200, rejected.text
     hidden = other.get(f"/api/feedback/{item_id}")
     assert hidden.status_code == 404
     assert hidden.json()["error"]["code"] == "not_found"
@@ -125,7 +136,9 @@ def test_full_flow_through_host_auth(make_client):
     seen = other.get(f"/api/feedback/{item_id}").json()
     assert seen["context"] is None and seen["adminResponse"] == "Good catch"
     voted = other.put(f"/api/feedback/{item_id}/vote", headers=other_csrf)
-    assert voted.json()["voteCount"] == 1
+    assert voted.json()["score"] == 1
+    down = other.put(f"/api/feedback/{item_id}/vote", json={"value": -1}, headers=other_csrf)
+    assert down.json()["score"] == -1 and down.json()["myVote"] == -1
     assert other.get(f"/api/feedback/{item_id}/screenshot").status_code == 404
 
     shot = author.get(f"/api/feedback/{item_id}/screenshot")
@@ -153,11 +166,15 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     resp = guest.post("/api/feedback", json=idea, headers=csrf)
     assert resp.status_code == 201, resp.text
     item = resp.json()
-    assert item["isMine"] is False and item["context"] is None and item["author"] is None
+    # The visitor cookie (issued on this request) makes it theirs, without an account; the typed
+    # name became their display name.
+    assert item["isMine"] is True and item["context"] is None and item["author"] is None
+    assert item["byline"]["name"] == "Minh" and item["byline"]["kind"] == "guest"
+    assert guest.cookies.get("cb_visitor")
 
-    # A guest cannot read their own item back (it is `new`, so not on the public board), and has
-    # no "my feedback".
-    assert guest.get(f"/api/feedback/{item['id']}").status_code == 404
+    # New items are on the public board, so the guest reads it back; still no "my feedback".
+    again = guest.get(f"/api/feedback/{item['id']}")
+    assert again.status_code == 200 and again.json()["isMine"] is True
     assert guest.get("/api/feedback?scope=mine").status_code == 401
 
     admin = make_client()
@@ -165,7 +182,9 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     with psycopg.connect(migrated_database_url, autocommit=True) as conn:
         assert set_role(conn, "anon-reviewer@example.com", "admin") is True
     seen = admin.get(f"/api/feedback/{item['id']}").json()
-    assert seen["author"] == {"id": None, "email": None, "name": "Minh", "anonymous": True}
+    author = seen["author"]
+    assert author["id"] is None and author["email"] is None and author["anonymous"] is True
+    assert author["name"].startswith("Minh (")  # "Minh (Brave Otter #123)"
 
     # Public board (the /roadmap/ page): once approved, guests read it without signing in, with
     # public fields only, and still cannot vote.
@@ -178,11 +197,12 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     assert approved.status_code == 200, approved.text
     after = guest.get("/api/feedback/stats").json()
     assert after["counts"]["approved"] == before["counts"]["approved"] + 1
-    assert after["total"] == before["total"] + 1
+    assert after["counts"]["new"] == before["counts"]["new"] - 1
+    assert after["total"] == before["total"]  # it was already public while new
     board = guest.get("/api/feedback?scope=board&status=approved&sort=top&limit=50")
     assert board.status_code == 200, board.text
     listed = next(i for i in board.json()["items"] if i["id"] == item["id"])
-    assert listed["canVote"] is False and listed["voted"] is False and listed["author"] is None
+    assert listed["canVote"] is False and listed["myVote"] == 0 and listed["author"] is None
     detail = guest.get(f"/api/feedback/{item['id']}").json()
     assert detail["adminResponse"] == "Good idea" and detail["context"] is None
     assert guest.put(f"/api/feedback/{item['id']}/vote", headers=csrf).status_code == 401

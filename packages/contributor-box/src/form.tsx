@@ -3,9 +3,10 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { captureViewport, type CaptureOptions, type CapturedScreenshot } from "./capture";
+import { IdentityLine } from "./comments";
 import { useContributor } from "./context";
 import { ElementPicker, type PickResult } from "./picker";
-import { KINDS, type FeedbackItem, type FeedbackKind } from "./types";
+import { KINDS, type FeedbackIdentity, type FeedbackItem, type FeedbackKind } from "./types";
 import { Button, Choice, cx, inputClasses, Label } from "./ui";
 
 export type CaptureFn = (options: CaptureOptions) => Promise<CapturedScreenshot>;
@@ -42,7 +43,8 @@ export function FeedbackForm({
   const [kind, setKind] = useState<FeedbackKind>(defaultKind);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [authorName, setAuthorName] = useState("");
+  // Signed out: who the visitor will appear as (their pseudonym or chosen name).
+  const [identity, setIdentity] = useState<FeedbackIdentity | null>(null);
   const [picking, setPicking] = useState(false);
   const [pick, setPick] = useState<PickResult | null>(null);
   const [withShot, setWithShot] = useState(false);
@@ -63,6 +65,20 @@ export function FeedbackForm({
       alive.current = false;
     };
   }, []);
+
+  // A guest's name comes from their visitor identity (the same one their comments use).
+  useEffect(() => {
+    if (signedIn) return;
+    let active = true;
+    api.identity().then(
+      (v) => active && setIdentity(v),
+      // Older servers without identities: the form still works, just without the preview.
+      () => undefined,
+    );
+    return () => {
+      active = false;
+    };
+  }, [api, signedIn]);
 
   // Auto-grow the details field (layout effect: no flash at the old height).
   useLayoutEffect(() => {
@@ -134,7 +150,6 @@ export function FeedbackForm({
         kind,
         title: title.trim(),
         body: body.trim(),
-        ...(!signedIn && authorName.trim() ? { authorName: authorName.trim() } : {}),
         ...(withPageContext
           ? {
               pageUrl: window.location.href,
@@ -165,7 +180,6 @@ export function FeedbackForm({
 
   const titleId = `${uid}-title`;
   const bodyId = `${uid}-body`;
-  const nameId = `${uid}-name`;
   const shotId = `${uid}-shot`;
   const titleErrorId = `${uid}-title-error`;
 
@@ -216,20 +230,7 @@ export function FeedbackForm({
           onChange={(e) => setBody(e.target.value)}
         />
       </div>
-      {!signedIn ? (
-        <div>
-          <Label htmlFor={nameId}>{s.nameLabel}</Label>
-          <input
-            id={nameId}
-            className={inputClasses}
-            value={authorName}
-            maxLength={80}
-            autoComplete="name"
-            placeholder={s.namePlaceholder}
-            onChange={(e) => setAuthorName(e.target.value)}
-          />
-        </div>
-      ) : null}
+      {!signedIn && identity ? <IdentityLine identity={identity} onChange={setIdentity} /> : null}
 
       {withPageContext ? (
         // Compact rows: "point at the page" (+ what was picked) and the screenshot toggle. The

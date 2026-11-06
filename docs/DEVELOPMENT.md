@@ -53,30 +53,41 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 
 ## Contributor (feedback, feature ideas, admin review)
 
-Anyone sends feedback from a floating button on any page (signed-out visitors too, with an
-optional name; see below): pick a type, point at an element
-or drag over an area, optionally attach a screenshot with that area highlighted; the page URL and
-element are captured automatically. `/contribute/` is the ideas board (vote on approved / planned /
-done items) plus the user's own submissions and their status. `/roadmap/` is the public kanban of
-the same items by status (under consideration = approved, planned, done), readable signed out. Admins review everything at
-`/admin/feedback/`: edit, set status, reply publicly, add internal or public notes.
+Anyone sends feedback from a floating button on any page (signed-out visitors too, under a
+pseudonym; see below): pick a type, point at an element or drag over an area, optionally attach a
+screenshot with that area highlighted; the page URL and element are captured automatically. Every
+item except `rejected` is public as soon as it is sent. `/roadmap/` is the public kanban by status
+(New, Under review, Under consideration, Planned, Done) with a kind filter, readable and
+commentable signed out; `/contribute/` is the same board for signed-in users plus their own
+submissions. Items and comments have Stack Overflow votes (▲ score ▼, signed-in only) and
+two-level comment threads. Admins review everything at `/admin/feedback/`: edit, set status
+(`rejected` takes an item off the board), reply publicly, add notes, lock comments, and work
+through reported comments (hide, delete, dismiss).
 
-- **Anonymous feedback**: `routers/feedback.py` turns on contributor-box's `allow_anonymous`.
-  Signed-out visitors can only *create* (no board, voting or "my feedback"). The request is still
-  CSRF-protected: the web app calls `GET /api/auth/csrf` first when the browser has no `ujc_csrf`
-  cookie (`ensureCsrfCookie` in `lib/api.ts`). Limits: 5 per visitor (HMAC of the client IP with
-  `UJC_SECRET_KEY`) and 60 across all visitors per hour. Admins see the name or "Anonymous".
-- **Public roadmap**: `routers/feedback.py` also turns on `public_board`, so signed-out visitors
-  can read `GET /api/feedback?scope=board`, `GET /api/feedback/stats` and the detail of a public
-  item (public fields only). Voting still needs a session. `/roadmap/` is in the sitemap, the
-  TopNav, the signed-out phone tab bar and the signed-in account sheet.
+- **Anonymous feedback and comments**: `routers/feedback.py` turns on contributor-box's
+  `allow_anonymous` and `allow_anonymous_comments`. A signed-out visitor gets an HttpOnly
+  `cb_visitor` cookie (a random id signed with `UJC_SECRET_KEY`, `Secure` outside development)
+  and appears under a stable pseudonym derived from it ("Brave Otter #123" / "Rái cá dũng cảm"),
+  which they can replace with a display name ("You'll appear as … · Change"). Writes stay
+  CSRF-protected: the web app calls `GET /api/auth/csrf` first when the browser has no
+  `ujc_csrf` cookie (`ensureCsrfCookie` in `lib/api.ts`). Limits per hour: items 5 per IP key
+  (HMAC of the client IP) and 60 overall; comments 10 per visitor, 15 per IP key, 100 overall;
+  plus a honeypot field. Signed-in users show their display name or their email's local part.
+- **Public roadmap**: `public_board` lets signed-out visitors read the board, stats, item details
+  and comments (public fields only). `/roadmap/` is in the sitemap, the TopNav, the signed-out
+  phone tab bar and the signed-in account sheet. Voting needs a session: signed out, the vote
+  arrows (and "Sign in to comment") open the login modal in place (`onRequireSignIn` in
+  `lib/contributor.tsx`) and cast the vote after sign-in.
+- **Data and privacy**: `GET /api/me/export` includes the user's comments and display name.
+  Deleting an account turns their comments into "[deleted]" placeholders (text cleared) so other
+  people's replies stay in their threads.
 - **Admins**: `users.role = 'admin'` or an email in `UJC_ADMIN_EMAILS`. Grant from a machine with
   `DATABASE_URL`: `cd apps/api && uv run python -m ujc_api.admin grant you@example.com` (the
   account must have signed in once; `revoke` and `list` too).
 - **Source of truth**: the feature lives in the private repo
   [`NoatToan/contributor-box`](https://github.com/NoatToan/contributor-box). Do not edit
   `packages/contributor-box/`, `apps/api/src/contributor_box/`, `apps/api/tests/test_cb_*.py`,
-  `apps/api/tests/cb_fakes.py` or `db/migrations/022_feedback.sql` here. Change upstream, then:
+  `apps/api/tests/cb_fakes.py` or the mapped migrations (`022`, `024`, `029`) here. Change upstream, then:
 
   ```bash
   pnpm contributor:sync              # clone contributor-box@ref (contributor-box.config.json) and copy

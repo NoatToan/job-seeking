@@ -9,20 +9,22 @@ import { fakeApi, makeItem, wrap } from "./helpers";
 afterEach(cleanup);
 
 const BY_STATUS = {
-  approved: [makeItem({ id: "1", title: "Salary in VND", status: "approved", voteCount: 5, adminResponse: "Looking into it" })],
-  planned: [makeItem({ id: "2", title: "Dark mode", status: "planned", kind: "feedback", voteCount: 3 })],
+  new: [makeItem({ id: "3", title: "Login button misaligned", status: "new", kind: "bug", score: 1, commentCount: 2 })],
+  under_review: [] as ReturnType<typeof makeItem>[],
+  approved: [makeItem({ id: "1", title: "Salary in VND", status: "approved", score: 5, adminResponse: "Looking into it" })],
+  planned: [makeItem({ id: "2", title: "Dark mode", status: "planned", kind: "feedback", score: 3 })],
   done: [] as ReturnType<typeof makeItem>[],
 };
 
 function roadmapApi(signedIn: boolean) {
   return fakeApi({
     list: vi.fn(async (q: ListFeedbackQuery = {}) => {
-      const items = BY_STATUS[q.status as keyof typeof BY_STATUS].map((i) =>
-        signedIn ? i : { ...i, canVote: false, voted: false },
-      );
+      const items = BY_STATUS[q.status as keyof typeof BY_STATUS]
+        .filter((i) => !q.kind || i.kind === q.kind)
+        .map((i) => (signedIn ? i : { ...i, canVote: false, myVote: 0 as const }));
       return { items, total: items.length, limit: 20, offset: 0 };
     }),
-    stats: vi.fn(async () => ({ counts: { approved: 1, planned: 1, done: 0 }, total: 2 })),
+    stats: vi.fn(async () => ({ counts: { new: 1, under_review: 0, approved: 1, planned: 1, done: 0 }, total: 3 })),
   });
 }
 
@@ -35,34 +37,49 @@ describe("Roadmap", () => {
     const api = roadmapApi(true);
     render(<Roadmap />, { wrapper: wrap(api) });
     expect(await screen.findByText("Salary in VND")).toBeTruthy();
-    expect(api.list).toHaveBeenCalledWith({ scope: "board", status: "approved", sort: "top", limit: 20, offset: 0 });
-    expect(api.list).toHaveBeenCalledWith({ scope: "board", status: "planned", sort: "top", limit: 20, offset: 0 });
+    for (const status of ["new", "under_review", "approved", "planned"]) {
+      expect(api.list).toHaveBeenCalledWith({ scope: "board", status, sort: "top", limit: 20, offset: 0 });
+    }
     expect(api.list).toHaveBeenCalledWith({ scope: "board", status: "done", sort: "new", limit: 20, offset: 0 });
-    expect(await screen.findByText("2 items on the roadmap")).toBeTruthy();
+    expect(await screen.findByText("3 items on the roadmap")).toBeTruthy();
+    expect(within(column("New")).getByText("Login button misaligned")).toBeTruthy();
+    expect(within(column("New")).getByText("2 comments")).toBeTruthy();
+    expect(within(column("Under review")).getByText("Nothing under review.")).toBeTruthy();
     expect(within(column("Under consideration")).getByText("Salary in VND")).toBeTruthy();
     expect(within(column("Under consideration")).getByText("Looking into it")).toBeTruthy();
     expect(within(column("Planned")).getByText("Dark mode")).toBeTruthy();
     expect(within(column("Planned")).getByText("Feedback")).toBeTruthy();
     expect(within(column("Done")).getByText("Nothing shipped yet.")).toBeTruthy();
-    // Private statuses are never asked for.
+    // `rejected` (hidden by admins) is never asked for.
     for (const [q] of vi.mocked(api.list).mock.calls) {
-      expect(["approved", "planned", "done"]).toContain(q?.status);
+      expect(["new", "under_review", "approved", "planned", "done"]).toContain(q?.status);
     }
   });
 
-  it("lets signed-in users vote from a card", async () => {
+  it("lets signed-in users vote up or down from a card", async () => {
     const api = roadmapApi(true);
     render(<Roadmap />, { wrapper: wrap(api) });
-    fireEvent.click(await screen.findByRole("button", { name: /^Vote \(5 votes\)/ }));
-    await waitFor(() => expect(api.vote).toHaveBeenCalledWith("1", true));
+    fireEvent.click(await screen.findByRole("button", { name: "Downvote: Salary in VND" }));
+    await waitFor(() => expect(api.vote).toHaveBeenCalledWith("1", -1));
+  });
+
+  it("filters every column by kind", async () => {
+    const api = roadmapApi(true);
+    render(<Roadmap />, { wrapper: wrap(api) });
+    await screen.findByText("Salary in VND");
+    fireEvent.click(screen.getByLabelText("Bug"));
+    await waitFor(() => expect(screen.queryByText("Salary in VND")).toBeNull());
+    expect(screen.getByText("Login button misaligned")).toBeTruthy();
+    expect(api.list).toHaveBeenCalledWith({ scope: "board", status: "approved", sort: "top", kind: "bug", limit: 20, offset: 0 });
+    expect(await screen.findByText("1 item on the roadmap")).toBeTruthy();
   });
 
   it("shows signed-out visitors the count as a sign-in link, never a vote button", async () => {
     const api = roadmapApi(false);
     render(<Roadmap />, { wrapper: wrap(api, false, true) });
     await screen.findByText("Salary in VND");
-    expect(screen.queryByRole("button", { name: /^Vote/ })).toBeNull();
-    const hint = screen.getByRole("link", { name: "Sign in to vote (5 votes)" });
+    expect(screen.queryByRole("button", { name: /^Upvote/ })).toBeNull();
+    const hint = screen.getByRole("link", { name: "Sign in to vote (Score 5): Salary in VND" });
     expect(hint.getAttribute("href")).toBe("/login/");
   });
 
@@ -110,7 +127,7 @@ describe("Roadmap", () => {
     const api = fakeApi({ list: vi.fn(async () => Promise.reject(new Error("boom"))) });
     render(<Roadmap />, { wrapper: wrap(api) });
     const alerts = await screen.findAllByRole("alert");
-    expect(alerts).toHaveLength(3);
+    expect(alerts).toHaveLength(5);
     expect(within(alerts[0]).getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });

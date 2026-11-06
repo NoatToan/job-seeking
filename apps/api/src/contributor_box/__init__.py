@@ -1,7 +1,14 @@
-"""contributor-box: in-context feedback, feature ideas and admin review for a FastAPI + Postgres
-host. See the repository README for how a host wires `create_feedback_router`."""
+"""contributor-box: in-context feedback, feature ideas, comments and admin review for a FastAPI +
+Postgres host. See the repository README for how a host wires `create_feedback_router`."""
 
 from contributor_box.constants import CREATE_MAX_BODY_BYTES, KINDS, PUBLIC_STATUSES, STATUSES
+from contributor_box.identity import (
+    VISITOR_COOKIE,
+    Pseudonym,
+    Visitor,
+    VisitorCookies,
+    pseudonym,
+)
 from contributor_box.repository import FeedbackRepository, PgFeedbackRepository
 from contributor_box.router import (
     FeedbackDeps,
@@ -15,10 +22,15 @@ __all__ = [
     "KINDS",
     "PUBLIC_STATUSES",
     "STATUSES",
+    "VISITOR_COOKIE",
     "FeedbackDeps",
     "FeedbackRepository",
     "PgFeedbackRepository",
+    "Pseudonym",
+    "Visitor",
+    "VisitorCookies",
     "anonymous_key_dependency",
     "client_ip",
     "create_feedback_router",
+    "pseudonym",
 ]

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminReview } from "../admin";
 import { fakeApi, makeItem, wrap } from "./helpers";
@@ -94,5 +94,57 @@ describe("AdminReview", () => {
     fireEvent.change(await screen.findByLabelText("Note"), { target: { value: "Check with design" } });
     fireEvent.click(screen.getByRole("button", { name: "Add note" }));
     await waitFor(() => expect(api.addNote).toHaveBeenCalledWith("3", "Check with design", "internal"));
+  });
+
+  it("locks comments on an item and shows its thread", async () => {
+    const item = makeItem({ id: "4", title: "Duplicate idea", commentCount: 1 });
+    const api = fakeApi({
+      meta: vi.fn(adminMeta),
+      list: vi.fn(async () => ({ items: [item], total: 1, limit: 20, offset: 0 })),
+      get: vi.fn(async () => item),
+      update: vi.fn(async () => ({ ...item, commentsLocked: true })),
+    });
+    render(<AdminReview />, { wrapper: wrap(api) });
+    fireEvent.click(await screen.findByRole("button", { name: /Duplicate idea/ }));
+    const lock = await screen.findByLabelText(/Lock comments/);
+    expect(lock).toHaveProperty("checked", false);
+    fireEvent.click(lock);
+    await waitFor(() => expect(api.update).toHaveBeenCalledWith("4", { commentsLocked: true }));
+    await waitFor(() => expect(screen.getByLabelText(/Lock comments/)).toHaveProperty("checked", true));
+    expect(screen.getByRole("heading", { name: "Comments" })).toBeTruthy();
+  });
+
+  it("works through reported comments: hide, dismiss, and roll back on failure", async () => {
+    const { makeComment } = await import("./helpers");
+    const reported = (id: string, body: string) => ({
+      ...makeComment({ id, body, canModerate: true, reportCount: 2 }),
+      item: { id: "7", title: "Salary filter", status: "new" as const },
+      reasons: ["Spam"],
+      lastReportedAt: "2026-11-02T10:00:00Z",
+    });
+    const api = fakeApi({
+      meta: vi.fn(adminMeta),
+      reportedComments: vi.fn(async () => ({
+        comments: [reported("c1", "Buy followers"), reported("c2", "Off topic")],
+        total: 2,
+        limit: 20,
+        offset: 0,
+      })),
+      dismissReports: vi.fn(async () => Promise.reject(new Error("offline"))),
+    });
+    render(<AdminReview />, { wrapper: wrap(api) });
+    fireEvent.click(await screen.findByLabelText("Reported comments"));
+    expect(await screen.findByText("Buy followers")).toBeTruthy();
+    expect(screen.getAllByText("Reasons: Spam")).toHaveLength(2);
+    const first = screen.getByText("Buy followers").closest("li")!;
+    fireEvent.click(within(first).getByRole("button", { name: "Hide" }));
+    await waitFor(() => expect(api.setCommentHidden).toHaveBeenCalledWith("7", "c1", true));
+    await waitFor(() => expect(screen.queryByText("Buy followers")).toBeNull());
+    const second = screen.getByText("Off topic").closest("li")!;
+    fireEvent.click(within(second).getByRole("button", { name: "Dismiss reports" }));
+    await waitFor(() => expect(api.dismissReports).toHaveBeenCalledWith("7", "c2"));
+    // The call failed: the comment comes back with an error.
+    expect(await screen.findByText("Off topic")).toBeTruthy();
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

@@ -12,11 +12,14 @@ from contributor_box.constants import (
     ADMIN_RESPONSE_MAX,
     AUTHOR_NAME_MAX,
     BODY_MAX,
+    COMMENT_MAX,
+    DISPLAY_NAME_MAX,
     ELEMENT_TEXT_MAX,
     NOTE_MAX,
     PAGE_TITLE_MAX,
     PAGE_URL_MAX,
     REGION_MAX,
+    REPORT_REASON_MAX,
     SCREENSHOT_MAX_DATA_URL_CHARS,
     SELECTOR_MAX,
     TITLE_MAX,
@@ -26,7 +29,9 @@ from contributor_box.constants import (
     Kind,
     NoteVisibility,
     Status,
+    VoteValue,
 )
+from contributor_box.identity import clean_display_name
 
 Title = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=TITLE_MIN, max_length=TITLE_MAX)
@@ -131,6 +136,8 @@ class AdminPatchRequest(_Model):
     body: str | None = Field(default=None, max_length=BODY_MAX)
     status: Status | None = None
     admin_response: str | None = Field(default=None, max_length=ADMIN_RESPONSE_MAX)
+    # Locks the item's comments: nobody but admins can add new ones.
+    comments_locked: bool | None = None
 
     @field_validator("title", "body", "admin_response")
     @classmethod
@@ -147,7 +154,7 @@ class AdminPatchRequest(_Model):
     def _response(cls, v: str | None) -> str | None:
         return _blank_to_none(v)
 
-    @field_validator("kind", "title", "body", "status")
+    @field_validator("kind", "title", "body", "status", "comments_locked")
     @classmethod
     def _not_null(cls, v: object) -> object:
         # Sent-as-null is not "clear" for these (they are NOT NULL columns): reject it.
@@ -167,6 +174,65 @@ class NoteRequest(_Model):
     def _text(cls, v: str) -> str:
         _no_nul(v)
         return v
+
+
+class VoteRequest(_Model):
+    """`PUT .../vote`. No body means an upvote (what the endpoint did before downvotes)."""
+
+    value: VoteValue = 1
+
+
+def _comment_text(value: str) -> str:
+    _no_nul(value)
+    # Normalise line endings and trim; keep inner whitespace (plain text, rendered pre-wrap).
+    value = value.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not value:
+        raise ValueError("must not be empty")
+    return value
+
+
+class CommentCreateRequest(_Model):
+    body: str = Field(min_length=1, max_length=COMMENT_MAX)
+    # A top-level comment's id to reply to. A reply's id works too: the reply joins the same
+    # top-level thread (two levels only).
+    parent_id: Annotated[str, StringConstraints(pattern=r"^[1-9][0-9]{0,18}$")] | None = None
+    # Honeypot: a field humans never see. Anything in it marks the request as a bot.
+    website: str | None = Field(default=None, max_length=500)
+
+    @field_validator("body")
+    @classmethod
+    def _body(cls, v: str) -> str:
+        return _comment_text(v)
+
+
+class CommentEditRequest(_Model):
+    body: str = Field(min_length=1, max_length=COMMENT_MAX)
+
+    @field_validator("body")
+    @classmethod
+    def _body(cls, v: str) -> str:
+        return _comment_text(v)
+
+
+class ReportRequest(_Model):
+    reason: str | None = Field(default=None, max_length=REPORT_REASON_MAX)
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, v: str | None) -> str | None:
+        return _blank_to_none(_no_nul(v))
+
+
+class IdentityRequest(_Model):
+    """`PUT /identity`: a chosen display name, or `null` to go back to the generated one."""
+
+    display_name: str | None = Field(max_length=DISPLAY_NAME_MAX * 4)
+
+    @field_validator("display_name")
+    @classmethod
+    def _name(cls, v: str | None) -> str | None:
+        v = _blank_to_none(_no_nul(v))
+        return None if v is None else clean_display_name(v)
 
 
 def clip_user_agent(value: str | None) -> str | None:

@@ -163,6 +163,14 @@ Checked and not N+1:
 
 ## Upstream (contributor-box, vendored: not edited here)
 
+**Status (feat/feedback-comments, migration 029):** done upstream except search. Scores and
+comment counts are stored columns kept by triggers, `sort=top` reads
+`feedback_items_status_score_idx`, the viewer's vote is a primary-key join, "load more" is a
+keyset cursor and the total is counted on the first page only (`test_query_counts_db.py` pins a
+cursor page at one statement). Comments follow the recommendations below (indexes on every FK,
+`(comment_id, user_id)` vote PK + `user_id` index, stored counts instead of per-row counting).
+`q` is still `ILIKE`. The original findings:
+
 - `_ITEM_COLUMNS` computes `vote_count` and `voted` with correlated subqueries per row. On a
   page of 20 that is cheap (0.3 ms). But `sort=top` has to count votes for **every** matching item
   before it can sort (2,030 buffers for 2,000 items). At scale, either keep a `vote_count`
