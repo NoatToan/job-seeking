@@ -49,6 +49,9 @@
   /* Gradient for text (bg-clip-text): darker stops so the word keeps >= 3:1 on the page. */
   --ujc-brand-text-gradient: linear-gradient(90deg, #ea580c, #e11d48 55%, #9333ea);
   --ujc-sky-scrim: rgb(0 0 0 / 0.06);
+  /* Fold under the access stamp on job rows (darker shade of success / danger) */
+  --ujc-stamp-open-fold: color-mix(in srgb, var(--ujc-success) 60%, black);
+  --ujc-stamp-closed-fold: color-mix(in srgb, var(--ujc-danger) 60%, black);
   /* Weather glyphs next to working-hours labels (apps/web WeatherIcon) */
   --ujc-weather-sun: #fbbf24;
   --ujc-weather-sun-ray: #f59e0b;

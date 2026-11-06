@@ -85,3 +85,33 @@ export function RemoteAccessBadge({ openTo, basedIn, className }: RemoteAccessBa
     </span>
   );
 }
+
+/**
+ * Corner stamp on a job row, like a shop voucher tag: does this job take candidates from the
+ * viewer's country? Sits on the card's top-left edge with a folded tail, so the answer reads before
+ * anything else on the row. Renders nothing when the posting doesn't say (or the country is unknown).
+ */
+export function AccessStamp({ openTo, basedIn, className }: RemoteAccessBadgeProps) {
+  const strings = useUiStrings();
+  const access = remoteAccess(openTo, basedIn);
+  if (access.acceptsCandidate === null || access.acceptsCandidate === undefined) return null;
+  const open = access.acceptsCandidate;
+  const you = basedIn ? countryName(basedIn, strings.locale) : "";
+  const Icon = open ? CheckIcon : XIcon;
+  return (
+    <span
+      data-access-stamp={open ? "open" : "closed"}
+      title={open ? strings.remoteAccess.openToYou(you) : strings.remoteAccess.notOpenToYou(you)}
+      className={cx(
+        "pointer-events-none absolute -top-1 -left-1 z-[1] inline-flex items-center gap-1 rounded-r-full rounded-tl-md py-0.5 pr-2.5 pl-2 text-[0.6875rem] font-bold tracking-wide text-white uppercase shadow-sm",
+        // The fold: a small darker triangle under the tag's left end, as if it wraps the card edge.
+        "after:absolute after:top-full after:left-0 after:border-t-[5px] after:border-l-[4px] after:border-l-transparent after:content-['']",
+        open ? "bg-success after:border-t-[var(--ujc-stamp-open-fold)]" : "bg-danger after:border-t-[var(--ujc-stamp-closed-fold)]",
+        className,
+      )}
+    >
+      <Icon size={11} strokeWidth={3} aria-hidden />
+      {open ? strings.remoteAccess.stampOpen : strings.remoteAccess.stampClosed}
+    </span>
+  );
+}

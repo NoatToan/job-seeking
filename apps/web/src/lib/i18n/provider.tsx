@@ -49,6 +49,8 @@ function UiStringsBridge({ children }: { children: ReactNode }) {
         unknown: t("ui.remoteAccess.unknown"),
         openToYou: (country) => t("ui.remoteAccess.openToYou", { country }),
         notOpenToYou: (country) => t("ui.remoteAccess.notOpenToYou", { country }),
+        stampOpen: t("ui.remoteAccess.stampOpen"),
+        stampClosed: t("ui.remoteAccess.stampClosed"),
         regions: t("ui.remoteAccess.regions", { returnObjects: true }) as Record<string, string>,
       },
       read: t("ui.read"),

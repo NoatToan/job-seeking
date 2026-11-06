@@ -10,7 +10,7 @@ import type { UiStrings } from "../strings";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
-import { RemoteAccessBadge } from "./remote-access";
+import { AccessStamp, RemoteAccessBadge } from "./remote-access";
 import { LocationText } from "./location-text";
 import { TechStackRow } from "./tech-icon";
 
@@ -228,6 +228,7 @@ export function JobListItem({
       )}
     >
       {backdrop}
+      {job.remote ? <AccessStamp openTo={job.openTo} basedIn={basedIn} /> : null}
       <Avatar
         name={job.company || job.title}
         shape="rounded"

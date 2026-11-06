@@ -44,7 +44,9 @@
         "OCEANIA": "Oceania",
         "MIDDLE_EAST": "Middle East",
         "AFRICA": "Africa"
-      }
+      },
+      "stampOpen": "Open to you",
+      "stampClosed": "Not for you"
     }
   },
   "language": {

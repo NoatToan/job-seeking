@@ -43,7 +43,9 @@
         "OCEANIA": "Châu Đại Dương",
         "MIDDLE_EAST": "Trung Đông",
         "AFRICA": "Châu Phi"
-      }
+      },
+      "stampOpen": "Nhận bạn",
+      "stampClosed": "Không nhận bạn"
     }
   },
   "language": {

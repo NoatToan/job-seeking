@@ -30,6 +30,9 @@ export interface UiStrings {
     unknown: string;
     openToYou: (country: string) => string;
     notOpenToYou: (country: string) => string;
+    /** Short stamp on a job row's corner. */
+    stampOpen: string;
+    stampClosed: string;
     regions: Record<string, string>;
   };
   read: string;
@@ -62,6 +65,8 @@ export const EN_UI_STRINGS: UiStrings = {
     unknown: "Remote · region not stated",
     openToYou: (country) => `Open to candidates in ${country}`,
     notOpenToYou: (country) => `Not open to candidates in ${country}`,
+    stampOpen: "Open to you",
+    stampClosed: "Not for you",
     regions: {
       EUROPE: "Europe",
       EMEA: "EMEA",
