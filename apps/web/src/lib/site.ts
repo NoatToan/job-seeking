@@ -4,6 +4,7 @@
  */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://unified-job-crawler.vercel.app").replace(/\/$/, "");
 export const SITE_NAME = "JobSeeking";
+export const REPO_URL = "https://github.com/NoatToan/job-seeking";
 export const SITE_TITLE = "JobSeeking — remote & relocation tech jobs from every board";
 export const SITE_DESCRIPTION =
   "Remote and relocation tech jobs from LinkedIn, Seek, Glassdoor, Himalayas, We Work Remotely, Arc and more in one place, refreshed every morning. Filter by tech stack, country, salary and working hours, and match jobs to your CV.";

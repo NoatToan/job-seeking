@@ -27,6 +27,7 @@ import { FeedbackWidget } from "@contributor-box/react";
 import { ContributorRoot } from "@/lib/contributor";
 import { LanguageSwitch } from "@/lib/i18n/provider";
 import { ThemePicker, ThemeToggle } from "@/lib/theme";
+import { GitHubLink } from "@/app/github-link";
 import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
@@ -244,6 +245,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }
           trailing={
             <div className="flex items-center gap-2">
+              <GitHubLink />
               <ThemeToggle />
               <LanguageSwitch />
               <AccountMenu variant="pill" />

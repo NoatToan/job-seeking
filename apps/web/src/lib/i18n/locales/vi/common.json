@@ -88,5 +88,10 @@
   "hero": {
     "collapse": "Thu gọn tiêu đề",
     "expand": "Mở rộng tiêu đề"
+  },
+  "github": {
+    "label": "JobSeeking trên GitHub",
+    "labelStars_one": "JobSeeking trên GitHub, {{count}} sao",
+    "labelStars_other": "JobSeeking trên GitHub, {{count}} sao"
   }
 }

@@ -89,5 +89,10 @@
   "hero": {
     "collapse": "Hide the headline",
     "expand": "Show the headline"
+  },
+  "github": {
+    "label": "JobSeeking on GitHub",
+    "labelStars_one": "JobSeeking on GitHub, {{count}} star",
+    "labelStars_other": "JobSeeking on GitHub, {{count}} stars"
   }
 }
