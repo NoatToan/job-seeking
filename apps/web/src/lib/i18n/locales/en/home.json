@@ -144,7 +144,12 @@
   "tech": {
     "frontend": "Frontend",
     "backend": "Backend",
-    "groupAriaLabel": "{{label}} tech"
+    "groupAriaLabel": "{{label}} tech",
+    "mobile": "Mobile",
+    "database": "Data",
+    "cloud": "Cloud & DevOps",
+    "searchPlaceholder": "Filter tech (e.g. aws, postgres)…",
+    "searchLabel": "Filter tech"
   },
   "workHours": {
     "yourTimeZone": "Your time zone",

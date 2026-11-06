@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import type { Cv } from "@ujc/core";
-import { CANDIDATE_COUNTRIES } from "@ujc/core";
 import {
   Badge,
   Button,
   buttonClasses,
   ChevronRightIcon,
+  FuzzySelect,
   Chip,
   DocumentIcon,
   IconButton,
@@ -22,6 +22,7 @@ import {
   UploadIcon,
   useToast,
 } from "@ujc/ui";
+import type { SelectOption } from "@ujc/ui";
 import type { TFunction } from "i18next";
 import { ApiError, deleteCv, listCvs, updatePreferences, uploadCv } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
@@ -29,6 +30,7 @@ import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
 import { useLanguage } from "@/lib/i18n/provider";
 import { AccountMenu } from "@/app/nav";
+import { candidateCountryOptions } from "@/app/country-filter";
 import { ACCEPT_ATTR, CvUploadCard, validateFile } from "./cv-upload-card";
 
 /** Status chip for a row in the CV list (docs/product issue M4-04 flow-v2 adaptation). */
@@ -50,9 +52,11 @@ function cvStatusBadge(status: Cv["status"], t: TFunction<"cv">) {
 }
 
 // Digest hour options (M4-08): a local hour (0-23) in the user's digestTz, labelled in 12h form.
-const DIGEST_HOURS = Array.from({ length: 24 }, (_, hour) => ({
-  hour,
+/** Every hour of the day; "7", "07:00" and "19:00" all find their row. */
+const DIGEST_HOUR_OPTIONS: SelectOption[] = Array.from({ length: 24 }, (_, hour) => ({
+  value: String(hour),
   label: new Date(2026, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" }),
+  keywords: [String(hour), `${String(hour).padStart(2, "0")}:00`],
 }));
 
 function CvPageInner() {
@@ -68,6 +72,7 @@ function CvPageInner() {
   const [keywordError, setKeywordError] = useState<string | null>(null);
   const [remoteOnly, setRemoteOnly] = useState(me?.preferences.remoteOnly ?? false);
   const [candidateCountry, setCandidateCountry] = useState(me?.preferences.candidateCountry ?? "");
+  const countryOptions = candidateCountryOptions(t("location.selectCountry"));
   const [digestEnabled, setDigestEnabled] = useState(me?.preferences.digestEnabled ?? true);
   const [digestHour, setDigestHour] = useState(me?.preferences.digestHour ?? 7);
   // Not user-editable yet (no timezone picker in this MVP) — carried through unchanged so Save
@@ -267,23 +272,20 @@ function CvPageInner() {
                   <span className="flex-1 text-body text-label">{t("location.remoteOnly")}</span>
                   <Toggle label={t("location.remoteOnly")} checked={remoteOnly} onChange={setRemoteOnly} />
                 </div>
-                <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
-                  <span className="flex-1 text-body text-label">{t("location.basedIn")}</span>
-                  <select
+                <div className="relative flex min-h-11 items-center gap-3 px-4 py-0 hairline-t transition-colors duration-150 focus-within:bg-fill-tertiary">
+                  <span aria-hidden className="flex-1 text-body text-label">{t("location.basedIn")}</span>
+                  <FuzzySelect
                     id="candidate-country"
+                    name="candidateCountry"
+                    variant="row"
+                    label={t("location.basedIn")}
                     value={candidateCountry ?? ""}
-                    onChange={(e) => setCandidateCountry(e.target.value)}
-                    className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
-                  >
-                    <option value="">{t("location.selectCountry")}</option>
-                    {CANDIDATE_COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
-                </label>
+                    onChange={setCandidateCountry}
+                    options={countryOptions}
+                    placeholder={t("location.selectCountry")}
+                    className="min-w-0"
+                  />
+                </div>
               </div>
               <p className="px-4 text-footnote text-label-secondary">{t("location.hint")}</p>
             </section>
@@ -302,22 +304,18 @@ function CvPageInner() {
                   />
                 </div>
                 {digestEnabled ? (
-                  <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
-                    <span className="flex-1 text-body text-label">{t("digest.sendAround")}</span>
-                    <select
+                  <div className="relative flex min-h-11 items-center gap-3 px-4 py-0 hairline-t transition-colors duration-150 focus-within:bg-fill-tertiary">
+                    <span aria-hidden className="flex-1 text-body text-label">{t("digest.sendAround")}</span>
+                    <FuzzySelect
                       id="digest-hour"
-                      value={digestHour}
-                      onChange={(e) => setDigestHour(Number(e.target.value))}
-                      className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
-                    >
-                      {DIGEST_HOURS.map((h) => (
-                        <option key={h.hour} value={h.hour}>
-                          {h.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
-                  </label>
+                      name="digestHour"
+                      variant="row"
+                      label={t("digest.sendAround")}
+                      value={String(digestHour)}
+                      onChange={(v) => setDigestHour(Number(v))}
+                      options={DIGEST_HOUR_OPTIONS}
+                    />
+                  </div>
                 ) : null}
               </div>
               <p className="px-4 text-footnote text-label-secondary">{t("digest.hint")}</p>

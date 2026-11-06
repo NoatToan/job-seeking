@@ -377,3 +377,42 @@ Status: accepted. Code: `db/migrations/028_query_indexes.sql`, `apps/api/src/ujc
 - **contributor-box issues go upstream**, not into the vendored copy: vote counts computed as
   per-row subqueries, `OFFSET` paging with a separate `count(*)`, and `ILIKE` search. See
   PERFORMANCE.md "Upstream".
+
+## Selects: our own fuzzy select everywhere, full backend lists (2026-11-07)
+
+Status: accepted. Code: `packages/ui/src/fuzzy.ts`, `packages/ui/src/components/fuzzy-select.tsx`,
+`packages/ui/src/search-keywords.ts`, `apps/web/src/app/{pill-controls,tech-filter,country-filter,work-hours,mobile-filters}.tsx`.
+
+- **Why ("lists show very few items").** The backend already sends everything
+  (`GET /api/jobs/facets`: 224 countries, 45 techs; `/api/sources`: 11). The client cut it:
+  `FuzzySelect` rendered at most 200 rows (`maxResults`) and the phone filter view sliced time zones
+  to 200, so with ~420 alphabetical zones nothing after early "Asia/…" (Ho Chi Minh, every
+  Australia/Europe/Pacific zone) and the last 24 countries could be scrolled to; the tech filter
+  showed only the frontend and backend groups, 10 chips each, so 25 of 45 techs (AWS, Kubernetes,
+  Docker, PostgreSQL, React Native…) were never offered. The rest of the pickers were native
+  `<select>`s, whose only search is the browser's first-letter type-ahead.
+- **No native `<select>` in the app.** Filter bar (Source, Posted, Remote region, Sort), tracker
+  status, profile country + time zone, CV country + digest hour and onboarding country all use
+  `FuzzySelect`. The filter bar keeps its pill look through `variant="pill"` (`PillSelect`); forms
+  use `variant="form"` (with `<label htmlFor>` → trigger `id`) or `variant="row"` (grouped settings
+  rows). `name` adds a hidden input so the value posts with a `<form>`; `required` / `invalid` /
+  `describedBy` map to ARIA. Not converted: `packages/contributor-box` (self-contained admin widget
+  without a `@ujc/ui` dependency).
+- **Search box only from 7 options** (`SEARCH_THRESHOLD`). Posted, Sort, Remote region and the
+  tracker status open as a plain list (letters still jump to a row, like a native select). Lists
+  that are long in production (countries) pass `searchable` so they always have it.
+- **Matching** (`fuzzy.ts`): lower case, accents folded (Vietnamese "việt" = "viet", "đ" = "d"),
+  separators `_ / - . ,` read as spaces. Tiers: exact > prefix > word start > acronym ("ny" → New
+  York, "hcm" → Ho Chi Minh) > substring > all words in any order > subsequence; inside a tier
+  earlier and shorter wins. Options carry `keywords` searched but not shown: countries get ISO code,
+  English and Vietnamese names and aliases (USA, UK, Holland…); zones get abbreviation, UTC/GMT
+  offset and aliases (Saigon, Hà Nội, NYC…). Matched letters of the label are highlighted.
+- **Behaviour**: ARIA select-only combobox trigger + listbox with `aria-activedescendant`; ↑ ↓
+  PageUp PageDown Home End, Enter picks, Esc closes and refocuses the trigger, typing on the closed
+  trigger opens it with that letter searched. Home/End move in the list even from the search box
+  (the box is short; caret moves are rarely needed there). Lists from 60 rows are virtualised
+  (fixed row height, only rows in view + 6 rendered, `aria-setsize`/`aria-posinset` kept), so every
+  zone and country is reachable without a cap. Phones (< 768px) open a bottom sheet with the search
+  on top (17px text so iOS doesn't zoom); no native picker.
+- **Tech filter**: every tech from the facets, grouped Frontend / Backend / Mobile / Data / Cloud &
+  DevOps, most common first, with a fuzzy search box over the chips (desktop panel and phone step).

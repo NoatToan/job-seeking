@@ -94,9 +94,9 @@ describe("Tracker", () => {
 
     await screen.findByText("Frontend Engineer");
 
-    const select = screen.getByLabelText("Status for Frontend Engineer");
+    fireEvent.click(screen.getByRole("combobox", { name: "Status for Frontend Engineer" }));
     await act(async () => {
-      fireEvent.change(select, { target: { value: "applied" } });
+      fireEvent.click(screen.getByRole("option", { name: "Applied" }));
     });
 
     await waitFor(() => {

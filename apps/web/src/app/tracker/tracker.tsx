@@ -8,6 +8,7 @@ import {
   buttonClasses,
   Card,
   EmptyState,
+  FuzzySelect,
   IconButton,
   NavBar,
   RefreshIcon,
@@ -97,21 +98,17 @@ function ApplicationCard({
 
       {job?.source ? <SourceBadge source={job.source} /> : null}
 
-      <label className="flex flex-col gap-1 text-footnote text-label-secondary">
-        {t("fields.status")}
-        <select
-          aria-label={t("statusForAria", { name })}
+      <div className="flex flex-col gap-1 text-footnote text-label-secondary">
+        <span aria-hidden>{t("fields.status")}</span>
+        <FuzzySelect
+          variant="form"
+          label={t("statusForAria", { name })}
           value={application.status}
-          onChange={(e) => onStatusChange(application.id, e.target.value as ApplicationStatus)}
-          className="h-9 rounded-control border border-control-border bg-background px-2 text-subheadline text-label focus-ring"
-        >
-          {STATUS_VALUES.map((value) => (
-            <option key={value} value={value}>
-              {statusLabel[value]}
-            </option>
-          ))}
-        </select>
-      </label>
+          onChange={(v) => onStatusChange(application.id, v as ApplicationStatus)}
+          options={STATUS_VALUES.map((value) => ({ value, label: statusLabel[value] }))}
+          size="sm"
+        />
+      </div>
 
       <label className="flex flex-col gap-1 text-footnote text-label-secondary">
         {t("fields.note")}
