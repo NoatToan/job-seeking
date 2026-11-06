@@ -13,6 +13,7 @@ import { JobDetail } from "@/app/jobs/job-detail";
 import { WorkHoursBadge } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { markViewed, useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
+import { jobPagePath } from "@/lib/job-url";
 import {
   OVERSCAN_ROWS,
   type RowWindow,
@@ -94,6 +95,7 @@ function DetailPanel({
         signedIn={signedIn}
         highlight={highlight}
         variant="panel"
+        pageHref={jobPagePath(job)}
       />
       {error && fetchId === job.id ? (
         <div className="mt-4">

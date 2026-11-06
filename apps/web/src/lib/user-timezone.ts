@@ -16,6 +16,11 @@ function readStored(): string | null {
   }
 }
 
+/** Prerender (no browser): a fixed zone, the same on every build machine. */
+function serverTimezone(): string {
+  return "UTC";
+}
+
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   return () => listeners.delete(onChange);
@@ -45,7 +50,10 @@ export interface UserTimezone {
 export function useUserTimezone(): UserTimezone {
   const { me, refresh } = useSession();
   const stored = useSyncExternalStore(subscribe, readStored, () => null);
-  const zone = me?.preferences.digestTz ?? stored ?? browserTimezone();
+  // The browser's zone through the same store, so a page prerendered at build time (on a UTC
+  // machine) hydrates with the build's value and then switches, instead of a hydration mismatch.
+  const browser = useSyncExternalStore(subscribe, browserTimezone, serverTimezone);
+  const zone = me?.preferences.digestTz ?? stored ?? browser;
 
   const setZone = useCallback(
     async (next: string) => {

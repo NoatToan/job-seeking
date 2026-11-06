@@ -19,6 +19,7 @@ Status: proposed (BA, 2026-10-29). This document is the contract the implementat
 | D9 | **Pluggable LLM provider**: `anthropic` (Anthropic API, server default), `claude_cli` (local `claude -p`, for dev and the runner), `fake` (tests). Each user has a daily scoring quota. | A Claude consumer subscription on a server must not be used to serve other users, and API keys give cost control and concurrency. |
 | D10 | **Work flow**: each GitHub issue gets a branch `feat/<key>-slug` and a PR with "Closes #n". **No Vercel deploy for now.** The Docker compose stack is the reference production target. | Tony's instruction. |
 | D11 | **MCP/API-first, crawl last** (idea from #1). Fetch order: (1) official or public JSON APIs and feeds, queried **on demand** when a user searches (SEEK JSON API, Himalayas/Remotive search, WWR RSS, ATS board APIs, Arc pages); (2) the small daily scheduled crawl, only for open feeds and ATS boards (polite, cached); (3) the local browser runner, only for sources with no API (LinkedIn/Glassdoor when the user is logged in). Source parsers (M3-09) live in `apps/crawler/src/job_crawler/sources` (one parser per source, returning its `JobRecord`); `apps/mcp` imports `job_crawler` as a path dependency and reuses the SEEK client (adapting it to its own tool-output shape), and `apps/api`'s live search calls the SEEK/Himalayas/Remotive clients directly. | Fewer requests to job sites ("no crawler spam"), fresher results, no browser needed for SEEK, and one parser per source instead of copies in two apps. |
+| D12 | **Static, indexable job pages built from a build-time snapshot** (2026-11-06). `/jobs/<title>-<company>-<id>/`, listings `/jobs/tech/<id>/`, `/jobs/country/<cc>/`, `/jobs/source/<id>/` and `/jobs/` are prerendered by the static export (`generateStaticParams`) from `apps/web/.seo/jobs.json`, written right before `next build` by `scripts/seo-snapshot.mjs` (one read-only query: jobs seen in the last 14 days with a description). The daily crawl triggers a rebuild through a Vercel Deploy Hook. The home page and `/jobs/view/?id=` stay client-rendered SPA screens; `/jobs/view/` becomes `noindex`. See §13. | Search engines need one stable URL per job with real HTML (title, canonical, JobPosting JSON-LD) — the SPA's single `/jobs/view/?id=` shell had none of that. This keeps D1 at runtime (the browser and the static host still never touch the database) and needs no server: only the build reads Postgres, like the migrations. |
 
 ## 2. Component view
 
@@ -625,6 +626,26 @@ gitignored). Backups use `pg_dump` daily with 14-day retention, plus a documente
 (`deploy/README.md`).
 The GitHub Actions `daily-crawl.yml` stays until the worker's `global_crawl` runs in a real deployment, and is
 then reduced to `workflow_dispatch` only.
+
+## 13. SEO job pages (D12)
+
+**Options considered** (5.3k jobs on 2026-11-06, ~500 new a day, all within the 14-day window):
+
+| Option | For | Against |
+|---|---|---|
+| A. Build-time static pages from a DB snapshot (**chosen**) | Real HTML on a CDN (fast, no runtime cost), reuses `JobDetail` and the design system, no new server, works on Vercel and the Caddy deploy alike | Pages are as fresh as the last build (daily); output grows with the job count (~5.1k jobs ≈ 1 GB / 21k files, ~2.5 min build on a 10-core laptop) |
+| B. Server-render job HTML from the FastAPI function | Always fresh, real 410 for removed jobs, any scale | A second renderer: `JobDetail`, badges, working hours and the theme would have to be rewritten as Python templates, and kept in sync |
+| C. Drop `output: "export"` for SSR/ISR on Vercel | ISR, real status codes | Reverses D1/D4, changes the deploy model and the Docker target; far larger change than the problem |
+
+**How it works**
+- `scripts/seo-snapshot.mjs` (run by `apps/web`'s `build` script) writes `apps/web/.seo/jobs.json`. Without `DATABASE_URL` (CI, laptops) it writes an empty snapshot and the build exports one `_none` placeholder per dynamic route (`noindex`, never linked); on Vercel a missing `DATABASE_URL` or a failing query fails the build, so the previous deployment stays live instead of unpublishing every job page. `SEO_ACTIVE_DAYS` (14) and `SEO_MAX_JOBS` (20000) tune the window and the cap; `SEO_SNAPSHOT_FILE` uses a JSON file instead of the database.
+- Job URL: `/jobs/<title words>-<company words>-<id>/` (`apps/web/src/lib/job-url.ts`). Only the trailing id identifies the job.
+- Each job page: unique title/description, canonical, Open Graph/Twitter, `JobPosting` JSON-LD (only fields we have: `directApply: false`, `TELECOMMUTE` + `applicantLocationRequirements` for remote, `validThrough` = last crawl sighting + the 14-day window, which is exactly when the page drops out of the build unless a later crawl sees the job again), `BreadcrumbList`, a visible source attribution with a link to the original posting, related jobs and listing links. Listing pages carry an `ItemList`, never `JobPosting`, and only exist with enough jobs (3 per tech/source, 10 per country).
+- Expired/removed jobs: a job not seen by a crawl for 14 days is left out of the next build, so its URL answers **404** (Vercel serves `404.html` with a 404 status through the `handle: error` route in `vercel.json`; a static host cannot send 410). The 404 page sends a person on to `/jobs/view/?id=<id>`, which also covers jobs found after the last build.
+- Sitemaps: `/sitemap.xml` (home, `/jobs/`, listings) plus `/jobs/sitemap/<n>.xml` (40,000 job URLs each, `lastmod` = last crawl that saw the job), all listed in `robots.txt`.
+- Freshness: `.github/workflows/daily-crawl.yml` POSTs to `secrets.VERCEL_DEPLOY_HOOK_URL` after the crawl (skipped when the secret is not set).
+
+**Revisit when** the active set passes ~20k jobs or the build nears 20 minutes: move to option B for the job pages only (keep listings static), or shard the build.
 
 ## 12. References
 

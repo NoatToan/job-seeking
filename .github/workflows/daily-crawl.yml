@@ -44,3 +44,18 @@ jobs:
         run: uv run python -m job_crawler --recompute-derived
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Rebuild the site so the static job pages and sitemaps (scripts/seo-snapshot.mjs) follow
+      # today's crawl: new jobs get a page, jobs no longer listed drop out (404). Needs the
+      # repository secret VERCEL_DEPLOY_HOOK_URL (a Vercel Deploy Hook on `main`); skipped without it.
+      - name: Rebuild static job pages
+        if: ${{ !cancelled() }}
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL not set; skipping the rebuild"
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 30 -X POST "$DEPLOY_HOOK" > /dev/null
+          echo "Deploy hook triggered"
