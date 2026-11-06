@@ -179,3 +179,37 @@ def test_anonymous_constraints(conn: psycopg.Connection):
         )
     with pytest.raises(psycopg.errors.CheckViolation):
         conn.execute("INSERT INTO feedback_items (kind, title) VALUES ('idea', 'abc')")
+
+
+def test_public_counts_and_signed_out_board(conn: psycopg.Connection):
+    repo = PgFeedbackRepository(conn)
+    before = repo.public_counts()
+    assert set(before) == {"approved", "planned", "done"}
+    ids = {}
+    for status in ("new", "under_review", "approved", "planned", "planned", "done", "rejected"):
+        item_id = repo.create(2, _req(title=f"Count {status}"), user_agent=None, screenshot=None)
+        if status != "new":
+            repo.update(item_id, {"status": status}, actor_id=1)
+        ids[status] = item_id
+    repo.vote(ids["done"], 3)
+    after = repo.public_counts()
+    assert after == {
+        "approved": before["approved"] + 1,
+        "planned": before["planned"] + 2,
+        "done": before["done"] + 1,
+    }
+    # A signed-out viewer (`viewer_id` None) lists the board; nothing is "voted".
+    rows, total = repo.list_items(
+        viewer_id=None,
+        scope="board",
+        kind=None,
+        status="done",
+        q="Count",
+        sort="top",
+        limit=50,
+        offset=0,
+    )
+    assert total == 1
+    assert rows[0]["id"] == ids["done"]
+    assert rows[0]["vote_count"] == 1
+    assert rows[0]["voted"] is False

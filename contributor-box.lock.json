@@ -1,7 +1,7 @@
 {
   "upstream": "https://github.com/NoatToan/contributor-box.git",
   "ref": "main",
-  "commit": "0b62d9a936be3fdf3f4b1c3c66bb6322e9053968",
+  "commit": "e6e8299145db570f8099907b717b62b6409ac078",
   "files": [
     "apps/api/src/contributor_box/VENDORED.md",
     "apps/api/src/contributor_box/__init__.py",
@@ -26,6 +26,7 @@
     "packages/contributor-box/src/__tests__/board.test.tsx",
     "packages/contributor-box/src/__tests__/helpers.tsx",
     "packages/contributor-box/src/__tests__/pure.test.ts",
+    "packages/contributor-box/src/__tests__/roadmap.test.tsx",
     "packages/contributor-box/src/__tests__/widget.test.tsx",
     "packages/contributor-box/src/admin.tsx",
     "packages/contributor-box/src/api.ts",
@@ -35,6 +36,7 @@
     "packages/contributor-box/src/form.tsx",
     "packages/contributor-box/src/index.ts",
     "packages/contributor-box/src/picker.tsx",
+    "packages/contributor-box/src/roadmap.tsx",
     "packages/contributor-box/src/safe-url.ts",
     "packages/contributor-box/src/selector.ts",
     "packages/contributor-box/src/strings.ts",

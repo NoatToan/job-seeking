@@ -5,6 +5,7 @@ import type {
   FeedbackMeta,
   FeedbackNote,
   FeedbackPage,
+  FeedbackStats,
   ListFeedbackQuery,
   NoteVisibility,
 } from "./types";
@@ -18,6 +19,8 @@ export type Request = <T>(path: string, init?: { method?: string; body?: unknown
 export interface FeedbackApi {
   meta(): Promise<FeedbackMeta>;
   list(query?: ListFeedbackQuery): Promise<FeedbackPage>;
+  /** Items per public status. Works signed out when the server has `public_board=True`. */
+  stats(): Promise<FeedbackStats>;
   get(id: string): Promise<FeedbackItem>;
   create(input: CreateFeedbackInput): Promise<FeedbackItem>;
   vote(id: string, on: boolean): Promise<FeedbackItem>;
@@ -54,6 +57,7 @@ export function createFeedbackApi(request: Request, options: FeedbackApiOptions 
   return {
     meta: () => request<FeedbackMeta>(`${prefix}/meta`),
     list: (q = {}) => request<FeedbackPage>(`${prefix}${query(q)}`),
+    stats: () => request<FeedbackStats>(`${prefix}/stats`),
     get: (itemId) => request<FeedbackItem>(`${prefix}/${id(itemId)}`),
     create: (input) => request<FeedbackItem>(prefix, { method: "POST", body: input }),
     vote: (itemId, on) =>

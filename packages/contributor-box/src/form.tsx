@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { captureViewport, type CaptureOptions, type CapturedScreenshot } from "./capture";
 import { useContributor } from "./context";
@@ -9,6 +9,9 @@ import { KINDS, type FeedbackItem, type FeedbackKind } from "./types";
 import { Button, Choice, cx, inputClasses, Label } from "./ui";
 
 export type CaptureFn = (options: CaptureOptions) => Promise<CapturedScreenshot>;
+
+/** The details field grows with its text up to this height (about eight lines), then scrolls. */
+const BODY_MAX_PX = 192;
 
 export interface FeedbackFormProps {
   defaultKind?: FeedbackKind;
@@ -49,6 +52,7 @@ export function FeedbackForm({
   const [error, setError] = useState<string | null>(null);
   const [titleError, setTitleError] = useState(false);
   const pointButton = useRef<HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const returnFocus = useRef(false);
   const alive = useRef(true);
   const captureRun = useRef(0);
@@ -59,6 +63,15 @@ export function FeedbackForm({
       alive.current = false;
     };
   }, []);
+
+  // Auto-grow the details field (layout effect: no flash at the old height).
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    // Not laid out (hidden panel, jsdom): keep the natural `rows` height.
+    if (!el || el.offsetParent === null) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight + 2, BODY_MAX_PX)}px`;
+  }, [body]);
 
   // After the picker closes (pick or cancel), put focus back on the button that opened it.
   useEffect(() => {
@@ -157,7 +170,7 @@ export function FeedbackForm({
   const titleErrorId = `${uid}-title-error`;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
       <Choice
         name={`${uid}-kind`}
         label={s.kindLabel}
@@ -189,9 +202,14 @@ export function FeedbackForm({
       </div>
       <div>
         <Label htmlFor={bodyId}>{s.bodyLabel}</Label>
+        {/* Starts at two lines and grows with the text up to BODY_MAX_PX, so the panel fits its
+            content instead of scrolling; past that the textarea scrolls itself. */}
         <textarea
           id={bodyId}
-          className={cx(inputClasses, "min-h-24 resize-y")}
+          ref={bodyRef}
+          rows={2}
+          className={cx(inputClasses, "block resize-none overflow-y-auto")}
+          style={{ maxHeight: BODY_MAX_PX }}
           value={body}
           maxLength={5000}
           placeholder={s.bodyPlaceholder}
@@ -214,9 +232,11 @@ export function FeedbackForm({
       ) : null}
 
       {withPageContext ? (
-        <div className="flex flex-col gap-3 rounded-card bg-fill-tertiary p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button ref={pointButton} size="sm" variant="tinted" onClick={startPicking}>
+        // Compact rows: "point at the page" (+ what was picked) and the screenshot toggle. The
+        // screenshot hint and preview only appear once the screenshot is turned on.
+        <div className="flex flex-col gap-2 rounded-card bg-fill-tertiary p-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button ref={pointButton} size="sm" variant="tinted" onClick={startPicking} className="shrink-0">
               {pick ? s.repointButton : s.pointButton}
             </Button>
             {pick ? (
@@ -226,43 +246,50 @@ export function FeedbackForm({
                     ? s.pickedElement(pick.text || pick.selector)
                     : s.pickedRegion(pick.region.width, pick.region.height)}
                 </span>
-                <Button size="sm" variant="plain" onClick={() => setPick(null)}>
+                <Button size="sm" variant="plain" onClick={() => setPick(null)} className="shrink-0">
                   {s.clearPoint}
                 </Button>
               </>
             ) : null}
           </div>
-          <label htmlFor={shotId} className="flex cursor-pointer items-start gap-2 text-subheadline text-label">
+          <label htmlFor={shotId} className="flex cursor-pointer items-center gap-2 text-subheadline text-label">
             <input
               id={shotId}
               type="checkbox"
-              className="mt-1 size-4 accent-tint"
+              className="size-4 shrink-0 accent-tint"
               checked={withShot}
               onChange={(e) => toggleShot(e.target.checked)}
+              aria-describedby={withShot ? `${shotId}-hint` : undefined}
             />
-            <span>
-              {s.screenshotLabel}
-              <span className="block text-footnote text-label-tertiary">{s.screenshotHint}</span>
-            </span>
+            <span className="min-w-0">{s.screenshotLabel}</span>
           </label>
-          {withShot && shotState === "capturing" ? (
-            <p role="status" className="text-footnote text-label-secondary">
-              {s.screenshotCapturing}
-            </p>
-          ) : null}
-          {withShot && shotState === "failed" ? (
-            <p role="status" className="text-footnote text-warning-ink">
-              {s.screenshotFailed}
-            </p>
-          ) : null}
-          {withShot && shot ? (
-            // A data: URL of the canvas we just drew; allowed by `img-src data:`.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={shot.dataUrl}
-              alt={s.screenshotAlt}
-              className="max-h-40 w-full rounded-control border border-separator object-contain object-top"
-            />
+          {withShot ? (
+            <div className="flex items-start gap-2.5">
+              {shot ? (
+                // A data: URL of the canvas we just drew; allowed by `img-src data:`.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={shot.dataUrl}
+                  alt={s.screenshotAlt}
+                  className="h-16 w-24 shrink-0 rounded-control-sm border border-separator bg-background object-cover object-top"
+                />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <p id={`${shotId}-hint`} className="text-footnote text-label-tertiary">
+                  {s.screenshotHint}
+                </p>
+                {shotState === "capturing" ? (
+                  <p role="status" className="text-footnote text-label-secondary">
+                    {s.screenshotCapturing}
+                  </p>
+                ) : null}
+                {shotState === "failed" ? (
+                  <p role="status" className="text-footnote text-warning-ink">
+                    {s.screenshotFailed}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}

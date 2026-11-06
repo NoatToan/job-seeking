@@ -31,6 +31,7 @@ export function fakeApi(overrides: Partial<FeedbackApi> = {}): FeedbackApi {
   return {
     meta: vi.fn(async () => ({ kinds: [], statuses: [], publicStatuses: [], isAdmin: false })),
     list: vi.fn(async () => ({ items: [], total: 0, limit: 20, offset: 0 })),
+    stats: vi.fn(async () => ({ counts: { approved: 0, planned: 0, done: 0 }, total: 0 })),
     get: vi.fn(async (id: string) => makeItem({ id })),
     create: vi.fn(async () => makeItem({ status: "new", isMine: true })),
     vote: vi.fn(async (id: string, on: boolean) => makeItem({ id, voted: on, voteCount: on ? 3 : 2 })),

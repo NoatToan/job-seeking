@@ -160,8 +160,32 @@ export function Choice<T extends string>({
   );
 }
 
-export function formatDate(iso: string | null): string {
+export function formatDate(iso: string | null, locale?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(locale);
+}
+
+const RELATIVE_STEPS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+  ["second", 60],
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 7],
+  ["week", 4.35],
+  ["month", 12],
+  ["year", Number.POSITIVE_INFINITY],
+];
+
+/** "3 days ago" / "3 ngày trước" in `locale`. Empty for a missing or invalid date. */
+export function relativeTime(iso: string | null, locale: string, now: number = Date.now()): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  let value = (then - now) / 1000;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, size] of RELATIVE_STEPS) {
+    if (Math.abs(value) < size) return rtf.format(Math.round(value), unit);
+    value /= size;
+  }
+  return "";
 }

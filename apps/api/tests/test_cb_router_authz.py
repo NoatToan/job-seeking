@@ -486,3 +486,156 @@ def test_allow_anonymous_requires_optional_deps():
     )
     with pytest.raises(ValueError):
         create_feedback_router(deps, allow_anonymous=True)
+
+
+# --- public board (opt-in) ------------------------------------------------------------------
+
+
+@pytest.fixture
+def public_client(repo: InMemoryFeedbackRepository) -> TestClient:
+    return TestClient(build_app(repo, public_board=True))
+
+
+def set_status(client: TestClient, item_id: str, status: str) -> None:
+    resp = client.patch(
+        f"/api/feedback/{item_id}", json={"status": status}, headers=as_user(client, ADMIN)
+    )
+    assert resp.status_code == 200, resp.text
+
+
+def seed_board(client: TestClient) -> dict[str, str]:
+    """One item per status; returns status -> id. Each public item gets a vote from OTHER."""
+    ids: dict[str, str] = {}
+    for status in ("new", "under_review", "approved", "planned", "done", "rejected"):
+        item = create(client, title=f"Item {status}")
+        if status != "new":
+            set_status(client, item["id"], status)
+        ids[status] = item["id"]
+    for status in ("approved", "planned", "done"):
+        resp = client.put(f"/api/feedback/{ids[status]}/vote", headers=as_user(client, OTHER))
+        assert resp.status_code == 200
+    return ids
+
+
+def test_public_board_is_off_by_default(client: TestClient):
+    create(client)
+    assert client.get("/api/feedback?scope=board").status_code == 401
+    assert client.get("/api/feedback/stats").status_code == 401
+    assert client.get("/api/feedback/1").status_code == 401
+
+
+def test_signed_out_board_lists_public_items_without_private_fields(public_client: TestClient):
+    ids = seed_board(public_client)
+    resp = public_client.get("/api/feedback?scope=board&sort=top")
+    assert resp.status_code == 200, resp.text
+    page = resp.json()
+    assert {i["status"] for i in page["items"]} == {"approved", "planned", "done"}
+    assert page["total"] == 3
+    for item in page["items"]:
+        assert item["voteCount"] == 1
+        assert item["voted"] is False
+        assert item["canVote"] is False
+        assert item["isMine"] is False
+        assert item["canDelete"] is False
+        assert item["context"] is None
+        assert item["author"] is None
+    # Default scope is the board too.
+    assert public_client.get("/api/feedback").json()["total"] == 3
+    # A status filter for a private status is empty, never a way in.
+    for status in ("new", "under_review", "rejected"):
+        resp = public_client.get(f"/api/feedback?scope=board&status={status}")
+        assert resp.json()["items"] == []
+    planned = public_client.get("/api/feedback?status=planned").json()["items"]
+    assert [i["id"] for i in planned] == [ids["planned"]]
+
+
+@pytest.mark.parametrize("scope", ["mine", "all"])
+def test_signed_out_cannot_list_other_scopes(public_client: TestClient, scope: str):
+    seed_board(public_client)
+    resp = public_client.get(f"/api/feedback?scope={scope}")
+    assert resp.status_code == 401
+
+
+def test_signed_out_detail_public_only_with_public_notes(public_client: TestClient):
+    ids = seed_board(public_client)
+    planned = ids["planned"]
+    for visibility in ("internal", "public"):
+        public_client.post(
+            f"/api/feedback/{planned}/notes",
+            json={"body": f"{visibility} note", "visibility": visibility},
+            headers=as_user(public_client, ADMIN),
+        )
+    resp = public_client.get(f"/api/feedback/{planned}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["context"] is None
+    assert body["author"] is None
+    assert body["canVote"] is False
+    assert body["voted"] is False
+    notes = [n["body"] for n in body["notes"] if n["kind"] == "note"]
+    assert notes == ["public note"]
+    assert all(n["authorEmail"] is None for n in body["notes"])
+    for status in ("new", "under_review", "rejected"):
+        assert public_client.get(f"/api/feedback/{ids[status]}").status_code == 404
+    assert public_client.get("/api/feedback/999").status_code == 404
+
+
+def test_signed_out_still_cannot_vote_or_see_screenshots(public_client: TestClient):
+    ids = seed_board(public_client)
+    approved = ids["approved"]
+    vote = public_client.put(f"/api/feedback/{approved}/vote", headers={"X-CSRF-Token": CSRF})
+    assert vote.status_code == 401
+    assert public_client.get(f"/api/feedback/{approved}/screenshot").status_code == 401
+    assert public_client.get("/api/feedback/meta").status_code == 401
+    # Not opened by `public_board` alone: anonymous create stays off.
+    resp = public_client.post("/api/feedback", json=IDEA, headers={"X-CSRF-Token": CSRF})
+    assert resp.status_code == 401
+
+
+def test_signed_in_reads_unchanged_with_public_board(public_client: TestClient):
+    ids = seed_board(public_client)
+    board = public_client.get("/api/feedback", headers=as_user(public_client, OTHER)).json()
+    assert all(i["voted"] and i["canVote"] for i in board["items"])
+    mine = public_client.get("/api/feedback?scope=mine", headers=as_user(public_client, AUTHOR))
+    assert mine.json()["total"] == 6
+    # Admin still reads private items and context; the author still sees their own.
+    new_path = f"/api/feedback/{ids['new']}"
+    seen = public_client.get(new_path, headers=as_user(public_client, ADMIN)).json()
+    assert seen["context"] is not None
+    assert seen["author"] is not None
+    own = public_client.get(new_path, headers=as_user(public_client, AUTHOR))
+    assert own.json()["isMine"] is True
+    assert public_client.get(new_path, headers=as_user(public_client, OTHER)).status_code == 404
+    everything = public_client.get("/api/feedback?scope=all", headers=as_user(public_client, ADMIN))
+    assert everything.json()["total"] == 6
+
+
+def test_stats_count_public_statuses_only(public_client: TestClient):
+    seed_board(public_client)
+    extra = create(public_client, title="Another planned")
+    set_status(public_client, extra["id"], "planned")
+    expected = {"counts": {"approved": 1, "planned": 2, "done": 1}, "total": 4}
+    assert public_client.get("/api/feedback/stats").json() == expected
+    # Same numbers for everyone, admins included (private statuses are the admin queue's job).
+    as_admin = public_client.get("/api/feedback/stats", headers=as_user(public_client, ADMIN))
+    assert as_admin.json() == expected
+
+
+def test_stats_needs_sign_in_without_public_board(client: TestClient):
+    assert client.get("/api/feedback/stats").status_code == 401
+    resp = client.get("/api/feedback/stats", headers=as_user(client, OTHER))
+    assert resp.json() == {"counts": {"approved": 0, "planned": 0, "done": 0}, "total": 0}
+
+
+def test_public_board_requires_optional_deps():
+    from contributor_box.router import FeedbackDeps, create_feedback_router
+
+    deps = FeedbackDeps(
+        current_user=lambda: None,
+        viewer_is_admin=lambda: False,
+        get_repo=lambda: None,
+        require_csrf=lambda: None,
+        optional_user=lambda: None,
+    )
+    with pytest.raises(ValueError):
+        create_feedback_router(deps, public_board=True)

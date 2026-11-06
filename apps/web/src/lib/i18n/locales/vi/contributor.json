@@ -1,12 +1,18 @@
 {
   "nav": {
     "contribute": "Đóng góp",
-    "reviewFeedback": "Duyệt góp ý"
+    "reviewFeedback": "Duyệt góp ý",
+    "roadmap": "Lộ trình"
   },
   "page": {
     "title": "Đóng góp",
     "subtitle": "Bình chọn ý tưởng, đề xuất tính năng và theo dõi những gì bạn đã gửi.",
     "adminTitle": "Duyệt góp ý",
     "adminSubtitle": "Duyệt, lên kế hoạch và trả lời những gì người dùng gửi."
+  },
+  "roadmap": {
+    "title": "Lộ trình",
+    "subtitle": "Ý tưởng và yêu cầu từ cộng đồng, cùng trạng thái của từng mục: đang cân nhắc, đã lên kế hoạch hay đã xong. Bình chọn cho điều bạn muốn có tiếp theo.",
+    "seeRoadmap": "Xem lộ trình"
   }
 }

@@ -117,3 +117,23 @@ the OS; this adds a user choice and cleans up the few places that bypassed the t
   the white tile behind tech logos (so dark logos stay visible), white glyphs on the brand
   gradient, the Toggle knob, source brand colours, the canvas screenshot fill in
   contributor-box and the OG image.
+
+## Public roadmap (2026-11-07)
+
+Status: accepted. Code: `apps/web/src/app/roadmap/`, `apps/api/src/ujc_api/routers/feedback.py`
+(`public_board=True`), contributor-box `Roadmap` (upstream DECISIONS 14 and 15).
+
+- **Public, indexed.** `/roadmap/` works signed out (`lib/public-routes.ts`), has its own title,
+  description, canonical and Open Graph tags, and is listed in `sitemap.xml`; robots.txt already
+  allows it. `/contribute/` stays signed-in and `noindex`.
+- **Columns are the public statuses only**: "Under consideration" (`approved`), "Planned", "Done".
+  `under_review` is the private triage step and can hold unmoderated text or personal details, so
+  it is not shown; there is no "In progress" status and none was added (it would need a migration
+  and an admin workflow change).
+- **Signed out** sees vote counts as a "Sign in to vote" link; "Suggest an idea" opens the floating
+  widget with "Feature idea" preselected (guests can send, see "Anonymous feedback").
+- **Navigation.** TopNav item for everyone; on phones a tab for signed-out visitors (Jobs, Blog,
+  Roadmap) and an account-sheet row for signed-in users (their five tabs are unchanged);
+  `/contribute/` links to it.
+- **Feedback panel** sizes to its content (no inner scrollbar at 1440x900 or 390x844, signed in or
+  out); it only scrolls when the viewport is too short.

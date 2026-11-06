@@ -1,12 +1,18 @@
 {
   "nav": {
     "contribute": "Contribute",
-    "reviewFeedback": "Review feedback"
+    "reviewFeedback": "Review feedback",
+    "roadmap": "Roadmap"
   },
   "page": {
     "title": "Contribute",
     "subtitle": "Vote on ideas, suggest features and follow what you sent us.",
     "adminTitle": "Review feedback",
     "adminSubtitle": "Approve, plan and answer what people send."
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "subtitle": "Ideas and requests from the community, and where each one stands: under consideration, planned or done. Vote for what you want next.",
+    "seeRoadmap": "See the roadmap"
   }
 }
