@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ElementType, ReactNode } from "react";
+import type { ElementType, MouseEvent, ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { openToLabel } from "@ujc/core";
 import { cx } from "../cx";
@@ -156,6 +156,81 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
           {actions ? <div className="flex items-center gap-1.5">{actions}</div> : null}
         </div>
       ) : null}
+    </article>
+  );
+}
+
+export interface JobListItemProps {
+  job: Job;
+  /** In-app details page; the whole row links there (small screens / open in new tab). */
+  href: string;
+  /** Link component for `href` (Next `Link`). Default "a". */
+  linkAs?: ElementType;
+  /** Highlighted as the job shown in the detail panel. */
+  selected?: boolean;
+  /** Click on the row. Call `event.preventDefault()` to stay on the list (wide screens). */
+  onSelect?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Small action buttons (Save), kept clickable above the row link. */
+  actions?: ReactNode;
+  className?: string;
+}
+
+/**
+ * Compact job row for the list + detail layout: just enough to scan (title, company, place, source,
+ * age, fit), while the detail panel on the right carries the rest. The whole row is one link
+ * (stretched `::after`), so it still works as a plain link on phones and with ⌘-click.
+ */
+export function JobListItem({
+  job,
+  href,
+  linkAs: LinkAs = "a",
+  selected = false,
+  onSelect,
+  actions,
+  className,
+}: JobListItemProps) {
+  const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
+  return (
+    <article
+      data-job-id={job.id}
+      aria-current={selected ? "true" : undefined}
+      className={cx(
+        "relative flex gap-3 rounded-card p-3 transition-[background-color,box-shadow,transform] duration-200 ease-spring",
+        selected
+          ? "bg-tint-soft shadow-raised ring-1 ring-tint/40 lg:translate-x-1"
+          : "bg-grouped-secondary shadow-card hover:shadow-raised",
+        className,
+      )}
+    >
+      <Avatar name={job.company || job.title} shape="rounded" size={32} />
+      <div className="min-w-0 flex-1">
+        <h3 className="line-clamp-2 text-subheadline font-semibold text-label">
+          <LinkAs
+            href={href}
+            onClick={onSelect}
+            className="rounded-control-sm after:absolute after:inset-0 after:rounded-card focus-ring"
+          >
+            {job.title}
+          </LinkAs>
+        </h3>
+        <p className="mt-0.5 truncate text-footnote text-label-secondary">
+          <span className="font-medium">{job.company}</span>
+          {job.location ? ` · ${job.location}` : ""}
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-caption text-label-secondary">
+          <SourceBadge source={job.source} />
+          {job.remote ? (
+            <Badge tone="info" icon={<GlobeIcon size={11} strokeWidth={2.25} />}>
+              Remote
+            </Badge>
+          ) : null}
+          {posted ? <span>{posted}</span> : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+        {job.match ? <MatchBadge score={job.match.score} /> : <span />}
+        {actions ? <div className="relative z-10 flex items-center gap-1">{actions}</div> : null}
+      </div>
     </article>
   );
 }

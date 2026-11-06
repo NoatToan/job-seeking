@@ -282,6 +282,7 @@
   --animate-pop-in: ujc-pop-in 250ms var(--ease-spring) both;
   --animate-toast-in: ujc-toast-in 300ms var(--ease-spring) both;
   --animate-shimmer: ujc-shimmer 1.4s ease-in-out infinite;
+  --animate-detail-in: ujc-detail-in 280ms var(--ease-spring) both;
 
   @keyframes ujc-fade-in {
     from {
@@ -303,6 +304,12 @@
     from {
       opacity: 0;
       transform: translateY(-12px) scale(0.98);
+    }
+  }
+  @keyframes ujc-detail-in {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
     }
   }
   @keyframes ujc-shimmer {

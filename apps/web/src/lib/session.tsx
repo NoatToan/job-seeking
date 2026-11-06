@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { MeResponse } from "@ujc/core";
 import { ApiError, getMe, logout as apiLogout, setUnauthorizedHandler } from "./api";
 import { isPublicRoute } from "./public-routes";
+import { clearViewCache } from "./view-cache";
 
 export interface SessionValue {
   /** `null` while loading, or once we know the visitor isn't signed in. */
@@ -84,6 +85,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Clear local state regardless of whether the network call succeeded.
     } finally {
+      // Cached feed pages / job details belong to the previous user.
+      clearViewCache();
       setMe(null);
       router.replace("/login/");
     }

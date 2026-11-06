@@ -16,6 +16,8 @@ export interface NavBarProps {
   trailing?: ReactNode;
   /** Content under the large title, e.g. a SearchField or SegmentedControl. */
   children?: ReactNode;
+  /** Use the wide content column (list + detail screens). Default false (max-w-5xl). */
+  wide?: boolean;
   className?: string;
 }
 
@@ -24,7 +26,8 @@ export interface NavBarProps {
  * once it scrolls under the bar the small inline title fades in and the bar gets its material +
  * hairline (exactly like UINavigationBar).
  */
-export function NavBar({ title, largeTitle = true, leading, trailing, children, className }: NavBarProps) {
+export function NavBar({ title, largeTitle = true, leading, trailing, children, wide = false, className }: NavBarProps) {
+  const column = wide ? "max-w-7xl" : "max-w-5xl";
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [collapsed, setCollapsed] = useState(!largeTitle);
 
@@ -50,7 +53,7 @@ export function NavBar({ title, largeTitle = true, leading, trailing, children, 
           className,
         )}
       >
-        <div className="relative mx-auto flex h-11 max-w-5xl items-center gap-1 px-2 sm:px-4">
+        <div className={cx("relative mx-auto flex h-11 items-center gap-1 px-2 sm:px-4", column)}>
           <div className="flex min-w-11 flex-1 items-center">{leading}</div>
           {largeTitle ? (
             <p
@@ -69,7 +72,7 @@ export function NavBar({ title, largeTitle = true, leading, trailing, children, 
         </div>
       </header>
       {largeTitle || children ? (
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 pt-1 pb-3">
+        <div className={cx("mx-auto flex w-full flex-col gap-3 px-4 pt-1 pb-3", column)}>
           {largeTitle ? (
             <h1 ref={titleRef} className="text-large-title text-label font-display">
               {title}

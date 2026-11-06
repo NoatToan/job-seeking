@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readViewCache, writeViewCache } from "./view-cache";
 
 export interface InfinitePage<T> {
   items: T[];
@@ -18,6 +19,20 @@ export interface UseInfiniteListResult<T> {
   loadMore: () => void;
   /** Re-fetches the page that just failed (first page if the list is still empty). */
   retry: () => void;
+  /** `true` when this mount started from the view cache (Back navigation) instead of fetching. */
+  restored: boolean;
+}
+
+interface CachedList<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export interface UseInfiniteListOptions<P> {
+  onPage?: (page: P) => void;
+  /** Keeps the loaded pages in the view cache (`lib/view-cache.ts`) under this key, so coming
+   * back to the screen restores them instead of refetching page 1. Must change with `deps`. */
+  cacheKey?: string;
 }
 
 /**
@@ -32,21 +47,30 @@ export interface UseInfiniteListResult<T> {
 export function useInfiniteList<T, P extends InfinitePage<T>>(
   fetchPage: (cursor: string | undefined) => Promise<P>,
   deps: readonly unknown[],
-  onPage?: (page: P) => void,
+  options: UseInfiniteListOptions<P> | ((page: P) => void) = {},
 ): UseInfiniteListResult<T> {
-  const [items, setItems] = useState<T[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { onPage, cacheKey } = typeof options === "function" ? { onPage: options, cacheKey: undefined } : options;
+  const cacheId = cacheKey ? `list:${cacheKey}` : undefined;
+  // Read once on mount: a cache hit renders the previous pages on the very first paint.
+  const [initialCache] = useState(() => (cacheId ? readViewCache<CachedList<T>>(cacheId) : undefined));
+  const [items, setItems] = useState<T[]>(initialCache?.items ?? []);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialCache?.nextCursor ?? null);
+  const [loading, setLoading] = useState(!initialCache);
   const [error, setError] = useState<Error | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const [initialized, setInitialized] = useState(Boolean(initialCache));
   const fetchingRef = useRef(false);
-  const cursorRef = useRef<string | undefined>(undefined);
+  const cursorRef = useRef<string | undefined>(initialCache?.nextCursor ?? undefined);
   const fetchPageRef = useRef(fetchPage);
   const onPageRef = useRef(onPage);
+  const cacheIdRef = useRef(cacheId);
+  // The deps key whose pages are already on screen from the cache (survives StrictMode's double
+  // effect run, unlike a "skip once" flag).
+  const restoredKeyRef = useRef(initialCache ? cacheId : undefined);
 
   useEffect(() => {
     fetchPageRef.current = fetchPage;
     onPageRef.current = onPage;
+    cacheIdRef.current = cacheId;
   });
 
   const run = useCallback((cursor: string | undefined, reset: boolean) => {
@@ -57,7 +81,12 @@ export function useInfiniteList<T, P extends InfinitePage<T>>(
     fetchPageRef
       .current(cursor)
       .then((page) => {
-        setItems((prev) => (reset ? page.items : [...prev, ...page.items]));
+        setItems((prev) => {
+          const next = reset ? page.items : [...prev, ...page.items];
+          const id = cacheIdRef.current;
+          if (id) writeViewCache<CachedList<T>>(id, { items: next, nextCursor: page.nextCursor });
+          return next;
+        });
         setNextCursor(page.nextCursor);
         cursorRef.current = page.nextCursor ?? undefined;
         setInitialized(true);
@@ -73,10 +102,11 @@ export function useInfiniteList<T, P extends InfinitePage<T>>(
   }, []);
 
   useEffect(() => {
+    if (cacheId && restoredKeyRef.current === cacheId) return;
+    restoredKeyRef.current = undefined;
     cursorRef.current = undefined;
     // Resetting state here (rather than deriving it) is what lets a filter change synchronously
     // clear the stale previous page before the new page's request resolves.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems([]);
     setNextCursor(null);
     setInitialized(false);
@@ -93,5 +123,5 @@ export function useInfiniteList<T, P extends InfinitePage<T>>(
     run(items.length ? cursorRef.current : undefined, items.length === 0);
   }, [run, items.length]);
 
-  return { items, nextCursor, loading, error, initialized, loadMore, retry };
+  return { items, nextCursor, loading, error, initialized, loadMore, retry, restored: Boolean(initialCache) };
 }

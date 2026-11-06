@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@ujc/ui";
 
@@ -178,5 +178,58 @@ describe("Home", () => {
     await waitFor(() => expect(screen.getByText("Feed Job")).toBeTruthy(), { timeout: 5000 });
     const jobsCalls = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/jobs"));
     expect(jobsCalls).toHaveLength(0);
+  });
+
+  it("restores the list from the view cache on Back instead of refetching", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs")) {
+        return Promise.resolve(jsonResponse(200, { items: [job("1", "Cached Job")], nextCursor: null }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = renderHome();
+    await waitFor(() => expect(screen.getByText("Cached Job")).toBeTruthy(), { timeout: 5000 });
+    first.unmount(); // navigate to a job…
+
+    renderHome(); // …and back: the list is on the very first render, no skeleton
+    expect(screen.getByText("Cached Job")).toBeTruthy();
+    const jobsCalls = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/jobs"));
+    expect(jobsCalls).toHaveLength(1);
+  });
+
+  it("on wide screens shows the selected job in the detail panel, and a click selects another", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+    );
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      const detail = url.match(/^\/api\/jobs\/(\d+)/);
+      if (detail) {
+        return Promise.resolve(jsonResponse(200, { ...job(detail[1], `Job ${detail[1]}`), description: `About job ${detail[1]}` }));
+      }
+      if (url.startsWith("/api/jobs")) {
+        return Promise.resolve(
+          jsonResponse(200, { items: [job("1", "Job 1"), job("2", "Job 2")], nextCursor: null }),
+        );
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHome();
+
+    // The first job is selected by default and its description loads into the panel.
+    const panel = await screen.findByRole("complementary", { name: "Job details" });
+    await waitFor(() => expect(panel.textContent).toContain("About job 1"), { timeout: 5000 });
+
+    fireEvent.click(screen.getByRole("link", { name: "Job 2" }));
+    await waitFor(() => expect(panel.textContent).toContain("About job 2"), { timeout: 5000 });
+    expect(screen.getByText("Job 2", { selector: "a" }).closest("article")?.getAttribute("aria-current")).toBe("true");
   });
 });

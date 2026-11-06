@@ -8,7 +8,6 @@ import {
   buttonClasses,
   Chip,
   EmptyState,
-  JobCard,
   JobCardSkeleton,
   NavBar,
   RefreshIcon,
@@ -22,8 +21,10 @@ import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
+import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
+import { JobBrowser } from "@/app/job-browser";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -42,10 +43,11 @@ function greeting(): string {
 function FeedInner() {
   const { me } = useSession();
   const toast = useToast();
-  const [draftQ, setDraftQ] = useState("");
-  const [q, setQ] = useState("");
-  const [source, setSource] = useState("");
-  const [bestMatches, setBestMatches] = useState(false);
+  // Filters live in the view cache, so Back from a job restores the same filtered feed.
+  const [draftQ, setDraftQ] = useViewState("feed:draftQ", "");
+  const [q, setQ] = useViewState("feed:q", "");
+  const [source, setSource] = useViewState("feed:source", "");
+  const [bestMatches, setBestMatches] = useViewState("feed:best", false);
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -53,7 +55,7 @@ function FeedInner() {
   useEffect(() => {
     const timer = setTimeout(() => setQ(draftQ), 300);
     return () => clearTimeout(timer);
-  }, [draftQ]);
+  }, [draftQ, setQ]);
 
   const fetchPage = useCallback(
     (cursor: string | undefined) =>
@@ -67,10 +69,12 @@ function FeedInner() {
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
-  const { items, nextCursor, loading, error, initialized, loadMore, retry } = useInfiniteList<
+  const listKey = `feed:${JSON.stringify([q, source, bestMatches])}`;
+  const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [q, source, bestMatches], onPage);
+  >(fetchPage, [q, source, bestMatches], { onPage, cacheKey: listKey });
+  useScrollRestoration(listKey, restored);
 
   async function handleRefreshScores() {
     setRefreshing(true);
@@ -100,7 +104,7 @@ function FeedInner() {
 
   return (
     <>
-      <NavBar title={title} trailing={<div className="md:hidden"><AccountMenu /></div>}>
+      <NavBar wide title={title} trailing={<div className="md:hidden"><AccountMenu /></div>}>
         <div className="flex flex-wrap items-center gap-1.5">
           {feedKeywords.length > 0 ? (
             <p className="text-subheadline text-label-secondary">
@@ -142,7 +146,7 @@ function FeedInner() {
         </div>
       </NavBar>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-10 sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading your feed" className="flex flex-col gap-3">
             <JobCardSkeleton />
@@ -179,30 +183,28 @@ function FeedInner() {
             }
           />
         ) : (
-          <div className="flex flex-col gap-3">
-            {items.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                detailsHref={`/jobs/view?id=${encodeURIComponent(job.id)}`}
-                linkAs={Link}
-                actions={<SaveJobButton jobId={job.id} />}
-              />
-            ))}
-          </div>
+          <JobBrowser
+            jobs={items}
+            stateKey="feed"
+            signedIn={true}
+            renderActions={(job) => <SaveJobButton jobId={job.id} />}
+            footer={
+              <>
+                {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}
+                {loading && items.length > 0 ? (
+                  <p className="flex items-center justify-center gap-2 py-2 text-footnote text-label-secondary">
+                    <Spinner size={14} /> Loading more…
+                  </p>
+                ) : null}
+                {initialized && !nextCursor && items.length > 0 ? (
+                  <p role="status" className="py-4 text-center text-footnote text-label-secondary">
+                    You&apos;ve reached the end of your feed. New jobs arrive every morning.
+                  </p>
+                ) : null}
+              </>
+            }
+          />
         )}
-
-        {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}
-        {loading && items.length > 0 ? (
-          <p className="flex items-center justify-center gap-2 py-2 text-footnote text-label-secondary">
-            <Spinner size={14} /> Loading more…
-          </p>
-        ) : null}
-        {initialized && !nextCursor && items.length > 0 ? (
-          <p role="status" className="py-4 text-center text-footnote text-label-secondary">
-            You&apos;ve reached the end of your feed. New jobs arrive every morning.
-          </p>
-        ) : null}
       </div>
     </>
   );
