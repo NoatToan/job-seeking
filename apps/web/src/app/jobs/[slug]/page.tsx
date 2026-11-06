@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sourceMeta } from "@ujc/core";
-import { ChevronLeftIcon, NavBar } from "@ujc/ui";
+import { ChevronLeftIcon, NavBar, SourceIcon } from "@ujc/ui";
 import { jobIdFromPath, jobPagePath, jobSlug } from "@/lib/job-url";
 import { jobMetaDescription, jobPostingJsonLd } from "@/lib/job-posting";
 import { allJobs, jobById, listing, relatedJobs, snapshotActiveDays, withPlaceholder } from "@/lib/seo-jobs";
@@ -100,7 +100,11 @@ export default async function JobPage({ params }: { params: Promise<Params> }) {
           className="rounded-card border border-separator bg-grouped-secondary p-4 text-footnote text-label-secondary"
         >
           <p>
-            Posted on <span className="font-semibold text-label">{source}</span>
+            Posted on{" "}
+            <span className="inline-flex items-center gap-1 align-bottom font-semibold text-label">
+              <SourceIcon source={job.source} size={14} decorative />
+              {source}
+            </span>
             {firstSeen ? <> · found by JobSeeking on {firstSeen}</> : null}
             {lastSeen ? <> · still listed on {lastSeen}</> : null}.
           </p>

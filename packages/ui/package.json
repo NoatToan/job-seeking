@@ -5,11 +5,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./theme.css": "./src/theme.css"
+    "./theme.css": "./src/theme.css",
+    "./source-icons.css": "./src/source-icons.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "icons:sources": "node scripts/build-source-icons.mjs"
   },
   "dependencies": {
     "@ujc/core": "workspace:*",

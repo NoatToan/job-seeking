@@ -25,4 +25,5 @@ export * from "./components/job-card";
 export * from "./components/location-text";
 export * from "./components/remote-access";
 export * from "./components/tech-icon";
+export * from "./components/source-icon";
 export * from "./components/level-badge";

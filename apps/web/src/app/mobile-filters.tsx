@@ -17,6 +17,7 @@ import {
   RangeSlider,
   SearchField,
   SlidersIcon,
+  SourceIcon,
   TechIcon,
   Toggle,
   useToast,
@@ -302,6 +303,7 @@ export function FilterModal({
           <OptionRow
             key={id || "all"}
             selected={draft.source === id}
+            icon={id ? <SourceIcon source={id} size={20} decorative /> : <span aria-hidden className="size-5 shrink-0" />}
             onPick={() => {
               set({ source: id });
               setStep("list");

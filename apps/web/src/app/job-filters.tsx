@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Job } from "@ujc/core";
 import type { ReactNode } from "react";
-import { sourceMeta, techInfo } from "@ujc/core";
+import { techInfo } from "@ujc/core";
 import {
   Chip,
   ClockIcon,
@@ -18,6 +18,7 @@ import {
   SlidersIcon,
   TechIcon,
   useUiStrings,
+  sourceSelectOption,
 } from "@ujc/ui";
 import { useQueryStates } from "nuqs";
 import { useTranslation } from "react-i18next";
@@ -473,7 +474,7 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
           onChange={f.setSource}
           options={[
             { value: "", label: t("filters.allSources") },
-            ...sources.map((id) => ({ value: id, label: sourceMeta(id).label, keywords: id })),
+            ...sources.map((id) => sourceSelectOption(id)),
           ]}
         />
         <CountryFilter value={f.country} onChange={f.setCountry} compact />

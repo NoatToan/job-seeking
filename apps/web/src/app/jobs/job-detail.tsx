@@ -20,6 +20,7 @@ import {
   RemoteAccessBadge,
   DescriptionSkeleton,
   SourceBadge,
+  SourceIcon,
   TechIcon,
 } from "@ujc/ui";
 import { SaveJobButton } from "@/app/save-job-button";
@@ -116,6 +117,7 @@ export function JobDetail({
             rel="noopener noreferrer"
             className={buttonClasses({ size: "md", className: "rounded-full px-5" })}
           >
+            <SourceIcon source={job.source} size={16} decorative />
             Apply on {source}
             <ExternalLinkIcon size={16} />
           </a>
@@ -222,6 +224,7 @@ export function JobDetail({
         <>
           <div className="hidden sm:block">
             <a href={applyHref} target="_blank" rel="noopener noreferrer" className={buttonClasses({ size: "lg" })}>
+              <SourceIcon source={job.source} size={20} decorative />
               Apply on {source}
               <ExternalLinkIcon size={16} />
             </a>
@@ -233,6 +236,7 @@ export function JobDetail({
               rel="noopener noreferrer"
               className={buttonClasses({ size: "lg", fullWidth: true })}
             >
+              <SourceIcon source={job.source} size={20} decorative />
               Apply on {source}
             </a>
           </div>

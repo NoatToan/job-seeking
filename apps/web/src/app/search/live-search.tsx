@@ -11,6 +11,7 @@ import {
   NavBar,
   RefreshIcon,
   SearchField,
+  SourceIcon,
   Spinner,
 } from "@ujc/ui";
 import { useQueryStates } from "nuqs";
@@ -129,7 +130,12 @@ function LiveSearchInner() {
         />
         <div role="group" aria-label="Sources" className="flex flex-wrap gap-2">
           {LIVE_SOURCES.map((s) => (
-            <Chip key={s.id} selected={enabledSources.has(s.id)} onClick={() => toggleSource(s.id)}>
+            <Chip
+              key={s.id}
+              selected={enabledSources.has(s.id)}
+              onClick={() => toggleSource(s.id)}
+              icon={<SourceIcon source={s.id} size={16} decorative />}
+            >
               {s.label}
             </Chip>
           ))}
@@ -140,6 +146,7 @@ function LiveSearchInner() {
             const stillLoading = loading && !agg;
             return (
               <span key={s.id} className="inline-flex items-center gap-1">
+                <SourceIcon source={s.id} size={12} decorative />
                 {s.label}
                 {stillLoading ? (
                   <Spinner size={12} />
