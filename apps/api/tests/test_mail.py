@@ -115,3 +115,23 @@ def test_resend_rejection_maps_to_mail_failed_502(monkeypatch):
 
     with pytest.raises(mail.MailDeliveryFailed):
         mail.deliver_otp(settings, "someone@example.com", "123456")
+
+
+def test_otp_email_is_branded_with_absolute_images_and_a_text_part(monkeypatch):
+    sent = {}
+
+    def fake_post(url, **kwargs):
+        sent.update(kwargs)
+        return httpx.Response(200, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(mail.httpx, "post", fake_post)
+    settings = Settings(resend_api_key="re_test", ujc_public_url="http://localhost:3000")
+    mail.deliver_otp(settings, "a@example.com", "482913")
+    body = sent["json"]
+    assert body["subject"].startswith("482913")
+    # The code is one unbroken string (copy-paste), images are absolute https (dev falls back).
+    assert ">482913</div>" in body["html"]
+    assert "https://unified-job-crawler.vercel.app/email/logo.png" in body["html"]
+    assert "https://unified-job-crawler.vercel.app/email/banner.png" in body["html"]
+    assert "482913" in body["text"]
+    assert "$" not in body["html"]

@@ -4,6 +4,8 @@ content, just the count — see its docstring).
 """
 
 import logging
+from pathlib import Path
+from string import Template
 from typing import Any
 
 import httpx
@@ -29,22 +31,68 @@ class MailDeliveryFailed(Exception):
     """Resend was configured but the send itself failed (network error / non-2xx response)."""
 
 
-def _otp_subject_and_body(code: str) -> tuple[str, str]:
-    subject = "Your sign-in code"
-    body = (
-        f"<p>Your sign-in code is <strong>{code}</strong>.</p>"
-        "<p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>"
+# Images in emails must be absolute https URLs on a public host. A local `ujc_public_url` (dev)
+# falls back to production so a test email still shows them. Files: apps/web/public/email/.
+_PROD_ORIGIN = "https://unified-job-crawler.vercel.app"
+
+
+# Branded HTML body (string.Template: $code, $home, $logo, $banner, ...). Values are our
+# own digits and URLs, never user input.
+_OTP_TEMPLATE = Template(
+    (Path(__file__).parent / "templates" / "otp_email.html").read_text(encoding="utf-8")
+)
+
+
+def _asset_url(settings: Settings, name: str) -> str:
+    origin = settings.ujc_public_url.rstrip("/")
+    if not origin.startswith("https://"):
+        origin = _PROD_ORIGIN
+    return f"{origin}/email/{name}"
+
+
+def _otp_subject_and_body(code: str, settings: Settings) -> tuple[str, str]:
+    """Branded sign-in email: table layout + inline styles (Gmail/Outlook ignore <style> and
+    flexbox), PNG images (SVG is blocked by most clients), a dark-mode-safe palette, the code in a
+    large monospace box, and a preheader so the inbox preview shows the code."""
+    subject = f"{code} is your JobSeeking sign-in code"
+    home = (
+        settings.ujc_public_url.rstrip("/")
+        if settings.ujc_public_url.startswith("https://")
+        else _PROD_ORIGIN
+    )
+    body = _OTP_TEMPLATE.substitute(
+        subject=subject,
+        code=code,
+        home=home,
+        home_label=home.removeprefix("https://"),
+        logo=_asset_url(settings, "logo.png"),
+        banner=_asset_url(settings, "banner.png"),
     )
     return subject, body
 
 
+def _otp_text(code: str) -> str:
+    """Plain-text part: some clients and every spam filter read it."""
+    return (
+        f"Your JobSeeking sign-in code is {code}\n\n"
+        "Enter it on JobSeeking to finish signing in. It expires in 10 minutes and works once.\n\n"
+        "Didn't ask for this? You can ignore this email.\n"
+    )
+
+
 def _send_via_resend(settings: Settings, email: str, code: str) -> None:
-    subject, html = _otp_subject_and_body(code)
+    subject, html = _otp_subject_and_body(code, settings)
     try:
         resp = httpx.post(
             RESEND_URL,
             headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-            json={"from": settings.ujc_mail_from, "to": [email], "subject": subject, "html": html},
+            json={
+                "from": settings.ujc_mail_from,
+                "to": [email],
+                "subject": subject,
+                "html": html,
+                "text": _otp_text(code),
+            },
             timeout=_TIMEOUT_S,
         )
         resp.raise_for_status()
