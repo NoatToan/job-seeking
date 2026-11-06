@@ -65,7 +65,7 @@ export const EN_UI_STRINGS: UiStrings = {
     unknown: "Remote · region not stated",
     openToYou: (country) => `Open to candidates in ${country}`,
     notOpenToYou: (country) => `Not open to candidates in ${country}`,
-    stampOpen: "Open to you",
+    stampOpen: "For you",
     stampClosed: "Not for you",
     regions: {
       EUROPE: "Europe",

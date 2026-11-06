@@ -357,6 +357,7 @@
   --animate-toast-in: ujc-toast-in 300ms var(--ease-spring) both;
   --animate-shimmer: ujc-shimmer 1.4s ease-in-out infinite;
   --animate-twinkle: ujc-twinkle 3.2s ease-in-out infinite;
+  --animate-stamp-shine: ujc-stamp-shine 2.8s ease-in-out 0.6s infinite;
   --animate-sun-rise: ujc-sun-rise 1.2s ease-in-out infinite;
   --animate-ray: ujc-ray 1.2s ease-in-out infinite;
   --animate-detail-in: ujc-detail-in 280ms var(--ease-spring) both;
@@ -396,6 +397,10 @@
   @keyframes ujc-ray {
     0%, 100% { opacity: 0.2; }
     40%, 60% { opacity: 1; }
+  }
+  @keyframes ujc-stamp-shine {
+    0% { transform: translateX(0) skewX(-12deg); }
+    35%, 100% { transform: translateX(450%) skewX(-12deg); }
   }
   @keyframes ujc-twinkle {
     0%, 100% { opacity: 1; }

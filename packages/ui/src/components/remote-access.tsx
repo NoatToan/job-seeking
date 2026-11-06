@@ -87,31 +87,30 @@ export function RemoteAccessBadge({ openTo, basedIn, className }: RemoteAccessBa
 }
 
 /**
- * Corner stamp on a job row, like a shop voucher tag: does this job take candidates from the
- * viewer's country? Sits on the card's top-left edge with a folded tail, so the answer reads before
- * anything else on the row. Renders nothing when the posting doesn't say (or the country is unknown).
+ * Corner stamp on a job row, like a shop voucher tag, shown only when the job takes candidates from
+ * the viewer's country. Most rows don't, so a red "not for you" on every one was noise; a green
+ * "For you" on the few that fit is the thing worth spotting (a light sweep draws the eye once).
+ * Rows that don't fit keep the "✕ Remote · US only" line.
  */
 export function AccessStamp({ openTo, basedIn, className }: RemoteAccessBadgeProps) {
   const strings = useUiStrings();
   const access = remoteAccess(openTo, basedIn);
-  if (access.acceptsCandidate === null || access.acceptsCandidate === undefined) return null;
-  const open = access.acceptsCandidate;
+  if (access.acceptsCandidate !== true) return null;
   const you = basedIn ? countryName(basedIn, strings.locale) : "";
-  const Icon = open ? CheckIcon : XIcon;
   return (
     <span
-      data-access-stamp={open ? "open" : "closed"}
-      title={open ? strings.remoteAccess.openToYou(you) : strings.remoteAccess.notOpenToYou(you)}
+      data-access-stamp="open"
+      title={strings.remoteAccess.openToYou(you)}
       className={cx(
-        "pointer-events-none absolute -top-1 -left-1 z-[1] inline-flex items-center gap-1 rounded-r-full rounded-tl-md py-0.5 pr-2.5 pl-2 text-[0.6875rem] font-bold tracking-wide text-white uppercase shadow-sm",
+        "pointer-events-none absolute -top-1 -left-1 z-[1] inline-flex items-center gap-1 overflow-hidden rounded-r-full rounded-tl-md bg-success py-0.5 pr-2.5 pl-2 text-[0.6875rem] font-bold tracking-wide text-white uppercase shadow-sm",
         // The fold: a small darker triangle under the tag's left end, as if it wraps the card edge.
-        "after:absolute after:top-full after:left-0 after:border-t-[5px] after:border-l-[4px] after:border-l-transparent after:content-['']",
-        open ? "bg-success after:border-t-[var(--ujc-stamp-open-fold)]" : "bg-danger after:border-t-[var(--ujc-stamp-closed-fold)]",
+        "after:absolute after:top-full after:left-0 after:border-t-[5px] after:border-l-[4px] after:border-t-[var(--ujc-stamp-open-fold)] after:border-l-transparent after:content-['']",
         className,
       )}
     >
-      <Icon size={11} strokeWidth={3} aria-hidden />
-      {open ? strings.remoteAccess.stampOpen : strings.remoteAccess.stampClosed}
+      <CheckIcon size={11} strokeWidth={3} aria-hidden />
+      {strings.remoteAccess.stampOpen}
+      <span aria-hidden className="absolute inset-y-0 -left-full w-1/2 -skew-x-12 bg-white/45 animate-stamp-shine motion-reduce:hidden" />
     </span>
   );
 }
