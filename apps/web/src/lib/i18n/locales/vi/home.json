@@ -125,7 +125,14 @@
     "collapsedAll": "Tất cả việc làm",
     "collapsedFilters_one": "{{count}} bộ lọc",
     "collapsedFilters_other": "{{count}} bộ lọc",
-    "collapsedEdit": "Sửa tìm kiếm"
+    "collapsedEdit": "Sửa tìm kiếm",
+    "sort": {
+      "label": "Sắp xếp theo",
+      "newest": "Mới nhất",
+      "timezone": "Hợp múi giờ nhất ({{abbr}})",
+      "salary": "Lương cao nhất",
+      "match": "Hợp CV nhất"
+    }
   },
   "country": {
     "label": "Quốc gia",

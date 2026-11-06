@@ -10,7 +10,6 @@ import {
   cx,
   EmptyState,
   RefreshIcon,
-  SparklesIcon,
   Spinner,
   useToast,
 } from "@ujc/ui";
@@ -19,9 +18,9 @@ import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
-import { useScrollRestoration, useViewState } from "@/lib/view-cache";
+import { useScrollRestoration } from "@/lib/view-cache";
 import { HomeHero } from "@/app/home-hero";
-import { pillClasses, PillToggle } from "@/app/pill-controls";
+import { pillClasses } from "@/app/pill-controls";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
 import { JobBrowserSkeleton } from "@/app/skeletons";
@@ -45,26 +44,24 @@ export function greeting(): string {
 function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
   const { me } = useSession();
   const toast = useToast();
-  const filters = useJobFilters("feed");
-  const [bestMatches, setBestMatches] = useViewState("feed:best", false);
+  const filters = useJobFilters("feed", { matchSort: true });
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [refreshing, setRefreshing] = useState(false);
 
   const { params: filterParams } = filters;
   const fetchPage = useCallback(
-    (cursor: string | undefined) =>
-      getFeed({ cursor, ...filterParams, sort: bestMatches ? "score" : undefined }),
-    // `filters.key` captures every value in `filterParams`.
+    (cursor: string | undefined) => getFeed({ cursor, ...filterParams }),
+    // `filters.key` captures every value in `filterParams` (sort included).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters.key, bestMatches],
+    [filters.key],
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
-  const listKey = `feed:${filters.key}:${bestMatches}`;
+  const listKey = `feed:${filters.key}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [filters.key, bestMatches], { onPage, cacheKey: listKey });
+  >(fetchPage, [filters.key], { onPage, cacheKey: listKey });
   useScrollRestoration(listKey, restored);
   const visible = useVisibleJobs(filters, items);
 
@@ -129,12 +126,6 @@ function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
           sources={SOURCE_IDS}
           extra={
             <>
-              <PillToggle
-                label="Best matches"
-                checked={bestMatches}
-                onChange={setBestMatches}
-                icon={<SparklesIcon size={15} aria-hidden />}
-              />
               <button
                 type="button"
                 onClick={() => void handleRefreshScores()}
