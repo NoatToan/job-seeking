@@ -19,6 +19,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail fast with a clear annotation instead of a crawler error at the end of the job.
+      - name: Check DATABASE_URL secret
+        id: secrets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error title=Missing DATABASE_URL secret::Set the repository secret DATABASE_URL (Settings > Secrets and variables > Actions); the crawl cannot store jobs without it."
+            exit 1
+          fi
+
       - uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
@@ -40,7 +51,7 @@ jobs:
       # Re-apply derived columns (remote region, countries, time zones, tech, salary) to jobs that
       # were not re-crawled today, so rule changes reach old rows too. Only changed rows are written.
       - name: Recompute derived columns
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.secrets.outcome == 'success' }}
         run: uv run python -m job_crawler --recompute-derived
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
