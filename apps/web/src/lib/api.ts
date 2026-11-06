@@ -9,6 +9,9 @@ import type {
   FeedPage,
   Job,
   JobDetail,
+  JobVoteReason,
+  JobVoteResponse,
+  MyJobVotesResponse,
   LiveSearchPage,
   MeResponse,
   Page,
@@ -177,6 +180,8 @@ export interface PublicJobsFilters {
   sort?: JobSort;
   /** The viewer's IANA time zone, for `sort: "timezone"`. */
   tz?: string;
+  /** Drop jobs the community flagged as not worth applying (`job_vote_stats.flagged`). */
+  hide_reported?: boolean;
 }
 
 /**
@@ -206,6 +211,31 @@ export function markJobsViewed(jobIds: string[]): Promise<{ saved: number }> {
 /** `DELETE /api/me/viewed` — forget the account's read history. */
 export function clearViewedJobs(): Promise<void> {
   return apiFetch<void>("/api/me/viewed", { method: "DELETE" });
+}
+
+/** A vote on a job: "Still good", or "Not worth applying" with a reason (+ a note for "other"). */
+export type JobVoteInput = { vote: "up" } | { vote: "down"; reason: JobVoteReason; note?: string };
+
+/** `PUT /api/jobs/{id}/vote` — set or change the signed-in user's vote (rate-limited per hour). */
+export function putJobVote(jobId: string, input: JobVoteInput): Promise<JobVoteResponse> {
+  return apiFetch<JobVoteResponse>(`/api/jobs/${encodeURIComponent(jobId)}/vote`, { method: "PUT", body: input });
+}
+
+/** `DELETE /api/jobs/{id}/vote` — remove the signed-in user's vote. */
+export function deleteJobVote(jobId: string): Promise<JobVoteResponse> {
+  return apiFetch<JobVoteResponse>(`/api/jobs/${encodeURIComponent(jobId)}/vote`, { method: "DELETE" });
+}
+
+/** `GET /api/me/job-votes?ids=` — the user's own votes + fresh aggregates (not CDN-cached). */
+export function getMyJobVotes(jobIds: string[]): Promise<MyJobVotesResponse> {
+  return apiFetch<MyJobVotesResponse>(`/api/me/job-votes?ids=${jobIds.map(encodeURIComponent).join(",")}`);
+}
+
+/** `DELETE /api/admin/jobs/{id}/votes` — admin: reports so far stop counting. */
+export function clearJobVotes(jobId: string): Promise<Pick<JobVoteResponse, "community">> {
+  return apiFetch<Pick<JobVoteResponse, "community">>(`/api/admin/jobs/${encodeURIComponent(jobId)}/votes`, {
+    method: "DELETE",
+  });
 }
 
 /** `GET /api/jobs/facets` — filter options with job counts (countries, most common first). */
@@ -362,6 +392,8 @@ export interface FeedFilters {
   /** Remote-region filter, with `based_in` = the candidate's ISO country. */
   access?: "open" | "confirmed";
   based_in?: string;
+  /** Drop jobs the community flagged as not worth applying. */
+  hide_reported?: boolean;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

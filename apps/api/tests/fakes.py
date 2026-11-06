@@ -90,6 +90,11 @@ class FakeOtpConn:
         raise AssertionError(f"FakeOtpConn: unexpected SQL: {sql!r}")
 
 
+# `job_votes.STATS_COLUMNS` for a job nobody voted on (the LEFT JOIN found no row).
+_NO_VOTE_STATS = (None,) * 6
+_STATS_JOIN = "LEFT JOIN job_vote_stats vs ON vs.job_id = jobs.id"
+
+
 class FakeJobsConn:
     """Enough of `psycopg.Connection` for `ujc_api.routers.jobs`: `jobs` and `crawl_runs` as
     in-memory lists, matched against the exact SQL `routers/jobs.py` issues."""
@@ -102,7 +107,7 @@ class FakeJobsConn:
         s = " ".join(sql.split())
         params = params or ()
 
-        if s.startswith("SELECT") and "FROM jobs WHERE source !=" in s:
+        if s.startswith("SELECT") and f"FROM jobs {_STATS_JOIN} WHERE source !=" in s:
             params = list(params)
             i = 0
             excluded_source = params[i]
@@ -168,12 +173,13 @@ class FakeJobsConn:
                         j.get("salary_source"),
                         j.get("level"),
                         j.get("level_source"),
+                        *_NO_VOTE_STATS,
                     )
                     for j in rows
                 ]
             )
 
-        if s.startswith("SELECT") and "FROM jobs WHERE id = %s" in s:
+        if s.startswith("SELECT") and f"FROM jobs {_STATS_JOIN} WHERE jobs.id = %s" in s:
             (job_id,) = params
             for job in self.jobs:
                 if job["id"] == job_id:
@@ -205,6 +211,7 @@ class FakeJobsConn:
                             job.get("level_source"),
                             job.get("description"),
                             job.get("sections"),
+                            *_NO_VOTE_STATS,
                         )
                     )
             return _Result(None)

@@ -30,6 +30,7 @@ import { useBasedIn } from "@/lib/based-in";
 import { Highlighted, matchedTerms } from "@/lib/highlight";
 import { useTranslation } from "react-i18next";
 import { hasRecognisedSections, JdSections } from "./jd-sections";
+import { JobVotePanel } from "./job-vote";
 
 export interface JobDetailProps {
   /** The list row is enough for the header; `description` arrives with `GET /api/jobs/{id}`. */
@@ -141,6 +142,10 @@ export function JobDetail({
           </Link>
         ) : null}
       </div>
+
+      {/* Community check ("Not worth applying?" / "Still good"), high up so a flagged job warns
+          before anyone reads the whole description. */}
+      <JobVotePanel job={job} signedIn={signedIn} />
 
       <RemoteAccessCard job={job} />
 

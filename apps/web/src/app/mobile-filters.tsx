@@ -55,6 +55,7 @@ function valuesOf(f: JobFilterState): JobFilterValues {
     hours: f.hours,
     unreadOnly: f.hiddenIds !== null,
     sort: f.sort,
+    hideReported: f.hideReported,
   };
 }
 
@@ -69,6 +70,7 @@ const EMPTY: JobFilterValues = {
   hours: null,
   unreadOnly: false,
   sort: "newest",
+  hideReported: false,
 };
 
 /**
@@ -513,6 +515,11 @@ export function FilterModal({
         <Section title={t("filters.mobile.reading")}>
           <div className="flex flex-col gap-1 rounded-card bg-background py-1">
             <SwitchRow label={t("filters.mobile.unreadOnly")} checked={draft.unreadOnly} onChange={(unreadOnly) => set({ unreadOnly })} />
+            <SwitchRow
+              label={t("filters.mobile.hideReported")}
+              checked={draft.hideReported ?? false}
+              onChange={(hideReported) => set({ hideReported })}
+            />
             {/* Its "Clear" is a text link on desktop; here it gets a 44px row. */}
             <div className="px-3 pb-1 [&_button]:min-h-11">
               <ReadHistory />

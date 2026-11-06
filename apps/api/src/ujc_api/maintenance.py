@@ -8,6 +8,10 @@ Run on a schedule (e.g. a daily cron/systemd timer on the host next to the worke
   working) — only the original bytes and raw text are deleted.
 - Expired `sessions` (past `expires_at`) are deleted.
 - Expired/consumed-long-ago `email_otps` are deleted (past `expires_at`).
+
+`refresh-votes` (also part of `purge`): recompute `job_vote_stats` so report decay, accounts that
+came of age and reposts reach jobs nobody voted on today (ujc_api.job_votes). Run daily after the
+crawl (.github/workflows/daily-crawl.yml).
 """
 
 import argparse
@@ -15,6 +19,7 @@ import logging
 
 import psycopg
 
+from ujc_api.job_votes import refresh_all as refresh_job_vote_stats
 from ujc_api.settings import get_settings
 
 log = logging.getLogger(__name__)
@@ -57,6 +62,7 @@ def purge(conn: psycopg.Connection) -> dict[str, int]:
             "sessions_deleted": purge_expired_sessions(conn),
             "otps_deleted": purge_expired_otps(conn),
             "upwork_cache_deleted": purge_expired_upwork_cache(conn),
+            "job_vote_stats_refreshed": refresh_job_vote_stats(conn),
         }
     log.info("purge: %s", result)
     return result
@@ -64,7 +70,7 @@ def purge(conn: psycopg.Connection) -> dict[str, int]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ujc_api data retention / cleanup")
-    parser.add_argument("command", choices=["purge"])
+    parser.add_argument("command", choices=["purge", "refresh-votes"])
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -72,6 +78,8 @@ def main() -> None:
     with psycopg.connect(settings.database_url) as conn:
         if args.command == "purge":
             purge(conn)
+        elif args.command == "refresh-votes":
+            log.info("job_vote_stats refreshed: %s", refresh_job_vote_stats(conn))
 
 
 if __name__ == "__main__":

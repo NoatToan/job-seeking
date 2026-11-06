@@ -122,7 +122,8 @@
       "reset": "Reset",
       "back": "Back",
       "done": "Done",
-      "zoneError": "We couldn't save your time zone. It's set on this device; try again later to save it to your account."
+      "zoneError": "We couldn't save your time zone. It's set on this device; try again later to save it to your account.",
+      "hideReported": "Hide jobs others reported"
     },
     "collapsedAll": "All jobs",
     "collapsedFilters_one": "{{count}} filter",
@@ -134,7 +135,8 @@
       "timezone": "Best time-zone fit ({{abbr}})",
       "salary": "Highest salary",
       "match": "Best match for my CV"
-    }
+    },
+    "hideReported": "Hide reported"
   },
   "country": {
     "label": "Country",

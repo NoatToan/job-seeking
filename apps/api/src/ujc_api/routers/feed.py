@@ -17,6 +17,13 @@ from ujc_api.feed_query import (
     posted_within_clause,
 )
 from ujc_api.job_sort import FEED_SORTS, fetch_page, resolve_sort
+from ujc_api.job_votes import (
+    HIDE_REPORTED_CLAUSE,
+    STATS_COLUMN_COUNT,
+    STATS_COLUMNS,
+    STATS_JOIN,
+    community_dto,
+)
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
 
@@ -26,9 +33,12 @@ MAX_LIMIT = 50
 
 def _job_dto_with_match(row: tuple) -> dict[str, Any]:
     """`row` is a `JOB_COLUMNS` row plus `(score, summary, missing_skills)` from a `user_matches`
-    LEFT JOIN. `match` is `None` when this job has no score for the current user yet."""
-    *job_row, score, summary, missing_skills = row
+    LEFT JOIN and `job_votes.STATS_COLUMNS`. `match` is `None` when this job has no score for the
+    current user yet."""
+    stats = tuple(row[-STATS_COLUMN_COUNT:])
+    *job_row, score, summary, missing_skills = row[:-STATS_COLUMN_COUNT]
     dto = job_dto(tuple(job_row))
+    dto["community"] = community_dto(stats)
     dto["match"] = (
         {"score": score, "summary": summary, "missingSkills": list(missing_skills or [])}
         if score is not None
@@ -51,6 +61,7 @@ def get_feed(
     access: str | None = Query(default=None),
     based_in: str | None = Query(default=None),
     tz: str | None = Query(default=None),
+    hide_reported: bool = Query(default=False),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -93,12 +104,16 @@ def get_feed(
         clauses.append(posted[0])
         where_params.append(posted[1])
 
+    if hide_reported:
+        clauses.append(HIDE_REPORTED_CLAUSE)
+
     page, next_cursor = fetch_page(
         conn,
         plan,
         cursor,
-        columns=f"{JOB_COLUMNS}, um.score, um.summary, um.missing_skills",
-        from_sql="jobs LEFT JOIN user_matches um ON um.user_id = %s AND um.job_id = jobs.id",
+        columns=f"{JOB_COLUMNS}, um.score, um.summary, um.missing_skills, {STATS_COLUMNS}",
+        from_sql="jobs LEFT JOIN user_matches um ON um.user_id = %s AND um.job_id = jobs.id"
+        f" {STATS_JOIN}",
         from_params=[user.id],
         clauses=clauses,
         where_params=where_params,

@@ -47,6 +47,26 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
+  # Job votes: decay old reports, count accounts that came of age, reset jobs the board reposted
+  # (ujc_api.job_votes). After the crawl, which is what moves `posted_at`.
+  job-votes:
+    needs: crawl
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: uv sync
+      - name: Refresh job vote stats
+        run: uv run python -m ujc_api.maintenance refresh-votes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
   # Rebuild the site so the static job pages and sitemaps (scripts/seo-snapshot.mjs) follow today's
   # crawl: new jobs get a page, jobs no longer listed drop out (404). Runs even when the crawl job
   # failed part-way (whatever it stored is still valid); vercel-rebuild.yml skips with a notice when

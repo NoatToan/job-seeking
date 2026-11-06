@@ -1,7 +1,7 @@
 // DTOs shared between apps/web and the (not yet built) apps/api. Shapes follow
 // docs/product/ARCHITECTURE.md §5 (API surface): camelCase bodies, string ids, `{items,total,page,pageSize}`
 // list envelopes, and `{error:{code,message,fields?}}` error bodies.
-import type { Job } from "./index";
+import type { Job, JobCommunity, MyJobVote } from "./index";
 import type { JdSection } from "./jd";
 
 /** A paginated list response, as returned by every `GET` list endpoint. */
@@ -310,4 +310,18 @@ export interface LiveSearchPage {
   items: Job[];
   nextCursor: string | null;
   sources: LiveSourceStatus[];
+}
+
+/** `PUT` / `DELETE /api/jobs/{id}/vote`: the caller's vote now (null after DELETE) and the job's
+ * fresh aggregate. */
+export interface JobVoteResponse {
+  vote: MyJobVote | null;
+  community: JobCommunity | null;
+}
+
+/** `GET /api/me/job-votes?ids=`: the caller's votes (only jobs they voted on) and each job's
+ * current aggregate, keyed by job id. */
+export interface MyJobVotesResponse {
+  votes: Record<string, MyJobVote>;
+  community: Record<string, JobCommunity | null>;
 }

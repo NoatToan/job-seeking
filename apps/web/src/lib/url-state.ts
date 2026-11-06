@@ -57,6 +57,8 @@ export const jobFilterParsers = {
   posted: parseAsStringLiteral(POSTED_DAYS),
   access: parseAsStringLiteral(REMOTE_ACCESS),
   hours: parseAsHourRange,
+  /** Hide jobs the community flagged as not worth applying (`hide_reported` on the API). */
+  hideReported: parseAsBoolean.withDefault(false),
   /** List order; "newest" (the default) is never written to the URL. */
   sort: parseAsStringLiteral(JOB_SORTS).withDefault("newest"),
 };
