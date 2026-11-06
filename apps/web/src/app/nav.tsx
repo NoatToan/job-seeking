@@ -140,6 +140,9 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
             linkAs={Link}
             onClick={() => setOpen(false)}
           />
+          {/* The phone tab bar has no room for a sixth tab when signed in: the blog is reached here
+              (and from the TopNav on >= md). */}
+          <ListRow title={t("nav.blog")} href="/blog/" linkAs={Link} onClick={() => setOpen(false)} />
           <ListRow
             title={tc("nav.contribute")}
             href="/contribute/"
@@ -188,7 +191,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
   // Signed out: the public pages only (jobs, blog).
   const navItems = me ? allItems : allItems.filter((item) => item.key === "feed" || item.key === "blog");
-  // The phone tab bar keeps its five signed-in tabs; the blog stays reachable from the TopNav.
+  // The phone tab bar keeps its five signed-in tabs; the blog stays reachable from the TopNav
+  // (>= md) and the account sheet (phones).
   const tabItems = me ? navItems.filter((item) => item.key !== "blog") : navItems;
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
