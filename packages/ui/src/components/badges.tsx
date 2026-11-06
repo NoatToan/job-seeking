@@ -199,3 +199,18 @@ export function MatchBadge({ score, variant = "pill", size = 40, showLabel = fal
     </span>
   );
 }
+
+/** Quiet source label for dense rows: brand-coloured dot + "via Himalayas" in secondary text. */
+export function SourceDot({ source, className }: { source: string; className?: string }) {
+  const meta = sourceMeta(source);
+  return (
+    <span
+      className={cx("inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap", className)}
+      style={{ ["--src" as string]: meta.color }}
+      title={`Crawled from ${meta.label}`}
+    >
+      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--src)]" />
+      <span className="truncate">via {meta.label}</span>
+    </span>
+  );
+}

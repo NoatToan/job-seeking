@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Styleguide } from "./styleguide";
 
 export const metadata: Metadata = {
-  title: "Design system · Unified Job Crawler",
+  title: "Design system · JobSeeking",
   description: "Living styleguide for the Sunrise Cupertino design system (packages/ui).",
 };
 

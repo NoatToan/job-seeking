@@ -153,11 +153,14 @@ export function EmptyState({
 
 /* ------------------------------------------------------------------ Avatar */
 
+// Soft pastel washes with ink text: friendly logo stand-ins rather than loud solid blocks.
 const avatarTones = [
-  "bg-tint text-on-tint",
-  "bg-info text-background",
-  "bg-success text-background",
-  "bg-label-secondary text-background",
+  "bg-tint-soft text-tint-ink",
+  "bg-info-soft text-info-ink",
+  "bg-success-soft text-success-ink",
+  "bg-warning-soft text-warning-ink",
+  "bg-[color-mix(in_srgb,#a855f7_14%,transparent)] text-[#7e22ce] dark:text-[#d8b4fe]",
+  "bg-[color-mix(in_srgb,#f43f5e_12%,transparent)] text-[#be123c] dark:text-[#fda4af]",
 ] as const;
 
 function initials(name: string): string {

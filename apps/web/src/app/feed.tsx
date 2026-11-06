@@ -6,12 +6,12 @@ import type { FeedPage, Job } from "@ujc/core";
 import { SOURCE_IDS } from "@ujc/core";
 import {
   buttonClasses,
+  cx,
   EmptyState,
   JobCardSkeleton,
-  NavBar,
   RefreshIcon,
+  SparklesIcon,
   Spinner,
-  Toggle,
   useToast,
 } from "@ujc/ui";
 import { ApiError, getFeed, refreshMatches } from "@/lib/api";
@@ -20,7 +20,8 @@ import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
 import { useScrollRestoration, useViewState } from "@/lib/view-cache";
-import { AccountMenu } from "@/app/nav";
+import { HomeHero } from "@/app/home-hero";
+import { pillClasses, PillToggle } from "@/app/pill-controls";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
 import { JobFilterBar, useJobFilters } from "@/app/job-filters";
@@ -93,44 +94,58 @@ function FeedInner() {
 
   return (
     <>
-      <NavBar wide largeTitle={false} title={title} trailing={<div className="md:hidden"><AccountMenu /></div>}>
+      <HomeHero
+        title={title}
+        subtitle={
+          <p className="flex flex-wrap items-center gap-1.5">
+            {feedKeywords.length > 0 ? (
+              <>
+                <span>Jobs picked for</span>
+                {feedKeywords.slice(0, 5).map((k) => (
+                  <span
+                    key={k}
+                    className="rounded-full bg-background/80 px-2.5 py-0.5 text-footnote font-medium text-label ring-1 ring-separator"
+                  >
+                    {k}
+                  </span>
+                ))}
+                {feedKeywords.length > 5 ? <span className="text-footnote">+{feedKeywords.length - 5}</span> : null}
+              </>
+            ) : (
+              <span>No keywords yet — add some to personalise your feed.</span>
+            )}
+            <Link href="/cv/" aria-label="Edit keywords" className="rounded-control-sm font-medium text-tint hover:underline focus-ring">
+              Edit
+            </Link>
+          </p>
+        }
+      >
         <JobFilterBar
           filters={filters}
           sources={SOURCE_IDS}
           extra={
             <>
-              <label className="flex items-center gap-1.5 text-subheadline text-label-secondary">
-                <Toggle label="Best matches" checked={bestMatches} onChange={setBestMatches} />
-                Best matches
-              </label>
+              <PillToggle
+                label="Best matches"
+                checked={bestMatches}
+                onChange={setBestMatches}
+                icon={<SparklesIcon size={15} aria-hidden />}
+              />
               <button
                 type="button"
                 onClick={() => void handleRefreshScores()}
                 disabled={refreshing}
-                className={buttonClasses({ variant: "gray", size: "sm", className: "disabled:opacity-40" })}
+                className={cx(pillClasses(false), "px-3.5 disabled:opacity-40")}
               >
-                {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
+                {refreshing ? <Spinner size={14} /> : <RefreshIcon size={15} />}
                 Refresh scores
               </button>
             </>
           }
         />
-        <p className="flex flex-wrap items-center gap-1.5 text-footnote text-label-secondary">
-          {feedKeywords.length > 0 ? (
-            <span>
-              Your keywords: {feedKeywords.slice(0, 5).join(", ")}
-              {feedKeywords.length > 5 ? `, +${feedKeywords.length - 5}` : ""}
-            </span>
-          ) : (
-            <span>No keywords yet — add some to personalise your feed.</span>
-          )}
-          <Link href="/cv/" aria-label="Edit keywords" className="rounded-control-sm font-medium text-tint hover:underline focus-ring">
-            Edit
-          </Link>
-        </p>
-      </NavBar>
+      </HomeHero>
 
-      <div className="flex w-full flex-col gap-4 px-4 pb-4 sm:px-6">
+      <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading your feed" className="flex flex-col gap-3">
             <JobCardSkeleton />

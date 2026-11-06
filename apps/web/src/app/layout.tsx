@@ -6,8 +6,8 @@ import { AppShell } from "./nav";
 import { ViewedSync } from "./viewed-sync";
 
 export const metadata: Metadata = {
-  title: "Unified Job Crawler",
-  description: "Jobs from many sources in one place, matched to your CVs.",
+  title: "JobSeeking",
+  description: "Tech jobs from every board in one place, matched to your CV.",
 };
 
 // System font stack only (DESIGN_SYSTEM.md §4: no web font download; `--font-sans` in

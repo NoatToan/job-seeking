@@ -18,15 +18,18 @@ import {
   ListRow,
   SearchIcon,
   Sheet,
-  Sidebar,
   TabBar,
+  TopNav,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
 import { isPublicRoute } from "@/lib/public-routes";
 import { useSession } from "@/lib/session";
 
+/** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
+export const BRAND_NAME = "JobSeeking";
+
 const NAV_ITEMS: NavItem[] = [
-  { key: "feed", label: "Feed", href: "/", icon: <BriefcaseIcon size={22} /> },
+  { key: "feed", label: "Jobs", href: "/", icon: <BriefcaseIcon size={22} /> },
   { key: "search", label: "Live search", href: "/search/", icon: <SearchIcon size={22} /> },
   { key: "tracker", label: "Tracker", href: "/tracker/", icon: <KanbanIcon size={22} /> },
   { key: "cv", label: "My CV", href: "/cv/", icon: <DocumentIcon size={22} /> },
@@ -47,9 +50,17 @@ function activeKeyFor(pathname: string): string {
  * the name + email row used in the Sidebar footer; `variant="icon"` is a compact trigger for the
  * NavBar trailing slot on phones (the Sidebar footer already covers desktop).
  */
-export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" }) {
+export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "pill" }) {
   const { me, signOut } = useSession();
   const [open, setOpen] = useState(false);
+
+  if (!me && variant === "pill") {
+    return (
+      <Link href="/login/" className={buttonClasses({ variant: "tinted", size: "sm", className: "rounded-full px-4" })}>
+        Sign in
+      </Link>
+    );
+  }
 
   if (!me) {
     return (
@@ -64,7 +75,17 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" }) 
 
   return (
     <>
-      {variant === "row" ? (
+      {variant === "pill" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={`Account: ${me.user.email}`}
+          className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
+        >
+          <Avatar name={me.user.email} size={30} />
+          <span className="max-w-[12rem] truncate text-subheadline font-medium text-label">{me.user.email}</span>
+        </button>
+      ) : variant === "row" ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -109,34 +130,45 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" }) 
 
 function Footer() {
   return (
-    <footer className="hairline-t px-4 py-6 text-footnote text-label-secondary sm:px-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-1">
-        <p>
-          Jobs crawled from We Work Remotely, Greenhouse, Lever, Ashby, Himalayas, Remotive, and{" "}
-          <a
-            href={SOURCES.adzuna.homepage}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
-          >
-            Jobs by Adzuna
-          </a>
-          .
-        </p>
-        <p>Every job links to its original posting.</p>
+    <footer className="hairline-t bg-background px-4 py-8 text-footnote text-label-secondary sm:px-6">
+      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex max-w-md flex-col gap-2">
+          <BrandMark name={BRAND_NAME} />
+          <p>Tech jobs from the boards you already use, in one calm feed — matched to your CV.</p>
+        </div>
+        <div className="flex max-w-md flex-col gap-1 sm:text-right">
+          <p>
+            Jobs from We Work Remotely, Greenhouse, Lever, Ashby, Himalayas, Remotive, and{" "}
+            <a
+              href={SOURCES.adzuna.homepage}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
+            >
+              Jobs by Adzuna
+            </a>
+            .
+          </p>
+          <p>Every job links to its original posting.</p>
+          <p>
+            <Link href="/privacy/" className="rounded-control-sm font-medium text-label hover:underline focus-ring">
+              Privacy
+            </Link>
+          </p>
+        </div>
       </div>
     </footer>
   );
 }
 
 /**
- * App shell: Sidebar (>= md) or TabBar (< md), hidden on `/login` and `/design` (both are their
+ * App shell: TopNav (>= md) or TabBar (< md), hidden on `/login` and `/design` (both are their
  * own self-contained layouts). Each page renders its own `NavBar`.
  *
  * Signed-in: every nav item. Signed out: only on a public route (home, job detail) — everywhere
  * else, the chrome stays hidden while the page's own content (e.g. `RequireAuth`) handles the
  * redirect to `/login`, same as before this page became reachable signed out. The nav itself
- * only ever shows the "Feed" item (now the public jobs page) plus "Sign in" — Search/Tracker/CV/
+ * only ever shows the "Jobs" item (now the public jobs page) plus "Sign in" — Search/Tracker/CV/
  * Connections all need a session, so they would just be dead ends for an anonymous visitor.
  */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -148,19 +180,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navItems = me ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.key === "feed");
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
-  // sticky action bar, like a navigation push hiding the tab bar on iOS. The Sidebar stays on
-  // desktop, since the desktop shell in SCREENS.md §0 keeps it for pushed screens too.
+  // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
+  // desktop for pushed screens too.
   const showTabBar = showChrome && !pathname.startsWith("/jobs/view");
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
+    // `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop.
+    <div className={cx("flex min-h-dvh flex-col", showChrome && "md:[--ujc-shell-top:3.5rem]")}>
       {showChrome ? (
-        <Sidebar
+        <TopNav
           items={navItems}
           activeKey={activeKey}
           linkAs={Link}
-          header={<BrandMark name="Unified Job Crawler" />}
-          footer={<AccountMenu variant="row" />}
+          brand={
+            <Link href="/" aria-label={`${BRAND_NAME} home`} className="rounded-control focus-ring">
+              <BrandMark name={BRAND_NAME} />
+            </Link>
+          }
+          trailing={<AccountMenu variant="pill" />}
         />
       ) : null}
       <div className="flex min-w-0 flex-1 flex-col">

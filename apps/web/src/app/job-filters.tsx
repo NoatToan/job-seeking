@@ -3,9 +3,10 @@
 import { useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { sourceMeta, techInfo } from "@ujc/core";
-import { Chip, ChevronRightIcon, cx, SearchField, TechIcon, Toggle } from "@ujc/ui";
+import { Chip, cx, GlobeIcon, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
 import { useViewState } from "@/lib/view-cache";
 import { CountryFilter } from "@/app/country-filter";
+import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
 import { TechFilter } from "@/app/tech-filter";
 import { TimezonePicker } from "@/app/work-hours";
 import { clearViewed, useViewedJobs } from "@/lib/viewed";
@@ -106,33 +107,6 @@ export function useJobFilters(prefix: string): JobFilterState {
   };
 }
 
-const SELECT =
-  "max-w-[13rem] truncate rounded-control-sm bg-fill-tertiary px-2 py-1.5 text-subheadline text-label focus-ring";
-
-function LabeledSelect({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  children: ReactNode;
-}) {
-  const id = useId();
-  return (
-    <>
-      <label htmlFor={id} className="sr-only">
-        {label}
-      </label>
-      <select id={id} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className={SELECT}>
-        {children}
-      </select>
-    </>
-  );
-}
-
 /** "Read 42 jobs · Clear" — the read history kept in this browser (and the account). */
 function ReadHistory() {
   const viewed = useViewedJobs();
@@ -168,52 +142,59 @@ export interface JobFilterBarProps {
 }
 
 /**
- * Compact filter bar (Slack request: "the filter area takes too much room"): one row with search,
- * source, country, posted-within, remote and a Tech toggle; tech chips and the time-zone picker
+ * Home filter bar (Slack requests: "the filter area takes too much room", then "looks like an admin
+ * tool"): one big search pill like a job site, and a single row of filter pills under it — source,
+ * country, posted-within, remote, unread and "More filters". Tech chips and the time-zone picker
  * open in a panel underneath only when asked for. Selected techs stay visible as small chips.
  */
 export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const panelId = useId();
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-[14rem] flex-1">
-          <SearchField value={f.draftQ} onChange={f.setDraftQ} label="Search jobs" placeholder="Job title, company or skill" />
-        </div>
-        <LabeledSelect label="Source" value={f.source} onChange={f.setSource}>
+    <div className="flex flex-col gap-3">
+      {/* Phones: search, then one sideways-scrolling row of pills. Wide: all on one line. */}
+      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center">
+        <SearchField
+          variant="hero"
+          value={f.draftQ}
+          onChange={f.setDraftQ}
+          label="Search jobs"
+          placeholder="Job title, company or skill — e.g. Next.js, Python"
+          className="w-full xl:max-w-xl xl:min-w-[22rem] xl:flex-1"
+        />
+        <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <PillSelect label="Source" value={f.source} onChange={f.setSource}>
           <option value="">All sources</option>
           {sources.map((id) => (
             <option key={id} value={id}>
               {sourceMeta(id).label}
             </option>
           ))}
-        </LabeledSelect>
+        </PillSelect>
         <CountryFilter value={f.country} onChange={f.setCountry} compact />
-        <LabeledSelect label="Posted" value={f.posted} onChange={f.setPosted}>
+        <PillSelect label="Posted" value={f.posted} onChange={f.setPosted}>
           {POSTED_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
-        </LabeledSelect>
-        <label className="flex items-center gap-1.5 text-subheadline text-label-secondary">
-          <Toggle label="Remote only" checked={f.remoteOnly} onChange={f.setRemoteOnly} />
-          Remote
-        </label>
-        <label className="flex items-center gap-1.5 text-subheadline text-label-secondary">
-          <Toggle label="Unread only" checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
-          Unread
-        </label>
+        </PillSelect>
+        <PillToggle
+          label="Remote"
+          checked={f.remoteOnly}
+          onChange={f.setRemoteOnly}
+          icon={<GlobeIcon size={15} strokeWidth={2} aria-hidden />}
+        />
+        <PillToggle label="Unread" checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
         <button
           type="button"
           aria-expanded={moreOpen}
           aria-controls={panelId}
           onClick={() => setMoreOpen((o) => !o)}
-          className="inline-flex h-8 items-center gap-1 rounded-full bg-fill-tertiary px-3 text-subheadline font-medium text-label hover:bg-fill-secondary focus-ring"
+          className={cx(pillClasses(moreOpen || f.tech.length > 0), "px-3.5")}
         >
+          <SlidersIcon size={15} strokeWidth={2} aria-hidden />
           More filters{f.tech.length ? ` (${f.tech.length})` : ""}
-          <ChevronRightIcon size={14} strokeWidth={2.25} aria-hidden className={cx("transition-transform duration-200", moreOpen && "rotate-90")} />
         </button>
         {!moreOpen
           ? f.tech.map((id) => (
@@ -222,22 +203,31 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
                 onRemove={() => f.setTech(f.tech.filter((t) => t !== id))}
                 removeLabel="Remove"
                 icon={<TechIcon id={id} size={14} />}
+                className="h-9 border border-separator bg-background"
               >
                 {techInfo(id).label}
               </Chip>
             ))
           : null}
         {f.activeCount ? (
-          <button type="button" onClick={f.clear} className="text-subheadline font-medium text-tint hover:underline focus-ring rounded-control-sm">
-            Clear
+          <button
+            type="button"
+            onClick={f.clear}
+            className="h-9 rounded-full px-2 text-subheadline font-medium text-tint hover:underline focus-ring"
+          >
+            Clear all
           </button>
         ) : null}
         {extra}
+        </div>
       </div>
       {moreOpen ? (
-        <div id={panelId} className="flex flex-col gap-2 rounded-card bg-grouped-secondary p-3 shadow-card animate-fade-in">
+        <div
+          id={panelId}
+          className="flex flex-col gap-3 rounded-[18px] border border-separator bg-background p-4 shadow-raised animate-fade-in"
+        >
           <TechFilter value={f.tech} onChange={f.setTech} />
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 hairline-t pt-3">
             <TimezonePicker />
             <ReadHistory />
           </div>

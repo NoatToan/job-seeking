@@ -627,7 +627,7 @@ function StyleguideBody() {
                 items={navItems}
                 activeKey="feed"
                 label="Preview navigation"
-                header={<BrandMark name="Unified Job Crawler" />}
+                header={<BrandMark name="JobSeeking" />}
                 footer={
                   <div className="flex items-center gap-2.5 px-2">
                     <Avatar name="Linh Nguyen" size={32} />

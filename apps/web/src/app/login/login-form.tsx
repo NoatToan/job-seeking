@@ -113,7 +113,7 @@ export function LoginForm() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col justify-center gap-8 px-4 py-12">
       <div className="flex flex-col items-center gap-6">
-        <BrandMark name="Unified Job Crawler" />
+        <BrandMark name="JobSeeking" />
 
         {step === "email" ? (
           <>
