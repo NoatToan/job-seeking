@@ -92,3 +92,26 @@ def test_allowlist_set_still_gives_dev_code_to_allowlisted_email_even_with_resen
     result = mail.deliver_otp(settings, "allowed@example.com", "123456")
     assert result == "123456"
     assert called == []  # Resend was never called for the allowlisted address
+
+
+def test_resend_rejection_maps_to_mail_failed_502(monkeypatch):
+    """A Resend non-2xx (e.g. unverified sending domain) is a clean 502, not a 500."""
+    import httpx
+
+    from ujc_api import mail
+    from ujc_api.settings import Settings
+
+    def fake_post(url, **kwargs):
+        request = httpx.Request("POST", url)
+        return httpx.Response(
+            403,
+            request=request,
+            json={"name": "validation_error", "message": "You can only send testing emails"},
+        )
+
+    monkeypatch.setattr(mail.httpx, "post", fake_post)
+    settings = Settings(resend_api_key="re_test", ujc_otp_review_mode=False, ujc_env="test")
+    import pytest
+
+    with pytest.raises(mail.MailDeliveryFailed):
+        mail.deliver_otp(settings, "someone@example.com", "123456")

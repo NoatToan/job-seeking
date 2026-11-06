@@ -18,7 +18,7 @@ from ujc_api.auth.session import (
 )
 from ujc_api.db import get_conn
 from ujc_api.deps import app_settings
-from ujc_api.mail import MailNotConfigured, NotInvited, deliver_otp
+from ujc_api.mail import MailDeliveryFailed, MailNotConfigured, NotInvited, deliver_otp
 from ujc_api.net import client_ip
 from ujc_api.settings import Settings
 from ujc_api.validation import normalize_email
@@ -90,6 +90,14 @@ def send_otp(
         raise HTTPException(
             status_code=403,
             detail={"code": "not_invited", "message": "This review build is invite-only."},
+        ) from exc
+    except MailDeliveryFailed as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "code": "mail_failed",
+                "message": "We couldn't send the sign-in email. Please try again in a minute.",
+            },
         ) from exc
     except MailNotConfigured as exc:
         raise HTTPException(

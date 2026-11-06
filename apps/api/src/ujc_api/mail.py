@@ -48,6 +48,12 @@ def _send_via_resend(settings: Settings, email: str, code: str) -> None:
             timeout=_TIMEOUT_S,
         )
         resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        # Resend's error body names the reason (e.g. "validation_error: You can only send testing
+        # emails to your own email address" until a sending domain is verified). It holds no secret.
+        detail = exc.response.text[:300].replace("\n", " ")
+        log.warning("Resend delivery failed: HTTP %s %s", exc.response.status_code, detail)
+        raise MailDeliveryFailed("could not send the sign-in email") from exc
     except httpx.HTTPError as exc:
         log.warning("Resend delivery failed: %s", type(exc).__name__)
         raise MailDeliveryFailed("could not send the sign-in email") from exc
