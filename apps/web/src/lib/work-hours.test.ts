@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalZone,
+  dayPhase,
   shortZoneName,
   clockLabel,
   jobZonesLabel,
@@ -123,5 +124,18 @@ describe("jobFitsHours", () => {
     expect(jobFitsHours(["Europe/London"], "Asia/Ho_Chi_Minh", 18 * 60, 24 * 60, 240, at)).toBe(true);
     // Unknown zone: always kept.
     expect(jobFitsHours(null, "Asia/Ho_Chi_Minh", 9 * 60, 10 * 60, 240, at)).toBe(true);
+  });
+});
+
+describe("dayPhase", () => {
+  const shift = (startHour: number) => ({ userStart: startHour * 60, userEnd: (startHour + 8) * 60 });
+  it("reads the middle of the shift on the user's clock", () => {
+    expect(dayPhase(shift(9))).toBe("day"); // 09–17, middle 13:00
+    expect(dayPhase(shift(3))).toBe("dawn"); // 03–11, middle 07:00
+    expect(dayPhase(shift(14))).toBe("dusk"); // 14–22, middle 18:00
+    expect(dayPhase(shift(21))).toBe("night"); // 21–05, middle 01:00 next day
+  });
+  it("wraps shifts that start before midnight on the user's clock", () => {
+    expect(dayPhase(shift(-6))).toBe("night"); // 18:00 previous day – 02:00, middle 22:00
   });
 });

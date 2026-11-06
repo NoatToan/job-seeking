@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
 import {
   clockLabel,
+  type DayPhase,
+  dayPhase,
   FIT_TONES,
   type FitLevel,
   jobZonesLabel,
@@ -121,6 +123,23 @@ export function WorkHoursBadge({ job }: { job: Job }) {
       {fitLabels[fit.level]}
     </Badge>
   );
+}
+
+const SKY_CLASS: Record<DayPhase, string> = {
+  dawn: "sky-dawn",
+  day: "sky-day",
+  dusk: "sky-dusk",
+  night: "sky-night",
+};
+
+/** Returns the sky-glow class for a job row (top-right corner tinted by the time of day its hours
+ * fall on the user's clock), or "" when the job's time zone is unknown. */
+export function useWorkHoursSky(): (job: Job) => string {
+  const { zone } = useUserTimezone();
+  return (job) => {
+    const fit = workHoursFit(job.timezones, zone);
+    return fit ? SKY_CLASS[dayPhase(fit)] : "";
+  };
 }
 
 const DAY_MIN = 24 * 60;

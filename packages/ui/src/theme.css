@@ -25,6 +25,10 @@
 :root {
   color-scheme: light;
 
+  /* Sky glow strength (sky-* utilities) */
+  --ujc-sky-a: 30%;
+  --ujc-sky-b: 18%;
+
   /* Backgrounds (systemBackground family, warmed 2-3% toward the tint) */
   --ujc-background: #ffffff;
   --ujc-background-secondary: #f4f2ef;
@@ -97,6 +101,8 @@
 
 /* Dark palette, applied by class or by system preference. Keep both blocks identical. */
 .dark {
+  --ujc-sky-a: 34%;
+  --ujc-sky-b: 28%;
   color-scheme: dark;
   --ujc-background: #0e0d0c;
   --ujc-background-secondary: #1c1b1a;
@@ -143,6 +149,8 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
+    --ujc-sky-a: 34%;
+    --ujc-sky-b: 28%;
     --ujc-background: #0e0d0c;
     --ujc-background-secondary: #1c1b1a;
     --ujc-background-tertiary: #2c2a28;
@@ -425,6 +433,30 @@
     radial-gradient(60rem 18rem at 0% 0%, color-mix(in srgb, #fb923c 16%, transparent), transparent 70%),
     radial-gradient(50rem 18rem at 55% 0%, color-mix(in srgb, #f43f5e 9%, transparent), transparent 70%),
     radial-gradient(40rem 18rem at 100% 0%, color-mix(in srgb, #a855f7 10%, transparent), transparent 70%);
+}
+
+/* Sky glow in a card's top-right corner, by the time of day a job's hours fall on the viewer's
+   clock (like Apple Weather's backgrounds): read the shift at a glance. Strength is themed
+   (--ujc-sky-a / --ujc-sky-b) so dark cards glow as much as light ones. */
+@utility sky-dawn {
+  background-image:
+    radial-gradient(9rem 6rem at 100% 0%, color-mix(in srgb, #fdba74 var(--ujc-sky-a), transparent), transparent 70%),
+    radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, #f9a8d4 var(--ujc-sky-b), transparent), transparent 75%);
+}
+@utility sky-day {
+  background-image:
+    radial-gradient(5rem 4rem at 96% 4%, color-mix(in srgb, #fde047 var(--ujc-sky-a), transparent), transparent 70%),
+    radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, #38bdf8 var(--ujc-sky-b), transparent), transparent 75%);
+}
+@utility sky-dusk {
+  background-image:
+    radial-gradient(9rem 6rem at 100% 0%, color-mix(in srgb, #fb923c var(--ujc-sky-a), transparent), transparent 70%),
+    radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, #a78bfa var(--ujc-sky-b), transparent), transparent 75%);
+}
+@utility sky-night {
+  background-image:
+    radial-gradient(9rem 6rem at 100% 0%, color-mix(in srgb, #6366f1 var(--ujc-sky-a), transparent), transparent 70%),
+    radial-gradient(16rem 9rem at 100% 0%, color-mix(in srgb, #312e81 var(--ujc-sky-b), transparent), transparent 75%);
 }
 
 /* ---------------------------------------------------------------- base */

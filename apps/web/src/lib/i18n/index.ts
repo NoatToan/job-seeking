@@ -27,8 +27,8 @@ import vi_contributor from "./locales/vi/contributor.json";
 
 /** Languages the UI ships in. Add one = add `locales/<code>/<namespace>.json` (same keys as en) + a row here. */
 export const LANGUAGES = [
-  { code: "en", label: "English", short: "EN" },
-  { code: "vi", label: "Tiếng Việt", short: "VI" },
+  { code: "en", label: "English", short: "EN", flag: "🇬🇧" },
+  { code: "vi", label: "Tiếng Việt", short: "VI", flag: "🇻🇳" },
 ] as const;
 export type Language = (typeof LANGUAGES)[number]["code"];
 

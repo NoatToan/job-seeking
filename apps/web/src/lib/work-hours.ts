@@ -180,6 +180,22 @@ export function workHoursFit(
   return best;
 }
 
+export type DayPhase = "dawn" | "day" | "dusk" | "night";
+
+/**
+ * Time of day the job's shift falls in on the user's clock, from the middle of its hours:
+ * dawn 05:00–09:00, day 09:00–16:00, dusk 16:00–20:00, night otherwise. Drives the sky glow on
+ * job rows, so the shift reads at a glance (like Apple Weather's backgrounds).
+ */
+export function dayPhase(fit: Pick<WorkHoursFit, "userStart" | "userEnd">): DayPhase {
+  const mid = ((((fit.userStart + fit.userEnd) / 2) % DAY) + DAY) % DAY;
+  const hour = mid / 60;
+  if (hour >= 5 && hour < 9) return "dawn";
+  if (hour >= 9 && hour < 16) return "day";
+  if (hour >= 16 && hour < 20) return "dusk";
+  return "night";
+}
+
 /** "+1 day" / "-1 day" / "" for where a user-clock minute falls relative to the job's day. */
 export function dayShiftLabel(minutes: number): string {
   if (minutes >= DAY) return " (+1 day)";

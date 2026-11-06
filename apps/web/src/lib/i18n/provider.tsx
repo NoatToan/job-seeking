@@ -101,7 +101,16 @@ export function LanguageSwitch({ className }: { className?: string }) {
       size="sm"
       value={language}
       onChange={setLanguage}
-      options={LANGUAGES.map((l) => ({ value: l.code, label: l.short, ariaLabel: l.label }))}
+      // A flag reads faster than "EN / VI"; the language name stays the accessible name.
+      options={LANGUAGES.map((l) => ({
+        value: l.code,
+        label: (
+          <span aria-hidden className="text-[1.05rem] leading-none">
+            {l.flag}
+          </span>
+        ),
+        ariaLabel: l.label,
+      }))}
       className={className}
     />
   );

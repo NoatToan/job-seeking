@@ -10,7 +10,7 @@ import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
-import { WorkHoursBadge } from "@/app/work-hours";
+import { useWorkHoursSky, WorkHoursBadge } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { markViewed, useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
 import { jobPagePath } from "@/lib/job-url";
@@ -157,6 +157,7 @@ export function JobBrowser({
   onNearEnd,
 }: JobBrowserProps) {
   const { t } = useTranslation("home");
+  const skyClass = useWorkHoursSky();
   const [selectedId, setSelectedId] = useViewState<string | null>(`selected:${stateKey}`, null);
   const wide = useIsWide();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -419,6 +420,7 @@ export function JobBrowser({
                 onSelect={onSelect(job.id)}
                 actions={renderActions?.(job)}
                 meta={<WorkHoursBadge job={job} />}
+                className={skyClass(job)}
                 viewed={viewed.has(job.id)}
                 basedIn={basedIn}
               />
