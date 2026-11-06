@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import { SegmentedControl, UiStringsProvider } from "@ujc/ui";
 import type { UiStrings } from "@ujc/ui";
-import i18n, { LANGUAGES } from "./index";
+import i18n, { detectLanguage, LANGUAGES, saveLanguage } from "./index";
 import type { Language } from "./index";
 
 const DATE_LOCALE: Record<Language, string> = { en: "en-AU", vi: "vi-VN" };
@@ -16,8 +16,10 @@ export function useLanguage(): { language: Language; setLanguage: (lng: Language
   const language = (LANGUAGES.find((l) => l.code === instance.resolvedLanguage)?.code ?? "en") as Language;
   return {
     language,
-    // `changeLanguage` also writes the `ujc_lang` cookie (detector `caches: ["cookie"]`).
-    setLanguage: (lng) => void instance.changeLanguage(lng),
+    setLanguage: (lng) => {
+      saveLanguage(lng);
+      void instance.changeLanguage(lng);
+    },
     dateLocale: DATE_LOCALE[language],
   };
 }
@@ -61,7 +63,7 @@ function UiStringsBridge({ children }: { children: ReactNode }) {
  * i18n for the app (Slack request: "bilingual, default from the browser language, switchable,
  * remembered in a cookie"). The static export is prerendered in English, so the first client
  * render is English too (no hydration mismatch); right after mount we switch to the language
- * from the `ujc_lang` cookie, else the browser's language list, and keep `<html lang>` in step.
+ * from the `ujc_locale` cookie, else the browser's language list, and keep `<html lang>` in step.
  */
 export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -69,8 +71,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       document.documentElement.lang = LANGUAGES.find((l) => lng.startsWith(l.code))?.code ?? "en";
     };
     i18n.on("languageChanged", syncLang);
-    // No argument = run the detector (cookie → navigator) and cache the result in the cookie.
-    void i18n.changeLanguage();
+    // Saved choice (cookie) → browser language list → English.
+    void i18n.changeLanguage(detectLanguage());
     return () => i18n.off("languageChanged", syncLang);
   }, []);
 
