@@ -10,13 +10,21 @@ import {
   createFeedbackApi,
   strings,
   type LinkComponent,
+  type Request,
 } from "@contributor-box/react";
-import { API_BASE_URL, apiFetch } from "./api";
+import { API_BASE_URL, apiFetch, ensureCsrfCookie } from "./api";
 import { useSession } from "./session";
+
+/** Signed-out visitors can send feedback (anonymous, D14), so an unsafe call first makes sure the
+ * CSRF cookie exists; signed-in users already have it from sign-in. */
+const feedbackRequest: Request = async (path, init) => {
+  if (init?.method && init.method.toUpperCase() !== "GET") await ensureCsrfCookie();
+  return apiFetch(path, init);
+};
 
 /** Contributor feature (docs/product/ARCHITECTURE.md D14): the vendored contributor-box UI, on
  * job-seeking's own transport (`apiFetch`: cookies, CSRF header, 401 handling) and session. */
-const feedbackApi = createFeedbackApi(apiFetch, { baseUrl: API_BASE_URL });
+const feedbackApi = createFeedbackApi(feedbackRequest, { baseUrl: API_BASE_URL });
 
 export function ContributorRoot({ children }: { children: ReactNode }) {
   const { me } = useSession();
@@ -29,6 +37,7 @@ export function ContributorRoot({ children }: { children: ReactNode }) {
       api={feedbackApi}
       strings={strings[language]}
       signedIn={Boolean(me)}
+      allowAnonymous
       signInHref={signInHref}
       boardHref="/contribute/"
       linkAs={Link as LinkComponent}

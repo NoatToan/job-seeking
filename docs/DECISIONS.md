@@ -69,3 +69,24 @@ Tony asked for the "Find a tech job you'll love" block to collapse, either with 
 - **Toggle:** a chevron at the end of the filter row. Folding with it pins the choice (localStorage `ujc:hero-collapsed`), which wins over hover; pressing it again unpins.
 - **Phones:** unchanged. Their hero is already compact (brand row and filters, tagline hidden).
 - The two-column browser's height is measured in JS; it now also observes the headline, because the shell's `min-h-dvh` keeps `body` the same size while the hero folds.
+
+## Anonymous feedback (2026-11-06)
+
+Tony asked for "Send feedback" to work without signing in, anonymously or under any name. It is
+built in contributor-box as an opt-in (`allow_anonymous` / `allowAnonymous`, upstream decision 13)
+and turned on here.
+
+- **Create only.** Guests can send a bug, feedback or idea with an optional name (at most 80
+  characters). Reading, voting, "my feedback" and deleting still need an account, so nothing
+  about a guest's item can be read back.
+- **CSRF still applies.** `ujc_csrf` used to be issued only at sign-in, so `GET /api/auth/csrf`
+  now issues it to a visitor who has none (an existing cookie is never replaced). The web app
+  calls it lazily, right before a guest's first unsafe feedback request.
+- **Abuse.** contributor-box rate-limits guests in the database: 5 per visitor key and 60 across
+  all guests per hour. The visitor key is an HMAC of the first `X-Forwarded-For` hop with
+  `UJC_SECRET_KEY`, so the raw IP is never stored. The generic per-IP limit on unsafe methods and
+  the 2.2 MB body limit still apply. A CAPTCHA was left out; add one if the global cap gets hit.
+- **Schema.** Migration `024_feedback_anonymous.sql` (vendored from upstream `002`) makes
+  `feedback_items.author_id` nullable and adds `author_name` and `anon_key`. A CHECK keeps both
+  fields on anonymous rows only. Account deletion still cascades to the user's own items.
+

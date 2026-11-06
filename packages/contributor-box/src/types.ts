@@ -65,8 +65,8 @@ export interface FeedbackItem {
   updatedAt: string;
   statusChangedAt: string | null;
   context: FeedbackContext | null;
-  /** Admins only. */
-  author: { id: string; email: string | null } | null;
+  /** Admins only. Anonymous items have no id/email, maybe a self-chosen `name`. */
+  author: { id: string | null; email: string | null; name?: string | null; anonymous?: boolean } | null;
   /** Detail responses only. */
   notes?: FeedbackNote[];
 }
@@ -100,6 +100,8 @@ export interface CreateFeedbackInput {
   screenshot?: string | null;
   screenshotWidth?: number | null;
   screenshotHeight?: number | null;
+  /** Anonymous submissions only (ignored for signed-in users): free-text display name. */
+  authorName?: string | null;
 }
 
 export interface ListFeedbackQuery {

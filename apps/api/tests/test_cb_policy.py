@@ -35,3 +35,22 @@ def test_delete_rules():
     assert not policy.can_delete(item("under_review"), AUTHOR, False)
     assert not policy.can_delete(item("new"), OTHER, False)
     assert policy.can_delete(item("done"), ADMIN, True)
+
+
+def test_anonymous_items_have_no_author():
+    it = {"status": "new", "author_id": None}
+    assert policy.is_anonymous(it)
+    assert not policy.is_author(it, None)
+    assert not policy.is_author(it, AUTHOR)
+    assert not policy.can_view(it, OTHER, False)
+    assert not policy.can_view(it, None, False)
+    assert policy.can_view(it, ADMIN, True)
+    assert not policy.can_view_context(it, None, False)
+    assert not policy.can_delete(it, None, False)
+    assert policy.can_delete(it, ADMIN, True)
+
+
+def test_anonymous_viewer_is_never_the_author():
+    assert not policy.is_author(item("new"), None)
+    assert not policy.can_view(item("new"), None, False)
+    assert policy.can_view(item("approved"), None, False)

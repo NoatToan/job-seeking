@@ -121,3 +121,17 @@ def test_clip_user_agent():
     assert clip_user_agent(None) is None
     assert clip_user_agent("a\x00b") == "ab"
     assert len(clip_user_agent("x" * 900) or "") == 500
+
+
+def test_author_name_is_trimmed_and_blank_becomes_none():
+    assert create(authorName="  Minh  ").author_name == "Minh"
+    assert create(authorName="   ").author_name is None
+    assert create().author_name is None
+
+
+def test_author_name_limits():
+    assert create(authorName="x" * 80).author_name == "x" * 80
+    with pytest.raises(ValidationError):
+        create(authorName="x" * 81)
+    with pytest.raises(ValidationError):
+        create(authorName="Minh\x00")

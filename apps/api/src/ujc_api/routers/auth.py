@@ -1,4 +1,5 @@
-"""`POST /api/auth/otp`, `/verify`, `/logout` (docs/product/FLOW_V2.md §4)."""
+"""`POST /api/auth/otp`, `/verify`, `/logout` (docs/product/FLOW_V2.md §4), and
+`GET /api/auth/csrf` (a CSRF cookie for visitors without a session)."""
 
 import re
 
@@ -10,11 +11,13 @@ from ujc_api.auth import otp
 from ujc_api.auth.csrf import generate_csrf_token, require_csrf
 from ujc_api.auth.deps import AuthedUser, current_user
 from ujc_api.auth.session import (
+    CSRF_COOKIE,
     SESSION_COOKIE,
     clear_auth_cookies,
     create_session,
     revoke_session,
     set_auth_cookies,
+    set_csrf_cookie,
 )
 from ujc_api.db import get_conn
 from ujc_api.deps import app_settings
@@ -165,5 +168,21 @@ def logout(
     if token:
         revoke_session(conn, token)
     clear_auth_cookies(response, settings)
+    response.status_code = 204
+    return response
+
+
+@router.get("/csrf", status_code=204)
+def csrf(
+    request: Request, response: Response, settings: Settings = Depends(app_settings)
+) -> Response:
+    """Issues the double-submit `ujc_csrf` cookie to a visitor who has none (signed out), so a
+    CSRF-protected request that works without a session (anonymous feedback, D14) can send the
+    matching `X-CSRF-Token`. An existing cookie is kept: replacing it would break a signed-in
+    session's token. The token is random and not secret from the visitor; it only proves the
+    request came from a page that can read our cookies."""
+    if not request.cookies.get(CSRF_COOKIE):
+        set_csrf_cookie(response, settings, generate_csrf_token())
+    response.headers["Cache-Control"] = "no-store"
     response.status_code = 204
     return response

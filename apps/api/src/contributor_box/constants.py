@@ -1,6 +1,6 @@
 """Enumerations and limits shared by validation, the repository and the router.
 
-Every limit here is also enforced by a CHECK constraint in `sql/001_feedback.sql`; the API checks
+Every limit here is also enforced by a CHECK constraint in `sql/*.sql`; the API checks
 first so the client gets a 400 with a field name instead of a 500 from the database.
 """
 
@@ -39,6 +39,13 @@ CREATE_MAX_BODY_BYTES = 2_200_000
 
 # Per author, rolling hour. Counted in the database, so it holds across processes/instances.
 MAX_ITEMS_PER_HOUR = 10
+# Anonymous submissions (only when the host opts in with `allow_anonymous=True`): per anonymous
+# key (the host's salted hash of the client IP) and, as a backstop against rotating IPs, across all
+# anonymous visitors together. Rolling hour, counted in the database.
+MAX_ANON_ITEMS_PER_HOUR = 5
+MAX_ANON_ITEMS_PER_HOUR_TOTAL = 60
+AUTHOR_NAME_MAX = 80
+ANON_KEY_MAX = 128
 
 LIST_LIMIT_DEFAULT = 20
 LIST_LIMIT_MAX = 50

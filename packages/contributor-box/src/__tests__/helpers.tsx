@@ -52,10 +52,16 @@ export function fakeApi(overrides: Partial<FeedbackApi> = {}): FeedbackApi {
   };
 }
 
-export function wrap(api: FeedbackApi, signedIn = true) {
+export function wrap(api: FeedbackApi, signedIn = true, allowAnonymous = false) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ContributorProvider api={api} signedIn={signedIn} signInHref="/login/" boardHref="/contribute/">
+      <ContributorProvider
+        api={api}
+        signedIn={signedIn}
+        allowAnonymous={allowAnonymous}
+        signInHref="/login/"
+        boardHref="/contribute/"
+      >
         {children}
       </ContributorProvider>
     );

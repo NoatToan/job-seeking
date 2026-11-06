@@ -1,7 +1,7 @@
 {
   "upstream": "https://github.com/NoatToan/contributor-box.git",
   "ref": "main",
-  "commit": "2b7dd409fc11c6e7cc7b61bbec061168a183c976",
+  "commit": "0b62d9a936be3fdf3f4b1c3c66bb6322e9053968",
   "files": [
     "apps/api/src/contributor_box/VENDORED.md",
     "apps/api/src/contributor_box/__init__.py",
@@ -19,6 +19,7 @@
     "apps/api/tests/test_cb_schemas.py",
     "apps/api/tests/test_cb_screenshot.py",
     "db/migrations/022_feedback.sql",
+    "db/migrations/024_feedback_anonymous.sql",
     "packages/contributor-box/VENDORED.md",
     "packages/contributor-box/package.json",
     "packages/contributor-box/src/__tests__/admin.test.tsx",

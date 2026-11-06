@@ -281,6 +281,15 @@ function readCsrfCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * `GET /api/auth/csrf` when this browser has no `ujc_csrf` cookie yet (signed out), so a
+ * CSRF-protected request that works without a session (anonymous feedback) can send the token.
+ */
+export async function ensureCsrfCookie(): Promise<void> {
+  if (typeof document === "undefined" || readCsrfCookie()) return;
+  await apiFetch<void>("/api/auth/csrf");
+}
+
 /** `DELETE /api/me` — hard-deletes the account (cascades); clears the session. */
 export function deleteMyAccount(): Promise<void> {
   return apiFetch<void>("/api/me", { method: "DELETE", body: { confirm: "DELETE" } });

@@ -15,6 +15,14 @@ import type {
 import { KINDS, STATUSES } from "./types";
 import { Button, cx, formatDate, inputClasses, KindBadge, Label, StatusBadge } from "./ui";
 
+/** "email", "Name (Anonymous)" or "Anonymous". */
+export function authorLabel(item: FeedbackItem, anonymous: string): string {
+  const author = item.author;
+  if (!author) return "—";
+  if (author.anonymous) return author.name ? `${author.name} (${anonymous})` : anonymous;
+  return author.email ?? "—";
+}
+
 function ContextBlock({ item }: { item: FeedbackItem }) {
   const { api, strings: s } = useContributor();
   const c = item.context;
@@ -125,7 +133,7 @@ function Editor({ item, onSaved, onDeleted }: { item: FeedbackItem; onSaved: (i:
         <KindBadge kind={item.kind} label={s.kind[item.kind]} />
         <StatusBadge status={item.status} label={s.status[item.status]} />
         <span>
-          {s.author}: {item.author?.email ?? "—"} · {s.createdAt}: {formatDate(item.createdAt)} ·{" "}
+          {s.author}: {authorLabel(item, s.anonymous)} · {s.createdAt}: {formatDate(item.createdAt)} ·{" "}
           {s.votes(item.voteCount)}
         </span>
       </div>

@@ -29,9 +29,19 @@ export interface ContributorStrings {
   submitting: string;
   sent: string;
   sentDetail: string;
+  /** "Sent" view for a signed-out visitor, who cannot follow the item. */
+  sentDetailAnonymous: string;
   sendAnother: string;
   seeAll: string;
   signInPrompt: string;
+  /** Above the form for a signed-out visitor when anonymous feedback is on. */
+  guestHint: string;
+  /** Link after `guestHint`. */
+  guestSignIn: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  /** Shown for an anonymous item without a name (admin review). */
+  anonymous: string;
   signIn: string;
   errorGeneric: string;
   errorRateLimited: string;
@@ -133,9 +143,15 @@ const en: ContributorStrings = {
   submitting: "Sending…",
   sent: "Thank you!",
   sentDetail: "We got it. You can follow its status on the contributor page.",
+  sentDetailAnonymous: "We got it, thank you. The team reads every message.",
   sendAnother: "Send another",
   seeAll: "See all ideas",
   signInPrompt: "Sign in to send feedback and vote on ideas.",
+  guestHint: "You're sending this as a guest.",
+  guestSignIn: "Sign in to follow its status",
+  nameLabel: "Your name (optional)",
+  namePlaceholder: "Anonymous",
+  anonymous: "Anonymous",
   signIn: "Sign in",
   errorGeneric: "We couldn't send this. It's on our side, not yours. Please try again.",
   errorRateLimited: "You've sent a lot this hour. Please try again later.",
@@ -236,9 +252,15 @@ const vi: ContributorStrings = {
   submitting: "Đang gửi…",
   sent: "Cảm ơn bạn!",
   sentDetail: "Chúng tôi đã nhận. Bạn có thể theo dõi trạng thái ở trang Đóng góp.",
+  sentDetailAnonymous: "Chúng tôi đã nhận, cảm ơn bạn. Nhóm đọc mọi góp ý.",
   sendAnother: "Gửi thêm",
   seeAll: "Xem tất cả ý tưởng",
   signInPrompt: "Đăng nhập để gửi góp ý và bình chọn ý tưởng.",
+  guestHint: "Bạn đang gửi với tư cách khách.",
+  guestSignIn: "Đăng nhập để theo dõi trạng thái",
+  nameLabel: "Tên của bạn (không bắt buộc)",
+  namePlaceholder: "Ẩn danh",
+  anonymous: "Ẩn danh",
   signIn: "Đăng nhập",
   errorGeneric: "Chưa gửi được. Lỗi ở phía chúng tôi. Vui lòng thử lại.",
   errorRateLimited: "Bạn đã gửi khá nhiều trong giờ này. Vui lòng thử lại sau.",

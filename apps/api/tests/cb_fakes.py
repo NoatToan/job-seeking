@@ -14,7 +14,11 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 from contributor_box.constants import PUBLIC_STATUSES
-from contributor_box.router import FeedbackDeps, create_feedback_router
+from contributor_box.router import (
+    FeedbackDeps,
+    anonymous_key_dependency,
+    create_feedback_router,
+)
 from contributor_box.schemas import CreateItemRequest
 from contributor_box.screenshot import Screenshot
 
@@ -39,9 +43,22 @@ class InMemoryFeedbackRepository:
     def count_recent_by_author(self, author_id: int) -> int:
         return sum(1 for i in self.items.values() if i["author_id"] == author_id)
 
+    def count_recent_anonymous(self, anon_key: str) -> tuple[int, int]:
+        anon = [i for i in self.items.values() if i["author_id"] is None]
+        return sum(1 for i in anon if i["anon_key"] == anon_key), len(anon)
+
     def create(
-        self, author_id, req: CreateItemRequest, *, user_agent, screenshot: Screenshot | None
+        self,
+        author_id,
+        req: CreateItemRequest,
+        *,
+        user_agent,
+        screenshot: Screenshot | None,
+        anon_key: str | None = None,
     ):
+        anonymous = author_id is None
+        if anonymous and not anon_key:
+            raise ValueError("an anonymous item needs an anon_key")
         item_id = next(self._ids)
         now = datetime.now(UTC)
         self.items[item_id] = {
@@ -60,7 +77,9 @@ class InMemoryFeedbackRepository:
             "user_agent": user_agent,
             "admin_response": None,
             "author_id": author_id,
-            "author_email": f"user{author_id}@example.com",
+            "author_email": None if anonymous else f"user{author_id}@example.com",
+            "author_name": req.author_name if anonymous else None,
+            "anon_key": anon_key if anonymous else None,
             "reviewed_by": None,
             "status_changed_at": None,
             "created_at": now,
@@ -152,19 +171,31 @@ class InMemoryFeedbackRepository:
 
 
 def build_app(
-    repo: InMemoryFeedbackRepository, admin_ids: frozenset[int] = frozenset({1})
+    repo: InMemoryFeedbackRepository,
+    admin_ids: frozenset[int] = frozenset({1}),
+    *,
+    allow_anonymous: bool = False,
 ) -> FastAPI:
-    """Users are picked with an `X-User` header (absent = anonymous -> 401). User 1 is an admin."""
+    """Users are picked with an `X-User` header (absent = anonymous -> 401). User 1 is an admin.
 
-    def current_user(request: Request) -> FakeUser:
+    With `allow_anonymous`, anonymous callers may create items; their rate-limit key comes from
+    `X-Forwarded-For` (via `anonymous_key_dependency`)."""
+
+    def optional_user(request: Request) -> FakeUser | None:
         raw = request.headers.get("x-user")
-        if not raw:
+        return FakeUser(id=int(raw), email=f"user{raw}@example.com") if raw else None
+
+    def current_user(user: FakeUser | None = Depends(optional_user)) -> FakeUser:
+        if user is None:
             raise HTTPException(401, detail={"code": "unauthorized", "message": "Sign in"})
-        return FakeUser(id=int(raw), email=f"user{raw}@example.com")
+        return user
 
     # Depends-based, like a real host: FastAPI resolves `current_user` once per request.
     def viewer_is_admin(user: FakeUser = Depends(current_user)) -> bool:
         return user.id in admin_ids
+
+    def optional_viewer_is_admin(user: FakeUser | None = Depends(optional_user)) -> bool:
+        return user is not None and user.id in admin_ids
 
     def require_csrf(request: Request) -> None:
         if request.headers.get("x-csrf-token") != CSRF:
@@ -178,7 +209,11 @@ def build_app(
                 viewer_is_admin=viewer_is_admin,
                 get_repo=lambda: repo,
                 require_csrf=require_csrf,
-            )
+                optional_user=optional_user,
+                optional_viewer_is_admin=optional_viewer_is_admin,
+                anonymous_key=anonymous_key_dependency("test-secret"),
+            ),
+            allow_anonymous=allow_anonymous,
         )
     )
     return app

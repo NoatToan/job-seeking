@@ -143,6 +143,37 @@ def test_full_flow_through_host_auth(make_client):
     assert bad.json()["error"]["code"] == "validation_error"
 
 
+def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url: str):
+    guest = make_client()
+    idea = {"kind": "idea", "title": "Dark mode please", "authorName": "  Minh "}
+    # No CSRF cookie yet: refused, then the visitor fetches one without signing in.
+    assert guest.post("/api/feedback", json=idea).json()["error"]["code"] == "csrf_failed"
+    assert guest.get("/api/auth/csrf").status_code == 204
+    csrf = {"X-CSRF-Token": guest.cookies.get("ujc_csrf") or ""}
+    resp = guest.post("/api/feedback", json=idea, headers=csrf)
+    assert resp.status_code == 201, resp.text
+    item = resp.json()
+    assert item["isMine"] is False and item["context"] is None and item["author"] is None
+
+    # Create only: reading, listing and voting still need a session.
+    assert guest.get(f"/api/feedback/{item['id']}").status_code == 401
+    assert guest.get("/api/feedback?scope=mine").status_code == 401
+
+    admin = make_client()
+    _sign_in(admin, "anon-reviewer@example.com")
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        assert set_role(conn, "anon-reviewer@example.com", "admin") is True
+    seen = admin.get(f"/api/feedback/{item['id']}").json()
+    assert seen["author"] == {"id": None, "email": None, "name": "Minh", "anonymous": True}
+
+    # Signed-in users keep their account as the author; a sent name is ignored.
+    user = make_client()
+    user_csrf = _sign_in(user, "named-user@example.com")
+    mine = _create(user, user_csrf, authorName="Someone else")
+    assert mine["isMine"] is True
+    assert admin.get(f"/api/feedback/{mine['id']}").json()["author"]["name"] is None
+
+
 def test_body_limit_allows_screenshot_sized_feedback_but_not_more(make_client):
     client = make_client()
     csrf = _sign_in(client, "big@example.com")

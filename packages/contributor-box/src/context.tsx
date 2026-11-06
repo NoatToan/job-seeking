@@ -17,6 +17,11 @@ export interface ContributorConfig {
   strings?: ContributorStrings;
   /** Whether a session exists. The server still checks every call; this only picks the UI. */
   signedIn: boolean;
+  /**
+   * Let signed-out visitors send feedback (with an optional name). The server must opt in too
+   * (`create_feedback_router(..., allow_anonymous=True)`). Default false: they are asked to sign in.
+   */
+  allowAnonymous?: boolean;
   /** Where "Sign in" goes (the widget appends nothing; pass `?next=` yourself if you want it). */
   signInHref?: string;
   /** The contributor board page, linked from the widget. */
@@ -43,6 +48,7 @@ export function ContributorProvider({ children, ...config }: ContributorConfig &
     api: config.api,
     strings: config.strings ?? builtIn.en,
     signedIn: config.signedIn,
+    allowAnonymous: config.allowAnonymous ?? false,
     signInHref: config.signInHref ?? null,
     boardHref: config.boardHref ?? null,
     linkAs: config.linkAs ?? PlainLink,

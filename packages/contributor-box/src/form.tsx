@@ -34,11 +34,12 @@ export function FeedbackForm({
   onPickingChange,
   capture = captureViewport,
 }: FeedbackFormProps) {
-  const { api, strings: s } = useContributor();
+  const { api, strings: s, signedIn } = useContributor();
   const uid = useId();
   const [kind, setKind] = useState<FeedbackKind>(defaultKind);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [authorName, setAuthorName] = useState("");
   const [picking, setPicking] = useState(false);
   const [pick, setPick] = useState<PickResult | null>(null);
   const [withShot, setWithShot] = useState(false);
@@ -120,6 +121,7 @@ export function FeedbackForm({
         kind,
         title: title.trim(),
         body: body.trim(),
+        ...(!signedIn && authorName.trim() ? { authorName: authorName.trim() } : {}),
         ...(withPageContext
           ? {
               pageUrl: window.location.href,
@@ -150,6 +152,7 @@ export function FeedbackForm({
 
   const titleId = `${uid}-title`;
   const bodyId = `${uid}-body`;
+  const nameId = `${uid}-name`;
   const shotId = `${uid}-shot`;
   const titleErrorId = `${uid}-title-error`;
 
@@ -195,6 +198,20 @@ export function FeedbackForm({
           onChange={(e) => setBody(e.target.value)}
         />
       </div>
+      {!signedIn ? (
+        <div>
+          <Label htmlFor={nameId}>{s.nameLabel}</Label>
+          <input
+            id={nameId}
+            className={inputClasses}
+            value={authorName}
+            maxLength={80}
+            autoComplete="name"
+            placeholder={s.namePlaceholder}
+            onChange={(e) => setAuthorName(e.target.value)}
+          />
+        </div>
+      ) : null}
 
       {withPageContext ? (
         <div className="flex flex-col gap-3 rounded-card bg-fill-tertiary p-3">

@@ -10,6 +10,7 @@ from pydantic.alias_generators import to_camel
 
 from contributor_box.constants import (
     ADMIN_RESPONSE_MAX,
+    AUTHOR_NAME_MAX,
     BODY_MAX,
     ELEMENT_TEXT_MAX,
     NOTE_MAX,
@@ -94,8 +95,13 @@ class CreateItemRequest(_Model):
     screenshot: str | None = Field(default=None, max_length=SCREENSHOT_MAX_DATA_URL_CHARS)
     screenshot_width: int | None = Field(default=None, ge=1, le=VIEWPORT_MAX)
     screenshot_height: int | None = Field(default=None, ge=1, le=VIEWPORT_MAX)
+    # Free-text display name for an anonymous submission ("Anonymous" when empty). Ignored for
+    # signed-in users, whose account identifies them.
+    author_name: str | None = Field(default=None, max_length=AUTHOR_NAME_MAX)
 
-    @field_validator("title", "body", "page_title", "element_selector", "element_text")
+    @field_validator(
+        "title", "body", "page_title", "element_selector", "element_text", "author_name"
+    )
     @classmethod
     def _text(cls, v: str | None) -> str | None:
         return _no_nul(v)
@@ -105,7 +111,7 @@ class CreateItemRequest(_Model):
     def _strip_body(cls, v: str) -> str:
         return v.strip()
 
-    @field_validator("page_title", "element_selector", "element_text")
+    @field_validator("page_title", "element_selector", "element_text", "author_name")
     @classmethod
     def _optional_text(cls, v: str | None) -> str | None:
         return _blank_to_none(v)

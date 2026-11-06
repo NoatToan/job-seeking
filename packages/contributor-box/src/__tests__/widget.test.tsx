@@ -135,4 +135,34 @@ describe("FeedbackWidget", () => {
     fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
     expect((await screen.findByRole("alert")).textContent).toMatch(/a lot this hour/);
   });
+
+  it("lets a guest send feedback with an optional name when anonymous feedback is on", async () => {
+    const api = fakeApi();
+    render(<FeedbackWidget />, { wrapper: wrap(api, false, true) });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(screen.getByText(/sending this as a guest/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign in to follow its status" }).getAttribute("href")).toBe("/login/");
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Dark mode please" } });
+    fireEvent.change(screen.getByLabelText("Your name (optional)"), { target: { value: "  Minh " } });
+    fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
+    await waitFor(() => expect(api.create).toHaveBeenCalled());
+    expect(vi.mocked(api.create).mock.calls[0][0]).toMatchObject({ title: "Dark mode please", authorName: "Minh" });
+    expect(await screen.findByText(/thank you/)).toBeTruthy();
+    // No "my feedback" / board link for a guest.
+    expect(screen.queryByRole("link", { name: "See all ideas" })).toBeNull();
+  });
+
+  it("sends no name when a guest leaves it empty, and signed-in users never see the field", async () => {
+    const api = fakeApi();
+    render(<FeedbackWidget />, { wrapper: wrap(api, false, true) });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    fireEvent.change(screen.getByLabelText("Title"), { target: { value: "No name" } });
+    fireEvent.submit(screen.getByLabelText("Title").closest("form")!);
+    await waitFor(() => expect(api.create).toHaveBeenCalled());
+    expect(vi.mocked(api.create).mock.calls[0][0]).not.toHaveProperty("authorName");
+    cleanup();
+    render(<FeedbackWidget />, { wrapper: wrap(fakeApi(), true, true) });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(screen.queryByLabelText("Your name (optional)")).toBeNull();
+  });
 });

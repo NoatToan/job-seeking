@@ -67,12 +67,18 @@ def set_auth_cookies(
         samesite="lax",
         path="/",
     )
+    set_csrf_cookie(response, settings, csrf_token)
+
+
+def set_csrf_cookie(response: Response, settings: Settings, csrf_token: str) -> None:
+    """`ujc_csrf` alone (readable by JS): for visitors without a session who still make a
+    CSRF-protected request (anonymous feedback, `GET /api/auth/csrf`)."""
     response.set_cookie(
         CSRF_COOKIE,
         csrf_token,
         max_age=_SESSION_MAX_AGE,
         httponly=False,
-        secure=secure,
+        secure=settings.ujc_env != "development",
         samesite="lax",
         path="/",
     )

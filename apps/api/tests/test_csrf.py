@@ -4,7 +4,8 @@ from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
 from ujc_api.auth.csrf import generate_csrf_token, require_csrf
-from ujc_api.main import register_exception_handlers
+from ujc_api.main import create_app, register_exception_handlers
+from ujc_api.settings import Settings
 
 
 def _app() -> FastAPI:
@@ -52,3 +53,19 @@ def test_generate_csrf_token_is_long_and_url_safe():
 
 def test_generate_csrf_token_is_unique():
     assert generate_csrf_token() != generate_csrf_token()
+
+
+def test_csrf_endpoint_issues_a_cookie_to_a_visitor_without_one():
+    settings = Settings(database_url="postgresql://unused/unused", ujc_env="test")
+    # https: the cookie is `Secure` outside development, so plain http would never send it back.
+    client = TestClient(create_app(settings), base_url="https://testserver")
+    resp = client.get("/api/auth/csrf")
+    assert resp.status_code == 204
+    assert resp.headers["cache-control"] == "no-store"
+    token = client.cookies.get("ujc_csrf")
+    assert token and len(token) >= 32
+    # An existing cookie is kept (a signed-in session's token must not change under it).
+    again = client.get("/api/auth/csrf")
+    assert again.status_code == 204
+    assert "set-cookie" not in again.headers
+    assert client.cookies.get("ujc_csrf") == token

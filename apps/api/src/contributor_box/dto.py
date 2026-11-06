@@ -1,6 +1,6 @@
 """Row -> JSON (camelCase). What a viewer gets depends on `policy`: context fields (page URL,
 selector, region, screenshot flag, user agent) only for the author and admins; the author's email
-and internal notes only for admins."""
+(or an anonymous submitter's chosen name) and internal notes only for admins."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -9,7 +9,7 @@ from contributor_box import policy
 from contributor_box.repository import iso
 
 
-def item_dto(item: Mapping[str, Any], viewer_id: int, is_admin: bool) -> dict[str, Any]:
+def item_dto(item: Mapping[str, Any], viewer_id: int | None, is_admin: bool) -> dict[str, Any]:
     mine = policy.is_author(item, viewer_id)
     out: dict[str, Any] = {
         "id": str(item["id"]),
@@ -42,7 +42,13 @@ def item_dto(item: Mapping[str, Any], viewer_id: int, is_admin: bool) -> dict[st
             "userAgent": item["user_agent"] if is_admin else None,
         }
     if is_admin:
-        out["author"] = {"id": str(item["author_id"]), "email": item.get("author_email")}
+        anonymous = policy.is_anonymous(item)
+        out["author"] = {
+            "id": None if anonymous else str(item["author_id"]),
+            "email": None if anonymous else item.get("author_email"),
+            "name": item.get("author_name"),
+            "anonymous": anonymous,
+        }
     return out
 
 

@@ -9,7 +9,11 @@ import pytest
 from cb_fakes import CSRF, InMemoryFeedbackRepository, as_user, build_app
 from fastapi.testclient import TestClient
 
-from contributor_box.constants import MAX_ITEMS_PER_HOUR
+from contributor_box.constants import (
+    MAX_ANON_ITEMS_PER_HOUR,
+    MAX_ANON_ITEMS_PER_HOUR_TOTAL,
+    MAX_ITEMS_PER_HOUR,
+)
 
 ADMIN, AUTHOR, OTHER = 1, 2, 3
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 32
@@ -201,7 +205,12 @@ def test_author_and_admin_can_fetch_screenshot_with_safe_headers(client: TestCli
 def test_admin_sees_author_and_user_agent(client: TestClient):
     item = create(client)
     seen = client.get(f"/api/feedback/{item['id']}", headers=as_user(client, ADMIN)).json()
-    assert seen["author"] == {"id": str(AUTHOR), "email": f"user{AUTHOR}@example.com"}
+    assert seen["author"] == {
+        "id": str(AUTHOR),
+        "email": f"user{AUTHOR}@example.com",
+        "name": None,
+        "anonymous": False,
+    }
     assert seen["context"]["userAgent"]
 
 
@@ -354,3 +363,126 @@ def test_patchable_fields_match_the_patch_model():
     from contributor_box.schemas import AdminPatchRequest
 
     assert set(AdminPatchRequest.model_fields) == set(_PATCHABLE)
+
+
+# --- anonymous submissions (opt-in) ---------------------------------------------------------
+
+IDEA = {"kind": "idea", "title": "Dark mode please"}
+
+
+@pytest.fixture
+def anon_client(repo: InMemoryFeedbackRepository) -> TestClient:
+    return TestClient(build_app(repo, allow_anonymous=True))
+
+
+def anon_headers(ip: str = "203.0.113.7") -> dict[str, str]:
+    return {"X-CSRF-Token": CSRF, "X-Forwarded-For": f"{ip}, 10.0.0.1"}
+
+
+def test_anonymous_create_is_off_by_default(client: TestClient, repo):
+    resp = client.post("/api/feedback", json=IDEA, headers=anon_headers())
+    assert resp.status_code == 401
+    assert repo.items == {}
+
+
+def test_anonymous_create_when_allowed(anon_client: TestClient, repo):
+    resp = anon_client.post(
+        "/api/feedback", json={**IDEA, "authorName": "  Minh "}, headers=anon_headers()
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["title"] == "Dark mode please"
+    assert body["isMine"] is False
+    assert body["canDelete"] is False
+    assert body["context"] is None
+    assert body["author"] is None
+    stored = repo.items[int(body["id"])]
+    assert stored["author_id"] is None
+    assert stored["author_name"] == "Minh"
+    # The key is an HMAC of the first X-Forwarded-For hop, never the raw IP.
+    assert stored["anon_key"] and "203.0.113.7" not in stored["anon_key"]
+
+
+def test_anonymous_create_still_requires_csrf(anon_client: TestClient):
+    resp = anon_client.post("/api/feedback", json=IDEA, headers={"X-Forwarded-For": "1.2.3.4"})
+    assert resp.status_code == 403
+
+
+def test_anonymous_is_create_only(anon_client: TestClient):
+    created = anon_client.post("/api/feedback", json=IDEA, headers=anon_headers()).json()
+    assert anon_client.get("/api/feedback").status_code == 401
+    assert anon_client.get(f"/api/feedback/{created['id']}").status_code == 401
+    assert anon_client.get("/api/feedback/meta").status_code == 401
+    assert (
+        anon_client.delete(f"/api/feedback/{created['id']}", headers=anon_headers()).status_code
+        == 401
+    )
+    assert (
+        anon_client.put(f"/api/feedback/{created['id']}/vote", headers=anon_headers()).status_code
+        == 401
+    )
+
+
+def test_signed_in_create_unchanged_when_anonymous_allowed(anon_client: TestClient, repo):
+    resp = anon_client.post(
+        "/api/feedback",
+        json={**IDEA, "authorName": "Ignored"},
+        headers=as_user(anon_client, AUTHOR),
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["isMine"] is True
+    stored = repo.items[int(body["id"])]
+    assert stored["author_id"] == AUTHOR
+    assert stored["author_name"] is None
+    assert stored["anon_key"] is None
+
+
+def test_admin_sees_anonymous_author_name(anon_client: TestClient):
+    created = anon_client.post(
+        "/api/feedback", json={**IDEA, "authorName": "Minh"}, headers=anon_headers()
+    ).json()
+    seen = anon_client.get(f"/api/feedback/{created['id']}", headers=as_user(anon_client, ADMIN))
+    assert seen.json()["author"] == {"id": None, "email": None, "name": "Minh", "anonymous": True}
+    # Nobody but admins can see an anonymous item while it is new.
+    assert (
+        anon_client.get(f"/api/feedback/{created['id']}", headers=as_user(anon_client, OTHER))
+    ).status_code == 404
+
+
+def test_anonymous_rate_limit_per_key_and_total(anon_client: TestClient):
+    for _ in range(MAX_ANON_ITEMS_PER_HOUR):
+        assert (
+            anon_client.post("/api/feedback", json=IDEA, headers=anon_headers()).status_code == 201
+        )
+    resp = anon_client.post("/api/feedback", json=IDEA, headers=anon_headers())
+    assert resp.status_code == 429
+    assert resp.headers["Retry-After"] == "3600"
+    # Another address still gets through ...
+    assert (
+        anon_client.post(
+            "/api/feedback", json=IDEA, headers=anon_headers("198.51.100.1")
+        ).status_code
+        == 201
+    )
+
+
+def test_anonymous_global_cap(anon_client: TestClient, repo):
+    for n in range(MAX_ANON_ITEMS_PER_HOUR_TOTAL):
+        resp = anon_client.post("/api/feedback", json=IDEA, headers=anon_headers(f"10.1.{n}.1"))
+        assert resp.status_code == 201
+    resp = anon_client.post("/api/feedback", json=IDEA, headers=anon_headers("10.9.9.9"))
+    assert resp.status_code == 429
+
+
+def test_allow_anonymous_requires_optional_deps():
+    from contributor_box.router import FeedbackDeps, create_feedback_router
+
+    deps = FeedbackDeps(
+        current_user=lambda: None,
+        viewer_is_admin=lambda: False,
+        get_repo=lambda: None,
+        require_csrf=lambda: None,
+    )
+    with pytest.raises(ValueError):
+        create_feedback_router(deps, allow_anonymous=True)

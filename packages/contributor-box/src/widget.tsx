@@ -19,7 +19,7 @@ export interface FeedbackWidgetProps {
  * an optional annotated screenshot. Page URL, title and viewport are attached automatically.
  */
 export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
-  const { strings: s, signedIn, signInHref, boardHref, linkAs: Link } = useContributor();
+  const { strings: s, signedIn, allowAnonymous, signInHref, boardHref, linkAs: Link } = useContributor();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [sent, setSent] = useState<FeedbackItem | null>(null);
@@ -79,7 +79,7 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
             </Button>
           </div>
           <div className="overflow-y-auto px-4 py-4">
-            {!signedIn ? (
+            {!signedIn && !allowAnonymous ? (
               <div className="flex flex-col gap-3">
                 <p className="text-subheadline text-label-secondary">{s.signInPrompt}</p>
                 {signInHref ? (
@@ -94,12 +94,15 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
             ) : sent ? (
               <div role="status" className="flex flex-col gap-3">
                 <p className="text-title3">{s.sent}</p>
-                <p className="text-subheadline text-label-secondary">{s.sentDetail}</p>
+                <p className="text-subheadline text-label-secondary">
+                  {signedIn ? s.sentDetail : s.sentDetailAnonymous}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="gray" onClick={() => setSent(null)}>
                     {s.sendAnother}
                   </Button>
-                  {boardHref ? (
+                  {/* Guests have no "my feedback" to follow, and the board needs a session. */}
+                  {signedIn && boardHref ? (
                     <Link
                       href={boardHref}
                       onClick={close}
@@ -111,7 +114,22 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
                 </div>
               </div>
             ) : (
-              <FeedbackForm capture={capture} onPickingChange={setPicking} onSubmitted={setSent} />
+              <>
+                {!signedIn ? (
+                  <p className="mb-3 text-footnote text-label-secondary">
+                    {s.guestHint}
+                    {signInHref ? (
+                      <>
+                        {" "}
+                        <Link href={signInHref} className="font-medium text-tint hover:underline focus-ring">
+                          {s.guestSignIn}
+                        </Link>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+                <FeedbackForm capture={capture} onPickingChange={setPicking} onSubmitted={setSent} />
+              </>
             )}
           </div>
         </div>

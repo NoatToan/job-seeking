@@ -3,7 +3,12 @@ host. See the repository README for how a host wires `create_feedback_router`.""
 
 from contributor_box.constants import CREATE_MAX_BODY_BYTES, KINDS, PUBLIC_STATUSES, STATUSES
 from contributor_box.repository import FeedbackRepository, PgFeedbackRepository
-from contributor_box.router import FeedbackDeps, create_feedback_router
+from contributor_box.router import (
+    FeedbackDeps,
+    anonymous_key_dependency,
+    client_ip,
+    create_feedback_router,
+)
 
 __all__ = [
     "CREATE_MAX_BODY_BYTES",
@@ -13,5 +18,7 @@ __all__ = [
     "FeedbackDeps",
     "FeedbackRepository",
     "PgFeedbackRepository",
+    "anonymous_key_dependency",
+    "client_ip",
     "create_feedback_router",
 ]

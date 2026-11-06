@@ -12,8 +12,14 @@ contract (job-seeking does: 400 `validation_error` with `fields`).
 
 Dependency order on unsafe routes is auth (401), then CSRF (403), then admin (403), so an
 anonymous caller always gets 401.
+
+Anonymous submissions (opt-in, `allow_anonymous=True`): `POST <prefix>` then also accepts a caller
+with no session, still behind the host's CSRF check, rate-limited per anonymous key (see
+`anonymous_key_dependency`) and across all anonymous visitors. Everything else stays signed-in only.
 """
 
+import hashlib
+import hmac
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -25,6 +31,8 @@ from contributor_box.constants import (
     KINDS,
     LIST_LIMIT_DEFAULT,
     LIST_LIMIT_MAX,
+    MAX_ANON_ITEMS_PER_HOUR,
+    MAX_ANON_ITEMS_PER_HOUR_TOTAL,
     MAX_ITEMS_PER_HOUR,
     PUBLIC_STATUSES,
     STATUSES,
@@ -51,13 +59,57 @@ class FeedbackDeps:
       `current_user` (FastAPI caches it per request, so it runs once).
     - `get_repo`: returns a `FeedbackRepository` for this request (e.g. `PgFeedbackRepository`
       over the host's request-scoped connection).
-    - `require_csrf`: raises 403 unless the request carries a valid CSRF token.
+    - `require_csrf`: raises 403 unless the request carries a valid CSRF token. With anonymous
+      submissions on, it must also pass for a visitor without a session (the host has to give
+      anonymous visitors a CSRF token).
+
+    Only needed with `create_feedback_router(..., allow_anonymous=True)`:
+
+    - `optional_user`: like `current_user`, but returns None instead of raising 401.
+    - `optional_viewer_is_admin`: whether the (optional) user is an admin; False when anonymous.
+      Must depend on `optional_user`. Defaults to "never admin" (admins then hit the per-author
+      rate limit like everyone else).
+    - `anonymous_key`: a stable, non-reversible key for the anonymous caller, used only for rate
+      limiting. Build one with `anonymous_key_dependency(secret)` (HMAC of the client IP).
     """
 
     current_user: Callable[..., Any]
     viewer_is_admin: Callable[..., bool]
     get_repo: Callable[..., FeedbackRepository]
     require_csrf: Callable[..., None]
+    optional_user: Callable[..., Any] | None = None
+    optional_viewer_is_admin: Callable[..., bool] | None = None
+    anonymous_key: Callable[..., str] | None = None
+
+
+def client_ip(request: Request) -> str:
+    """The caller's IP: the first `X-Forwarded-For` hop (set by the host's proxy, e.g. Vercel or
+    Caddy), else the peer address. Only trustworthy behind a proxy that sets or overwrites the
+    header; without one a client can choose its own key and only the global cap still applies."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "unknown"
+
+
+def anonymous_key_dependency(secret: str | Callable[[], str]) -> Callable[[Request], str]:
+    """FastAPI dependency returning HMAC-SHA256(secret, client IP) as hex. The raw IP is never
+    stored; without the secret the key cannot be mapped back to an address. Pass a callable to
+    read the secret lazily (e.g. from settings loaded at request time)."""
+
+    def anonymous_key(request: Request) -> str:
+        key = secret() if callable(secret) else secret
+        if not key:
+            raise RuntimeError("anonymous_key_dependency needs a non-empty secret")
+        return hmac.new(key.encode(), client_ip(request).encode(), hashlib.sha256).hexdigest()
+
+    return anonymous_key
+
+
+def _never_admin() -> bool:
+    return False
 
 
 def _error(status: int, code: str, message: str) -> HTTPException:
@@ -68,7 +120,13 @@ def _not_found() -> HTTPException:
     return _error(404, "not_found", "Feedback item not found")
 
 
-def create_feedback_router(deps: FeedbackDeps, *, prefix: str = "/api/feedback") -> APIRouter:
+def create_feedback_router(
+    deps: FeedbackDeps, *, prefix: str = "/api/feedback", allow_anonymous: bool = False
+) -> APIRouter:
+    """`allow_anonymous=True` lets visitors without a session submit feedback (create only); it
+    needs `deps.optional_user` and `deps.anonymous_key`."""
+    if allow_anonymous and (deps.optional_user is None or deps.anonymous_key is None):
+        raise ValueError("allow_anonymous needs FeedbackDeps.optional_user and .anonymous_key")
     router = APIRouter(prefix=prefix, tags=["feedback"])
 
     def require_admin(is_admin: bool = Depends(deps.viewer_is_admin)) -> None:
@@ -95,35 +153,38 @@ def create_feedback_router(deps: FeedbackDeps, *, prefix: str = "/api/feedback")
 
     ItemId = Path(ge=1, le=_MAX_ID)
 
-    @router.post(
-        "", status_code=201, dependencies=[Depends(deps.current_user), Depends(deps.require_csrf)]
-    )
-    def create_item(
+    def screenshot_or_400(body: CreateItemRequest) -> Any:
+        if not body.screenshot:
+            return None
+        try:
+            return decode_screenshot(body.screenshot)
+        except ScreenshotError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "validation_error",
+                    "message": "The request could not be validated",
+                    "fields": {"screenshot": str(exc)},
+                },
+            ) from exc
+
+    def rate_limited() -> HTTPException:
+        return HTTPException(
+            status_code=429,
+            detail={"code": "rate_limited", "message": "Too many submissions this hour"},
+            headers={"Retry-After": "3600"},
+        )
+
+    def create_signed_in(
         body: CreateItemRequest,
         request: Request,
-        user: Any = Depends(deps.current_user),
-        is_admin: bool = Depends(deps.viewer_is_admin),
-        repo: FeedbackRepository = Depends(deps.get_repo),
+        user: Any,
+        is_admin: bool,
+        repo: FeedbackRepository,
     ) -> dict[str, Any]:
         if not is_admin and repo.count_recent_by_author(user.id) >= MAX_ITEMS_PER_HOUR:
-            raise HTTPException(
-                status_code=429,
-                detail={"code": "rate_limited", "message": "Too many submissions this hour"},
-                headers={"Retry-After": "3600"},
-            )
-        screenshot = None
-        if body.screenshot:
-            try:
-                screenshot = decode_screenshot(body.screenshot)
-            except ScreenshotError as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail={
-                        "code": "validation_error",
-                        "message": "The request could not be validated",
-                        "fields": {"screenshot": str(exc)},
-                    },
-                ) from exc
+            raise rate_limited()
+        screenshot = screenshot_or_400(body)
         item_id = repo.create(
             user.id,
             body,
@@ -131,6 +192,53 @@ def create_feedback_router(deps: FeedbackDeps, *, prefix: str = "/api/feedback")
             screenshot=screenshot,
         )
         return detail(item_id, user.id, is_admin, repo)
+
+    if not allow_anonymous:
+
+        @router.post(
+            "",
+            status_code=201,
+            dependencies=[Depends(deps.current_user), Depends(deps.require_csrf)],
+        )
+        def create_item(
+            body: CreateItemRequest,
+            request: Request,
+            user: Any = Depends(deps.current_user),
+            is_admin: bool = Depends(deps.viewer_is_admin),
+            repo: FeedbackRepository = Depends(deps.get_repo),
+        ) -> dict[str, Any]:
+            return create_signed_in(body, request, user, is_admin, repo)
+
+    else:
+        assert deps.optional_user is not None and deps.anonymous_key is not None
+        optional_admin = deps.optional_viewer_is_admin or _never_admin
+
+        @router.post("", status_code=201, dependencies=[Depends(deps.require_csrf)])
+        def create_item(
+            body: CreateItemRequest,
+            request: Request,
+            user: Any = Depends(deps.optional_user),
+            is_admin: bool = Depends(optional_admin),
+            anon_key: str = Depends(deps.anonymous_key),
+            repo: FeedbackRepository = Depends(deps.get_repo),
+        ) -> dict[str, Any]:
+            if user is not None:
+                return create_signed_in(body, request, user, is_admin, repo)
+            mine, everyone = repo.count_recent_anonymous(anon_key)
+            if mine >= MAX_ANON_ITEMS_PER_HOUR or everyone >= MAX_ANON_ITEMS_PER_HOUR_TOTAL:
+                raise rate_limited()
+            screenshot = screenshot_or_400(body)
+            item_id = repo.create(
+                None,
+                body,
+                user_agent=clip_user_agent(request.headers.get("user-agent")),
+                screenshot=screenshot,
+                anon_key=anon_key,
+            )
+            # The submitter cannot read the item back (it has no author); return what they sent.
+            item = repo.get(item_id, None)
+            assert item is not None
+            return {**item_dto(item, None, False), "notes": []}
 
     @router.get("")
     def list_items(

@@ -93,3 +93,14 @@ describe("createFeedbackApi", () => {
     expect(api.screenshotUrl("7")).toBe("http://api.test/api/feedback/7/screenshot");
   });
 });
+
+describe("authorLabel", () => {
+  it("shows the email, a guest's name, or Anonymous", async () => {
+    const { authorLabel } = await import("../admin");
+    const { makeItem } = await import("./helpers");
+    expect(authorLabel(makeItem({ author: { id: "2", email: "b@x.test", name: null, anonymous: false } }), "Anonymous")).toBe("b@x.test");
+    expect(authorLabel(makeItem({ author: { id: null, email: null, name: "Minh", anonymous: true } }), "Anonymous")).toBe("Minh (Anonymous)");
+    expect(authorLabel(makeItem({ author: { id: null, email: null, name: null, anonymous: true } }), "Anonymous")).toBe("Anonymous");
+    expect(authorLabel(makeItem({ author: null }), "Anonymous")).toBe("—");
+  });
+});

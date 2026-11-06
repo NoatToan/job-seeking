@@ -142,3 +142,40 @@ def test_update_rejects_unknown_fields(conn: psycopg.Connection):
 
 def test_escape_like():
     assert escape_like("50%_a\\b") == "50\\%\\_a\\\\b"
+
+
+def test_anonymous_items(conn: psycopg.Connection):
+    repo = PgFeedbackRepository(conn)
+    before_mine, before_all = repo.count_recent_anonymous("key-a")
+    item_id = repo.create(
+        None, _req(authorName="Minh"), user_agent=None, screenshot=None, anon_key="key-a"
+    )
+    repo.create(None, _req(), user_agent=None, screenshot=None, anon_key="key-b")
+    assert repo.count_recent_anonymous("key-a") == (before_mine + 1, before_all + 2)
+    row = repo.get(item_id, None)
+    assert row is not None
+    assert row["author_id"] is None and row["author_email"] is None
+    assert row["author_name"] == "Minh"
+    assert row["voted"] is False
+    # Anonymous rows never show up as anyone's "mine".
+    mine, _ = repo.list_items(
+        viewer_id=2, scope="mine", kind=None, status=None, q=None, sort="new", limit=50, offset=0
+    )
+    assert item_id not in [r["id"] for r in mine]
+    # A signed-in row never stores the anonymous fields, even if a name was sent.
+    signed = repo.create(2, _req(authorName="Ignored"), user_agent=None, screenshot=None)
+    row = repo.get(signed, 2)
+    assert row is not None and row["author_name"] is None
+
+
+def test_anonymous_constraints(conn: psycopg.Connection):
+    repo = PgFeedbackRepository(conn)
+    with pytest.raises(ValueError):
+        repo.create(None, _req(), user_agent=None, screenshot=None)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute(
+            "INSERT INTO feedback_items (kind, title, author_id, anon_key)"
+            " VALUES ('idea', 'abc', 2, 'k')"
+        )
+    with pytest.raises(psycopg.errors.CheckViolation):
+        conn.execute("INSERT INTO feedback_items (kind, title) VALUES ('idea', 'abc')")

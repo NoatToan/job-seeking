@@ -24,13 +24,18 @@ Row = dict[str, Any]
 class FeedbackRepository(Protocol):
     def count_recent_by_author(self, author_id: int) -> int: ...
 
+    def count_recent_anonymous(self, anon_key: str) -> tuple[int, int]:
+        """(items from this anonymous key, items from all anonymous visitors) in the last hour."""
+        ...
+
     def create(
         self,
-        author_id: int,
+        author_id: int | None,
         req: CreateItemRequest,
         *,
         user_agent: str | None,
         screenshot: Screenshot | None,
+        anon_key: str | None = None,
     ) -> int: ...
 
     def list_items(
@@ -46,7 +51,7 @@ class FeedbackRepository(Protocol):
         offset: int,
     ) -> tuple[list[Row], int]: ...
 
-    def get(self, item_id: int, viewer_id: int) -> Row | None: ...
+    def get(self, item_id: int, viewer_id: int | None) -> Row | None: ...
 
     def notes(self, item_id: int, *, include_internal: bool) -> list[Row]: ...
 
@@ -68,8 +73,8 @@ class FeedbackRepository(Protocol):
 _ITEM_COLUMNS = """
   i.id, i.kind, i.title, i.body, i.status, i.page_url, i.page_title, i.element_selector,
   i.element_text, i.region, i.viewport_width, i.viewport_height, i.user_agent, i.admin_response,
-  i.author_id, u.email AS author_email, i.reviewed_by, i.status_changed_at, i.created_at,
-  i.updated_at,
+  i.author_id, u.email AS author_email, i.author_name, i.reviewed_by, i.status_changed_at,
+  i.created_at, i.updated_at,
   (SELECT count(*) FROM feedback_votes v WHERE v.item_id = i.id)::int AS vote_count,
   EXISTS (SELECT 1 FROM feedback_votes v WHERE v.item_id = i.id AND v.user_id = %(viewer)s)
     AS voted,
@@ -123,19 +128,36 @@ class PgFeedbackRepository:
         ).fetchone()
         return int(row[0]) if row else 0
 
+    def count_recent_anonymous(self, anon_key: str) -> tuple[int, int]:
+        # One lock for every anonymous submission: the global cap needs it, and anonymous
+        # traffic is low enough that serialising it costs nothing.
+        self._conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended('contributor_box:anon', 0))"
+        )
+        row = self._conn.execute(
+            "SELECT count(*) FILTER (WHERE anon_key = %s), count(*) FROM feedback_items"
+            " WHERE author_id IS NULL AND created_at > now() - interval '1 hour'",
+            (anon_key,),
+        ).fetchone()
+        return (int(row[0]), int(row[1])) if row else (0, 0)
+
     def create(
         self,
-        author_id: int,
+        author_id: int | None,
         req: CreateItemRequest,
         *,
         user_agent: str | None,
         screenshot: Screenshot | None,
+        anon_key: str | None = None,
     ) -> int:
+        anonymous = author_id is None
+        if anonymous and not anon_key:
+            raise ValueError("an anonymous item needs an anon_key")
         row = self._conn.execute(
             "INSERT INTO feedback_items (kind, title, body, page_url, page_title,"
             " element_selector, element_text, region, viewport_width, viewport_height,"
-            " user_agent, author_id)"
-            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            " user_agent, author_id, author_name, anon_key)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (
                 req.kind,
                 req.title,
@@ -149,6 +171,8 @@ class PgFeedbackRepository:
                 req.viewport_height,
                 user_agent,
                 author_id,
+                req.author_name if anonymous else None,
+                anon_key if anonymous else None,
             ),
         ).fetchone()
         assert row is not None
@@ -211,7 +235,7 @@ class PgFeedbackRepository:
         )
         return rows, int(total_row["n"]) if total_row else 0
 
-    def get(self, item_id: int, viewer_id: int) -> Row | None:
+    def get(self, item_id: int, viewer_id: int | None) -> Row | None:
         return self._one(
             f"SELECT {_ITEM_COLUMNS} FROM feedback_items i"
             " LEFT JOIN users u ON u.id = i.author_id WHERE i.id = %(id)s",
