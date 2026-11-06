@@ -19,11 +19,14 @@ export interface SeoJob extends JobDetail {
 
 export interface Snapshot {
   generatedAt: string;
+  /** The publishing window: jobs seen by a crawl within this many days (JobPosting validThrough). */
+  activeDays?: number;
   jobs: SeoJob[];
 }
 
-/** A listing page needs at least this many jobs to be worth indexing (no thin pages). */
-export const MIN_LISTING_JOBS = 3;
+/** A listing page needs at least this many jobs to be worth indexing (no thin pages). Countries
+ * need more: there are hundreds, and a page of three jobs adds little over the job pages. */
+export const MIN_LISTING_JOBS: Record<ListingKind, number> = { tech: 3, country: 10, source: 3 };
 /** Jobs shown on one listing page (newest first); the rest are reachable via the sitemap. */
 export const LISTING_PAGE_SIZE = 60;
 /** Related jobs under a job page. */
@@ -67,6 +70,10 @@ export function withPlaceholder<T extends Record<string, string>>(params: T[], k
 export function setSnapshotForTests(snapshot: Snapshot | null): void {
   listingCache.clear();
   cached = snapshot ? { snapshot, byId: new Map(snapshot.jobs.map((j) => [j.id, j])) } : null;
+}
+
+export function snapshotActiveDays(): number {
+  return load().snapshot.activeDays ?? 14;
 }
 
 export function snapshotDate(): string {
@@ -133,7 +140,7 @@ function group(keysOf: (job: SeoJob) => readonly string[]): Map<string, SeoJob[]
 
 const KEYS: Record<ListingKind, (job: SeoJob) => readonly string[]> = {
   tech: (job) => job.techStack ?? [],
-  country: (job) => (job.countries ?? []).filter((c) => /^[A-Z]{2}$/.test(c)).map((c) => c.toLowerCase()),
+  country: (job) => (job.countries ?? []).map((c) => c.toUpperCase()).filter((c) => /^[A-Z]{2}$/.test(c)).map((c) => c.toLowerCase()),
   source: (job) => (isSourceId(job.source) ? [job.source] : []),
 };
 
@@ -150,7 +157,7 @@ export function listings(kind: ListingKind): Listing[] {
   const known = kind === "tech" ? new Set(TECH_STACK.map((t) => t.id)) : null;
   const out: Listing[] = [];
   for (const [key, jobs] of group(KEYS[kind])) {
-    if (jobs.length < MIN_LISTING_JOBS || (known && !known.has(key))) continue;
+    if (jobs.length < MIN_LISTING_JOBS[kind] || (known && !known.has(key))) continue;
     out.push({ kind, key, label: labelFor(kind, key), jobs });
   }
   out.sort((a, b) => b.jobs.length - a.jobs.length || a.label.localeCompare(b.label));

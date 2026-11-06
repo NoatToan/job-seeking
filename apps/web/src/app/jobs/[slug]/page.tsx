@@ -5,7 +5,7 @@ import { sourceMeta } from "@ujc/core";
 import { ChevronLeftIcon, NavBar } from "@ujc/ui";
 import { jobIdFromPath, jobPagePath, jobSlug } from "@/lib/job-url";
 import { jobMetaDescription, jobPostingJsonLd } from "@/lib/job-posting";
-import { allJobs, jobById, listing, relatedJobs, withPlaceholder } from "@/lib/seo-jobs";
+import { allJobs, jobById, listing, relatedJobs, snapshotActiveDays, withPlaceholder } from "@/lib/seo-jobs";
 import type { Listing } from "@/lib/seo-jobs";
 import { OPEN_GRAPH } from "@/lib/site";
 import { Breadcrumbs, formatDate, JsonLd, ListingLinks, listingPath, listingTitle, SeoJobList, Section } from "../seo-ui";
@@ -71,7 +71,11 @@ export default async function JobPage({ params }: { params: Promise<Params> }) {
   const browse = [...tech.slice(0, 6), ...places.slice(0, 3), ...(fromSource ? [fromSource] : [])];
   const primary = tech[0] ?? fromSource;
   const related = relatedJobs(job);
-  const ld = jobPostingJsonLd(job, { countries: job.countries });
+  const ld = jobPostingJsonLd(job, {
+    countries: job.countries,
+    lastSeenAt: job.lastSeenAt,
+    activeDays: snapshotActiveDays(),
+  });
   const firstSeen = formatDate(job.firstSeenAt);
   const lastSeen = formatDate(job.lastSeenAt);
 

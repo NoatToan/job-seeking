@@ -40,7 +40,7 @@ describe("jobPostingJsonLd", () => {
       baseSalary: { currency: "EUR", value: { minValue: 70000, maxValue: 90000, unitText: "YEAR" } },
     });
     expect(ld?.url).toBe("https://unified-job-crawler.vercel.app/jobs/senior-next-js-engineer-acme-42/");
-    expect(ld).not.toHaveProperty("validThrough");
+    expect(ld).not.toHaveProperty("validThrough"); // no lastSeenAt given
     // Remote with known applicant countries: no office address.
     expect(ld).not.toHaveProperty("jobLocation");
   });
@@ -71,13 +71,22 @@ describe("jobPostingJsonLd", () => {
     expect(ld?.jobLocationType).toBe("TELECOMMUTE");
   });
 
-  it("puts on-site jobs at their location, without addressCountry when it spans several countries", () => {
-    const ld = jobPostingJsonLd(job({ remote: false }), { countries: ["DE", "FR"] });
-    expect(ld?.jobLocation).toEqual({
+  it("puts on-site jobs at their location, one Place per country when it spans several", () => {
+    expect(jobPostingJsonLd(job({ remote: false }), { countries: ["DE"] })?.jobLocation).toEqual({
       "@type": "Place",
-      address: { "@type": "PostalAddress", addressLocality: "Berlin, Germany" },
+      address: { "@type": "PostalAddress", addressLocality: "Berlin, Germany", addressCountry: "DE" },
     });
+    const ld = jobPostingJsonLd(job({ remote: false, location: "DE-Berlin, FR-Paris" }), { countries: ["DE", "FR"] });
+    expect(ld?.jobLocation).toEqual([
+      { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: "DE" } },
+      { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: "FR" } },
+    ]);
     expect(ld).not.toHaveProperty("jobLocationType");
+  });
+
+  it("sets validThrough to the last sighting plus the publishing window", () => {
+    const ld = jobPostingJsonLd(job(), { lastSeenAt: "2026-11-05T00:00:00Z", activeDays: 14 });
+    expect(ld?.validThrough).toBe("2026-11-19T00:00:00.000Z");
   });
 
   it("skips baseSalary without a currency or period", () => {

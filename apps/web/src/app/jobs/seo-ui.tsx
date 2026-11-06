@@ -175,7 +175,7 @@ export function ListingLinks({ items, label }: { items: readonly Listing[]; labe
   );
 }
 
-export function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+export function Section({ title, children, id }: { title: string; children: ReactNode; id: string }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
       <h2 id={id} className="text-title3 font-semibold text-label">

@@ -28,14 +28,19 @@ export function descriptionHtml(text: string): string {
 export interface JobPostingExtras {
   /** ISO countries the job is in or open to (`jobs.countries`); one = the office's country. */
   countries?: readonly string[] | null;
+  /** Last time a crawl still found the job. With `activeDays` it gives `validThrough`. */
+  lastSeenAt?: string | null;
+  /** Days a job stays published after its last sighting (scripts/seo-snapshot.mjs window). */
+  activeDays?: number;
 }
 
 /**
  * schema.org `JobPosting` for one job (Google job search rich results), published on the static
  * job page (`/jobs/<slug>/`) only. Uses only fields we really have; returns null when a field
  * Google requires is missing (no description), so we never publish invalid structured data.
- * `validThrough` is left out on purpose: boards rarely send a closing date, and a job that stops
- * appearing in the crawl is dropped from the next build instead (its URL then answers 404).
+ * `validThrough` = last sighting + the publishing window: exactly when the job drops out of the
+ * build (its URL then answers 404) unless a later crawl sees it again and the next build moves the
+ * date on. Boards rarely send a closing date of their own.
  */
 export function jobPostingJsonLd(job: JobDetail, extras: JobPostingExtras = {}): Record<string, unknown> | null {
   if (!job.description?.trim()) return null;
@@ -50,6 +55,10 @@ export function jobPostingJsonLd(job: JobDetail, extras: JobPostingExtras = {}):
     hiringOrganization: { "@type": "Organization", name: job.company },
     directApply: false,
   };
+  if (extras.lastSeenAt && extras.activeDays) {
+    const until = new Date(Date.parse(extras.lastSeenAt) + extras.activeDays * 86_400_000);
+    if (!Number.isNaN(until.getTime())) out.validThrough = until.toISOString();
+  }
   const type = job.employmentType && EMPLOYMENT_TYPES.find(([re]) => re.test(job.employmentType ?? ""))?.[1];
   if (type) out.employmentType = type;
   const countries = (extras.countries ?? []).filter((c) => /^[A-Z]{2}$/.test(c));
@@ -71,14 +80,19 @@ export function jobPostingJsonLd(job: JobDetail, extras: JobPostingExtras = {}):
   }
   const placeholder = /^\s*(remote|anywhere|worldwide)\b/i.test(job.location ?? "");
   if (job.location && !placeholder && (!job.remote || !applicantCountries.length)) {
-    out.jobLocation = {
-      "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: job.location,
-        ...(countries.length === 1 ? { addressCountry: countries[0] } : {}),
-      },
-    };
+    // One country: the board's text is that office's locality. Several ("US-New York, UK-London"):
+    // the free text can't be split into cities reliably, so one Place per country instead.
+    out.jobLocation =
+      countries.length > 1
+        ? countries.map((c) => ({ "@type": "Place", address: { "@type": "PostalAddress", addressCountry: c } }))
+        : {
+            "@type": "Place",
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: job.location,
+              ...(countries.length === 1 ? { addressCountry: countries[0] } : {}),
+            },
+          };
   }
   const s = job.salary;
   if (s && s.currency && s.period && (s.min !== null || s.max !== null)) {

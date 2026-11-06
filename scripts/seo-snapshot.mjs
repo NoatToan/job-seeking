@@ -46,7 +46,7 @@ if (!process.env.DATABASE_URL) {
     console.error("seo-snapshot: DATABASE_URL is not set on Vercel; refusing to publish a build without job pages");
     process.exit(1);
   }
-  await writeFile(outFile, JSON.stringify({ generatedAt: new Date().toISOString(), jobs: [] }));
+  await writeFile(outFile, JSON.stringify({ generatedAt: new Date().toISOString(), activeDays: ACTIVE_DAYS, jobs: [] }));
   console.log("seo-snapshot: DATABASE_URL not set, wrote an empty snapshot (no job pages)");
   process.exit(0);
 }
@@ -54,6 +54,8 @@ if (!process.env.DATABASE_URL) {
 const { default: postgres } = await import("postgres");
 const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 
+// Links end up in static HTML: only http(s) (never `javascript:` / `data:` from a bad source).
+const webUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u) ? u : null);
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 
@@ -73,6 +75,9 @@ function salaryDisplay(min, max, currency, period) {
 }
 
 try {
+  // Public catalogue fields only: the columns of GET /api/jobs/{id} (apps/api dto.py
+  // JOB_DETAIL_COLUMNS) plus `last_seen_at` (sitemap lastmod, validThrough, "still listed on")
+  // and `countries` (listings). Review any column added here: it is published in static HTML.
   const rows = await sql.begin("read only", (tx) => tx`
     SELECT id, source, url, apply_url, title, company, location, remote, employment_type,
            salary_text, tags, open_to, posted_at, first_seen_at, last_seen_at, timezones,
@@ -85,7 +90,7 @@ try {
     ORDER BY coalesce(posted_at, first_seen_at) DESC, id DESC
     LIMIT ${MAX_JOBS}
   `);
-  const jobs = rows.map((r) => {
+  const jobs = rows.filter((r) => webUrl(r.url)).map((r) => {
     const min = num(r.salary_min);
     const max = num(r.salary_max);
     const salary = r.salary_source
@@ -95,7 +100,7 @@ try {
       id: String(r.id),
       source: r.source,
       url: r.url,
-      applyUrl: r.apply_url,
+      applyUrl: webUrl(r.apply_url),
       title: r.title,
       company: r.company,
       location: r.location,
@@ -115,7 +120,7 @@ try {
       description: r.description,
     };
   });
-  await writeFile(outFile, JSON.stringify({ generatedAt: new Date().toISOString(), jobs }));
+  await writeFile(outFile, JSON.stringify({ generatedAt: new Date().toISOString(), activeDays: ACTIVE_DAYS, jobs }));
   console.log(`seo-snapshot: ${jobs.length} active jobs (seen in the last ${ACTIVE_DAYS} days)`);
 } finally {
   await sql.end();

@@ -55,7 +55,8 @@ describe("seo-jobs", () => {
       ],
     });
     expect(listings("tech").map((l) => [l.key, l.jobs.length])).toEqual([["react", 4]]);
-    expect(listings("country").map((l) => [l.key, l.label])).toEqual([["de", "Germany"]]);
+    // Countries need 10 jobs (MIN_LISTING_JOBS.country).
+    expect(listings("country")).toEqual([]);
     expect(listings("source").map((l) => l.key)).toEqual(["himalayas"]);
     expect(listing("tech", "python")).toBeNull();
   });
@@ -73,6 +74,14 @@ describe("seo-jobs", () => {
       ],
     });
     expect(relatedJobs(base).map((j) => j.id)).toEqual(["4", "3", "2"]);
+  });
+
+  it("labels country listings in English", () => {
+    setSnapshotForTests({
+      generatedAt: "2026-11-06T00:00:00Z",
+      jobs: Array.from({ length: 10 }, (_, i) => job(String(i), { countries: ["DE"] })),
+    });
+    expect(listings("country").map((l) => [l.key, l.label, l.jobs.length])).toEqual([["de", "Germany", 10]]);
   });
 
   it("links listings to the live home filters", () => {

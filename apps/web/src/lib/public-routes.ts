@@ -4,6 +4,7 @@
  * between `session.tsx` (so the global 401 handler never bounces an anonymous visitor away from
  * one of these) and `nav.tsx` (so the app shell still renders its chrome on them while signed out).
  */
+// Everything under /jobs/ is public. A signed-in-only screen must not be added under /jobs/.
 const PUBLIC_ROUTE_PREFIXES = ["/jobs/"];
 
 export function isPublicRoute(pathname: string): boolean {
