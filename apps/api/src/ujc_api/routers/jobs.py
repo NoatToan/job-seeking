@@ -26,7 +26,13 @@ from ujc_api.dto import (
     job_sort_key,
     source_dto,
 )
-from ujc_api.feed_query import COUNTRY_CLAUSE, TECH_CLAUSE, parse_tech
+from ujc_api.feed_query import (
+    COUNTRY_CLAUSE,
+    MAX_POSTED_WITHIN_DAYS,
+    POSTED_WITHIN_CLAUSE,
+    TECH_CLAUSE,
+    parse_tech,
+)
 
 router = APIRouter(tags=["jobs"])
 
@@ -79,6 +85,7 @@ def list_jobs(
     remote: bool | None = None,
     country: str | None = None,
     tech: str | None = None,
+    days: int | None = None,
     user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -118,6 +125,10 @@ def list_jobs(
     if tech_ids := parse_tech(tech):
         clauses.append(TECH_CLAUSE)
         params.append(tech_ids)
+
+    if days:
+        clauses.append(POSTED_WITHIN_CLAUSE)
+        params.append(max(1, min(days, MAX_POSTED_WITHIN_DAYS)))
 
     if cursor_state:
         cursor_t, cursor_i = cursor_state

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalZone,
+  shortZoneName,
   clockLabel,
   jobZonesLabel,
   workHoursFit,
@@ -21,6 +22,14 @@ describe("zoneOffsetMinutes", () => {
     expect(zoneOffsetMinutes("America/New_York", SUMMER)).toBe(-240);
     expect(zoneOffsetMinutes("Europe/London", WINTER)).toBe(0);
     expect(zoneOffsetMinutes("Not/A_Zone")).toBeNull();
+  });
+});
+
+describe("shortZoneName", () => {
+  it("uses Intl's abbreviation, or the offset for fixed zones", () => {
+    expect(shortZoneName("Asia/Ho_Chi_Minh", WINTER)).toBe("GMT+7");
+    expect(shortZoneName("America/New_York", WINTER)).toBe("EST");
+    expect(shortZoneName("UTC+05:30")).toBe("UTC+5:30");
   });
 });
 

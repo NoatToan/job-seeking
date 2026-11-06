@@ -57,6 +57,24 @@ export function offsetLabel(minutes: number): string {
   return `UTC${sign}${h}${m ? `:${String(m).padStart(2, "0")}` : ""}`;
 }
 
+/** Short name for the user's zone on job rows: "GMT+7", "EST", "CET" (Intl's own abbreviation;
+ * falls back to "UTC+7"). */
+export function shortZoneName(zone: string, at: Date = new Date()): string {
+  const fixed = FIXED_OFFSET.exec(zone);
+  if (!fixed) {
+    try {
+      const name = new Intl.DateTimeFormat("en-US", { timeZone: zone, timeZoneName: "short" })
+        .formatToParts(at)
+        .find((p) => p.type === "timeZoneName")?.value;
+      if (name) return name;
+    } catch {
+      // Unknown zone: fall through to the offset label.
+    }
+  }
+  const offset = zoneOffsetMinutes(zone, at);
+  return offset === null ? zone : offsetLabel(offset);
+}
+
 /** 1290 -> "21:30"; wraps into 0..24h. */
 export function clockLabel(minutes: number): string {
   const v = ((minutes % DAY) + DAY) % DAY;

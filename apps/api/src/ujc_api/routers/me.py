@@ -211,7 +211,7 @@ def get_export(
     user: AuthedUser = Depends(current_user), conn: psycopg.Connection = Depends(get_conn)
 ) -> Response:
     """A JSON download of everything the user owns: their account row, preferences, CV metadata
-    (extracted profile/keywords, never the file bytes) and tracked applications."""
+    (extracted profile/keywords, never the file bytes), tracked applications and viewed jobs."""
     user_row = conn.execute(
         "SELECT id, email, created_at, last_login_at, ai_consent_at FROM users WHERE id = %s",
         (user.id,),
@@ -232,6 +232,12 @@ def get_export(
         (user.id,),
     ).fetchall()
 
+    view_rows = conn.execute(
+        "SELECT job_id, viewed_at FROM job_views WHERE user_id = %s"
+        " ORDER BY viewed_at DESC, job_id DESC",
+        (user.id,),
+    ).fetchall()
+
     export = {
         "user": {
             "id": str(uid),
@@ -243,6 +249,7 @@ def get_export(
         "preferences": _preferences(conn, user.id),
         "cvs": [cv_dto(r) for r in cv_rows],
         "applications": [_export_application(r) for r in application_rows],
+        "viewedJobs": [{"jobId": str(j), "viewedAt": _iso(v)} for j, v in view_rows],
     }
     body = json.dumps(export, indent=2)
     return Response(
@@ -271,8 +278,8 @@ def delete_me(
     conn: psycopg.Connection = Depends(get_conn),
     settings: Settings = Depends(app_settings),
 ) -> Response:
-    """Hard-deletes the user; `ON DELETE CASCADE` on `sessions`, `user_cvs`, `user_preferences`
-    and `applications` removes everything else they own."""
+    """Hard-deletes the user; `ON DELETE CASCADE` on `sessions`, `user_cvs`, `user_preferences`,
+    `applications` and `job_views` removes everything else they own."""
     conn.execute("DELETE FROM users WHERE id = %s", (user.id,))
     clear_auth_cookies(response, settings)
     response.status_code = 204

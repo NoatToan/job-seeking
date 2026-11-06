@@ -64,9 +64,9 @@ describe("work hours", () => {
         <WorkHoursBadge job={job(["Asia/Ho_Chi_Minh"])} />
       </>,
     );
-    expect(screen.getByText("Same time zone")).toBeTruthy();
+    expect(screen.getByText(/Same time zone · 09:00–17:00/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Your time zone"), { target: { value: "America/New_York" } });
     expect(window.localStorage.getItem("ujc:timezone")).toBe("America/New_York");
-    expect(screen.getByText("Night shift")).toBeTruthy();
+    expect(screen.getByText(/Night shift · \d\d:00–\d\d:00 E[SD]T/)).toBeTruthy();
   });
 });

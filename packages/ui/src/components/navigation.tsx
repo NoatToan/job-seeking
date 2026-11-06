@@ -16,7 +16,7 @@ export interface NavBarProps {
   trailing?: ReactNode;
   /** Content under the large title, e.g. a SearchField or SegmentedControl. */
   children?: ReactNode;
-  /** Use the wide content column (list + detail screens). Default false (max-w-5xl). */
+  /** Full-width content (the home list + detail screen). Default false (max-w-5xl). */
   wide?: boolean;
   className?: string;
 }
@@ -27,7 +27,7 @@ export interface NavBarProps {
  * hairline (exactly like UINavigationBar).
  */
 export function NavBar({ title, largeTitle = true, leading, trailing, children, wide = false, className }: NavBarProps) {
-  const column = wide ? "max-w-7xl" : "max-w-5xl";
+  const column = wide ? "max-w-none" : "max-w-5xl";
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [collapsed, setCollapsed] = useState(!largeTitle);
 

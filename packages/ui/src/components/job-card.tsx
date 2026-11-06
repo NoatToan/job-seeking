@@ -5,7 +5,7 @@ import type { ElementType, MouseEvent, ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { openToLabel, sortTech } from "@ujc/core";
 import { cx } from "../cx";
-import { ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
+import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge } from "./badges";
 import { Avatar } from "./feedback";
 import { TechStackRow } from "./tech-icon";
@@ -175,6 +175,8 @@ export interface JobListItemProps {
   actions?: ReactNode;
   /** Extra badges after source / remote (e.g. working-hours fit). */
   meta?: ReactNode;
+  /** Already read: dimmed with a "Read" mark so unread jobs stand out. */
+  viewed?: boolean;
   className?: string;
 }
 
@@ -191,12 +193,14 @@ export function JobListItem({
   onSelect,
   actions,
   meta,
+  viewed = false,
   className,
 }: JobListItemProps) {
   const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
   return (
     <article
       data-job-id={job.id}
+      data-viewed={viewed ? "true" : undefined}
       aria-current={selected ? "true" : undefined}
       className={cx(
         "relative flex scroll-my-1 gap-3 rounded-card p-3 transition-[background-color,box-shadow] duration-200 ease-spring",
@@ -205,6 +209,7 @@ export function JobListItem({
         selected
           ? "bg-tint-soft shadow-card ring-2 ring-inset ring-tint/50 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-tint"
           : "bg-grouped-secondary shadow-card hover:shadow-raised",
+        viewed && !selected && "opacity-60 hover:opacity-100",
         className,
       )}
     >
@@ -236,6 +241,12 @@ export function JobListItem({
           ) : null}
           {meta}
           {posted ? <span>{posted}</span> : null}
+          {viewed ? (
+            <span className="inline-flex items-center gap-0.5 text-label-secondary">
+              <CheckIcon size={12} strokeWidth={2.5} aria-hidden />
+              Read
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 flex-col items-end justify-between gap-2">

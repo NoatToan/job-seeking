@@ -11,6 +11,7 @@ import {
   FIT_TONES,
   jobZonesLabel,
   offsetLabel,
+  shortZoneName,
   workHoursFit,
   WORKDAY_END,
   WORKDAY_START,
@@ -56,8 +57,12 @@ export function WorkHoursBadge({ job }: { job: Job }) {
   const fit = workHoursFit(job.timezones, zone);
   if (!fit) return null;
   return (
-    <Badge tone={FIT_TONES[fit.level]} title={`Job hours in your time: ${clockLabel(fit.userStart)}–${clockLabel(fit.userEnd)}`}>
-      {FIT_LABELS[fit.level]}
+    <Badge
+      tone={FIT_TONES[fit.level]}
+      title={`${FIT_LABELS[fit.level]}: the job's 9–5 (${zoneLabel(fit.zone)}) is ${clockLabel(fit.userStart)}–${clockLabel(fit.userEnd)} your time`}
+    >
+      {/* Slack request: the job's hours converted to the user's zone, right on the row. */}
+      {FIT_LABELS[fit.level]} · {clockLabel(fit.userStart)}–{clockLabel(fit.userEnd)} {shortZoneName(zone)}
     </Badge>
   );
 }

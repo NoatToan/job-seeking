@@ -512,3 +512,27 @@ def test_public_jobs_tech_filter_and_facets(client: TestClient, migrated_databas
 
     counts = {f["id"]: f["count"] for f in client.get("/api/jobs/facets").json()["tech"]}
     assert counts["react"] >= 2
+
+
+def test_public_jobs_posted_within_days(client: TestClient, migrated_database_url: str):
+    now = datetime.now(UTC)
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        for ext, age in (("new", 1), ("week", 6), ("old", 40)):
+            conn.execute(
+                "INSERT INTO jobs (source, external_id, url, title, company, remote, posted_at)"
+                " VALUES ('days-test', %s, %s, %s, 'Acme', false, %s)",
+                (ext, f"https://example.test/{ext}", f"Days {ext}", now - timedelta(days=age)),
+            )
+
+    def titles(days: int | None) -> list[str]:
+        params: dict = {"source": "days-test"}
+        if days:
+            params["days"] = days
+        resp = client.get("/api/jobs", params=params)
+        assert resp.status_code == 200, resp.text
+        return sorted(i["title"] for i in resp.json()["items"])
+
+    assert titles(3) == ["Days new"]
+    assert titles(7) == ["Days new", "Days week"]
+    assert titles(30) == ["Days new", "Days week"]
+    assert titles(None) == ["Days new", "Days old", "Days week"]

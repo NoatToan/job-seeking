@@ -35,6 +35,7 @@ from ujc_api.routers import runners as runners_router
 from ujc_api.routers import search as search_router
 from ujc_api.routers import tokens as tokens_router
 from ujc_api.routers import upwork as upwork_router
+from ujc_api.routers import viewed as viewed_router
 from ujc_api.security_headers import SecurityHeadersMiddleware
 from ujc_api.settings import Settings, get_settings
 
@@ -183,6 +184,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jobs_router.router)
     app.include_router(search_router.router)
     app.include_router(applications_router.router)
+    app.include_router(viewed_router.router)
     app.include_router(matches_router.router)
     app.include_router(runners_router.router)
     app.include_router(runner_router.router)

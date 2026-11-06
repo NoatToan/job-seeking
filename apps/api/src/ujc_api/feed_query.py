@@ -13,6 +13,11 @@ COUNTRY_CLAUSE = "countries @> ARRAY[%s]::text[]"
 TECH_CLAUSE = "tech_stack @> %s::text[]"
 
 
+# "Posted within N days": the date the board gave, else when we first saw the job.
+POSTED_WITHIN_CLAUSE = "coalesce(posted_at, first_seen_at) >= now() - make_interval(days => %s)"
+MAX_POSTED_WITHIN_DAYS = 365
+
+
 def parse_tech(tech: str | None) -> list[str]:
     """ "react, nextjs" -> ["react", "nextjs"] (lowercased, de-duplicated, at most 10)."""
     ids = [t.strip().lower() for t in (tech or "").split(",") if t.strip()]
