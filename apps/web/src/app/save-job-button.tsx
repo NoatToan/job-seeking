@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BookmarkIcon, Button, CheckIcon } from "@ujc/ui";
+import Link from "next/link";
+import { BookmarkIcon, Button, buttonClasses, CheckIcon } from "@ujc/ui";
 import { ApiError, saveApplication } from "@/lib/api";
 
 export interface SaveJobButtonProps {
@@ -12,6 +13,11 @@ export interface SaveJobButtonProps {
   savedLabel?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Pass `false` when the viewer isn't signed in (e.g. the public home page, or the job detail
+   * page viewed signed out): renders a "Sign in to {label}" link to `/login/` instead of calling
+   * the session-only save endpoint. Default `true` (every existing caller is already behind a
+   * signed-in gate). */
+  signedIn?: boolean;
 }
 
 /**
@@ -25,6 +31,7 @@ export function SaveJobButton({
   savedLabel = "Saved ✓",
   size = "sm",
   className,
+  signedIn = true,
 }: SaveJobButtonProps) {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,6 +39,18 @@ export function SaveJobButton({
   // Guards against a second click firing before the `loading` state re-render commits (state
   // updates are not synchronous), so `saveApplication` is only ever called once per mount.
   const inFlightRef = useRef(false);
+
+  if (!signedIn) {
+    return (
+      <Link
+        href="/login/"
+        className={buttonClasses({ variant: "gray", size, className })}
+      >
+        <BookmarkIcon size={14} />
+        Sign in to {label.toLowerCase()}
+      </Link>
+    );
+  }
 
   async function onSave() {
     if (saved || inFlightRef.current) return;

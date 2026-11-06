@@ -15,6 +15,7 @@ import type {
   PersonalAccessToken,
   Platform,
   Preferences,
+  PublicJobsPage,
   Runner,
   RunnerPairingCode,
   SourceInfo,
@@ -150,6 +151,20 @@ export function getJob(id: string): Promise<JobDetail> {
 /** `GET /api/sources` — source catalogue + latest global crawl run per source. */
 export function getSources(): Promise<SourceInfo[]> {
   return apiFetch<SourceInfo[]>("/api/sources");
+}
+
+export interface PublicJobsFilters {
+  cursor?: string;
+  limit?: number;
+  q?: string;
+  source?: string;
+  remote?: boolean;
+}
+
+/** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
+ * required: this is what `/` shows a signed-out visitor instead of their personalised `Feed`. */
+export function getPublicJobs(filters: PublicJobsFilters = {}): Promise<PublicJobsPage> {
+  return apiFetch<PublicJobsPage>(`/api/jobs${buildQuery(filters)}`);
 }
 
 // --- Flow v2 (docs/product/FLOW_V2.md §4): email OTP, CV upload, feed, live search. -------------

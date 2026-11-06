@@ -9,6 +9,7 @@ import {
   Avatar,
   BrandMark,
   BriefcaseIcon,
+  buttonClasses,
   cx,
   DocumentIcon,
   GroupedList,
@@ -21,6 +22,7 @@ import {
   TabBar,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
+import { isPublicRoute } from "@/lib/public-routes";
 import { useSession } from "@/lib/session";
 
 const NAV_ITEMS: NavItem[] = [
@@ -49,7 +51,16 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" }) 
   const { me, signOut } = useSession();
   const [open, setOpen] = useState(false);
 
-  if (!me) return null;
+  if (!me) {
+    return (
+      <Link
+        href="/login/"
+        className={buttonClasses({ variant: variant === "row" ? "gray" : "tinted", size: "sm", fullWidth: variant === "row" })}
+      >
+        Sign in
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -119,15 +130,22 @@ function Footer() {
 }
 
 /**
- * App shell: Sidebar (>= md) or TabBar (< md) for signed-in users, hidden on `/login` and
- * `/design` (both are their own self-contained layouts). Each page renders its own `NavBar`.
+ * App shell: Sidebar (>= md) or TabBar (< md), hidden on `/login` and `/design` (both are their
+ * own self-contained layouts). Each page renders its own `NavBar`.
+ *
+ * Signed-in: every nav item. Signed out: only on a public route (home, job detail) — everywhere
+ * else, the chrome stays hidden while the page's own content (e.g. `RequireAuth`) handles the
+ * redirect to `/login`, same as before this page became reachable signed out. The nav itself
+ * only ever shows the "Feed" item (now the public jobs page) plus "Sign in" — Search/Tracker/CV/
+ * Connections all need a session, so they would just be dead ends for an anonymous visitor.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading } = useSession();
   const pathname = usePathname() ?? "/";
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
-  const showChrome = Boolean(me) && !loading && !bareRoute;
+  const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
+  const navItems = me ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.key === "feed");
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The Sidebar stays on
@@ -138,7 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col md:flex-row">
       {showChrome ? (
         <Sidebar
-          items={NAV_ITEMS}
+          items={navItems}
           activeKey={activeKey}
           linkAs={Link}
           header={<BrandMark name="Unified Job Crawler" />}
@@ -151,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <Footer />
       </div>
-      {showTabBar ? <TabBar items={NAV_ITEMS} activeKey={activeKey} linkAs={Link} /> : null}
+      {showTabBar ? <TabBar items={navItems} activeKey={activeKey} linkAs={Link} /> : null}
     </div>
   );
 }

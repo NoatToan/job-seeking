@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { usePathname, useRouter } from "next/navigation";
 import type { MeResponse } from "@ujc/core";
 import { ApiError, getMe, logout as apiLogout, setUnauthorizedHandler } from "./api";
+import { isPublicRoute } from "./public-routes";
 
 export interface SessionValue {
   /** `null` while loading, or once we know the visitor isn't signed in. */
@@ -66,7 +67,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUnauthorizedHandler(() => {
       setMe(null);
       setLoading(false);
-      if (pathnameRef.current.startsWith("/login")) return;
+      // A public page (home, job detail) expects to work signed out — most visibly, the initial
+      // `GET /api/me` check above always 401s for an anonymous visitor there, and that must not
+      // bounce them to /login. Only a 401 on an actually-protected page redirects.
+      if (pathnameRef.current.startsWith("/login") || isPublicRoute(pathnameRef.current)) return;
       const search = typeof window !== "undefined" ? window.location.search : "";
       const next = encodeURIComponent(pathnameRef.current + search);
       router.replace(`/login/?next=${next}`);

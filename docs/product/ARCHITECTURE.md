@@ -401,8 +401,8 @@ Conventions:
 | `GET /api/profiles/{id}/jobs` | session | unified results: `q, source, remote, minScore, cvId, status, page`; each item has `match` and `application` | M1-06 |
 | `POST /api/profiles/{id}/search` | session | enqueue `profile_search` (public keyword APIs + Adzuna) → 202 | M3-05 |
 | `POST /api/profiles/{id}/runner-requests` | session | ask the paired runner to crawl session sites now | M3-06 |
-| `GET /api/jobs` | optional | browse public catalogue (+ own jobs if signed in): `q, source, remote, page` | M1-06 |
-| `GET /api/jobs/{id}` | optional | job detail incl. description; 404 if not visible | M1-06 |
+| `GET /api/jobs` | none (optional session, unused today) | public catalogue, keyset-paginated like `GET /api/feed`: `cursor, limit≤50, q, source, remote` → `{items, nextCursor}` | M1-06, Slack public home |
+| `GET /api/jobs/{id}` | none (optional session, unused today) | job detail incl. description; 404 if not found | M1-06, Slack public home |
 | `GET /api/sources` | none | source catalogue + latest global run per source | M1-06 |
 | `GET /api/runs` | session | the user's crawl runs (`profileId?`) | M3-05 |
 | `GET /api/tasks/{id}` | session | `{status, progress, result, error}` (own tasks only) | M3-05 |

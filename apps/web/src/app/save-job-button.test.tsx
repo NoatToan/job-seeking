@@ -52,4 +52,17 @@ describe("SaveJobButton", () => {
     expect(postCalls).toHaveLength(1);
     expect(JSON.parse((postCalls[0][1] as RequestInit).body as string)).toEqual({ jobId: "42" });
   });
+
+  it("prompts sign-in instead of calling the API when signedIn is false", () => {
+    const fetchMock = vi.fn(() => Promise.reject(new Error("should not call the API")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SaveJobButton jobId="42" signedIn={false} />);
+
+    const link = screen.getByRole("link", { name: /Sign in to save/i });
+    // next/link's own trailingSlash normalisation (next.config `trailingSlash: true`) doesn't
+    // run in this unit-test environment, so just check the path rather than an exact match.
+    expect(link.getAttribute("href")).toMatch(/^\/login\/?$/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
