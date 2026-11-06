@@ -4,22 +4,26 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from job_crawler import eligibility, timezones
+from job_crawler import eligibility
+from job_crawler.derived import DERIVED_COLUMNS, derive
 from job_crawler.models import Board, JobRecord
 
 log = logging.getLogger(__name__)
 
 ERROR_MAX_LEN = 2000
 
-UPSERT_SQL = """
+_DERIVED_INSERT = ", ".join(DERIVED_COLUMNS)
+_DERIVED_VALUES = ", ".join(f"%({c})s" for c in DERIVED_COLUMNS)
+_DERIVED_UPDATE = "".join(f"  {c} = EXCLUDED.{c},\n" for c in DERIVED_COLUMNS)
+
+UPSERT_SQL = f"""
 INSERT INTO jobs (
   source, external_id, url, apply_url, title, company, location, remote,
-  employment_type, salary_text, description, tags, posted_at, raw, open_to, timezones,
-  timezone_source
+  employment_type, salary_text, description, tags, posted_at, raw, {_DERIVED_INSERT}
 ) VALUES (
   %(source)s, %(external_id)s, %(url)s, %(apply_url)s, %(title)s, %(company)s, %(location)s,
   %(remote)s, %(employment_type)s, %(salary_text)s, %(description)s, %(tags)s, %(posted_at)s,
-  %(raw)s, %(open_to)s, %(timezones)s, %(timezone_source)s
+  %(raw)s, {_DERIVED_VALUES}
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
   url = EXCLUDED.url,
@@ -34,10 +38,7 @@ ON CONFLICT (source, external_id) DO UPDATE SET
   tags = EXCLUDED.tags,
   posted_at = COALESCE(EXCLUDED.posted_at, jobs.posted_at),
   raw = EXCLUDED.raw,
-  open_to = EXCLUDED.open_to,
-  timezones = EXCLUDED.timezones,
-  timezone_source = EXCLUDED.timezone_source,
-  last_seen_at = now()
+{_DERIVED_UPDATE}  last_seen_at = now()
 RETURNING (xmax = 0) AS inserted
 """
 
@@ -64,18 +65,16 @@ def job_params(job: JobRecord) -> dict[str, Any]:
     params = job.model_dump()
     # mode="json" turns datetimes etc. inside the raw payload into JSON-safe values
     params["raw"] = Jsonb(job.model_dump(mode="json")["raw"])
-    params["open_to"] = eligibility.open_to(job.location, job.remote, structured_locations(job))
-    params["timezones"], params["timezone_source"] = timezones.job_timezones(
-        job.location, job.description, structured_locations(job), job.raw
+    params.update(
+        derive(
+            title=job.title,
+            location=job.location,
+            description=job.description,
+            remote=job.remote,
+            raw=job.raw,
+        )
     )
     return params
-
-
-def structured_locations(job: JobRecord) -> list[str]:
-    """Country lists some sources give as data, more reliable than the location text."""
-    raw = job.raw or {}
-    values = raw.get("locationRestrictions") or raw.get("requiredCountries") or []
-    return [str(v) for v in values if v] if isinstance(values, list) else []
 
 
 def upsert_jobs(conn: psycopg.Connection, jobs: list[JobRecord]) -> int:
@@ -181,35 +180,23 @@ def recompute_open_to(conn: psycopg.Connection) -> int:
     return len(changed)
 
 
-def recompute_timezones(conn: psycopg.Connection) -> int:
-    """Re-derive timezones for every stored job (backfill / after rule changes). Returns rows
-    changed. Streams in batches: descriptions make the whole table too big to hold at once."""
-    changed = []
+def recompute_derived(conn: psycopg.Connection) -> int:
+    """Re-derive every `DERIVED_COLUMNS` value for all stored jobs (backfill / after rule
+    changes). Returns rows changed. Streams with a server-side cursor: descriptions and raw
+    payloads make the whole table too big to hold at once."""
+    cols = ", ".join(DERIVED_COLUMNS)
+    changed: list[tuple] = []
     # A server-side (named) cursor needs a transaction even on an autocommit connection.
-    with conn.transaction(), conn.cursor(name="tz_recompute") as cur:
-        cur.execute(
-            "SELECT id, location, description, raw->'locationRestrictions',"
-            " raw->'requiredCountries', raw->'timezoneRestrictions', timezones, timezone_source"
-            " FROM jobs"
-        )
-        for (
-            job_id,
-            location,
-            description,
-            restrictions,
-            required,
-            tz_raw,
-            cur_zones,
-            cur_src,
-        ) in cur:
-            extra = [str(v) for v in (restrictions or required or []) if v]
-            zones, source = timezones.job_timezones(
-                location, description, extra, {"timezoneRestrictions": tz_raw}
+    with conn.transaction(), conn.cursor(name="derived_recompute") as cur:
+        cur.execute(f"SELECT id, title, location, description, remote, raw, {cols} FROM jobs")
+        for job_id, title, location, description, remote, raw, *current in cur:
+            fresh = derive(
+                title=title, location=location, description=description, remote=remote, raw=raw
             )
-            if zones != cur_zones or source != cur_src:
-                changed.append((zones, source, job_id))
+            values = [fresh[c] for c in DERIVED_COLUMNS]
+            if values != current:
+                changed.append((*values, job_id))
+    sets = ", ".join(f"{c} = %s" for c in DERIVED_COLUMNS)
     with conn.transaction(), conn.cursor() as cur:
-        cur.executemany(
-            "UPDATE jobs SET timezones = %s, timezone_source = %s WHERE id = %s", changed
-        )
+        cur.executemany(f"UPDATE jobs SET {sets} WHERE id = %s", changed)
     return len(changed)

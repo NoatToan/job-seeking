@@ -15,6 +15,7 @@ import type {
   PersonalAccessToken,
   Platform,
   Preferences,
+  JobFacets,
   PublicJobsPage,
   Runner,
   RunnerPairingCode,
@@ -159,12 +160,19 @@ export interface PublicJobsFilters {
   q?: string;
   source?: string;
   remote?: boolean;
+  /** ISO country code: jobs in / open to that country (`jobs.countries`). */
+  country?: string;
 }
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
  * required: this is what `/` shows a signed-out visitor instead of their personalised `Feed`. */
 export function getPublicJobs(filters: PublicJobsFilters = {}): Promise<PublicJobsPage> {
   return apiFetch<PublicJobsPage>(`/api/jobs${buildQuery(filters)}`);
+}
+
+/** `GET /api/jobs/facets` — filter options with job counts (countries, most common first). */
+export function getJobFacets(): Promise<JobFacets> {
+  return apiFetch<JobFacets>("/api/jobs/facets");
 }
 
 // --- Flow v2 (docs/product/FLOW_V2.md §4): email OTP, CV upload, feed, live search. -------------
@@ -283,6 +291,8 @@ export interface FeedFilters {
   source?: string;
   /** `"score"` sorts by CV match score (best matches first) instead of newest-first. */
   sort?: "score";
+  /** ISO country code: jobs in / open to that country. */
+  country?: string;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

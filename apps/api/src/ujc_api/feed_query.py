@@ -7,6 +7,9 @@ from typing import Any
 
 from job_crawler import eligibility
 
+# "Jobs in / open to this country" (ISO code param), on `jobs.countries` (migration 017).
+COUNTRY_CLAUSE = "countries @> ARRAY[%s]::text[]"
+
 
 def accepted_open_to_tokens(candidate_country: str | None) -> list[str]:
     """Open-to tokens that make a remote job eligible for this candidate (or just WORLDWIDE when

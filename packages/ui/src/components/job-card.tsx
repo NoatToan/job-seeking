@@ -198,9 +198,11 @@ export function JobListItem({
       data-job-id={job.id}
       aria-current={selected ? "true" : undefined}
       className={cx(
-        "relative flex gap-3 rounded-card p-3 transition-[background-color,box-shadow,transform] duration-200 ease-spring",
+        "relative flex scroll-my-1 gap-3 rounded-card p-3 transition-[background-color,box-shadow] duration-200 ease-spring",
+        // Inset ring + accent bar: stays fully visible inside a scrolling list (an outer ring or a
+        // translate would be clipped by the list's overflow).
         selected
-          ? "bg-tint-soft shadow-raised ring-1 ring-tint/40 lg:translate-x-1"
+          ? "bg-tint-soft shadow-card ring-2 ring-inset ring-tint/50 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-tint"
           : "bg-grouped-secondary shadow-card hover:shadow-raised",
         className,
       )}

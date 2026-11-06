@@ -24,6 +24,7 @@ import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { JobBrowser } from "@/app/job-browser";
 import { TimezonePicker } from "@/app/work-hours";
+import { CountryFilter } from "@/app/country-filter";
 
 function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
   if (status === "error") return "danger";
@@ -65,6 +66,7 @@ export function PublicJobs() {
   const [q, setQ] = useViewState("public:q", "");
   const [source, setSource] = useViewState("public:source", "");
   const [remoteOnly, setRemoteOnly] = useViewState("public:remote", false);
+  const [country, setCountry] = useViewState("public:country", "");
 
   // Debounced filter, same 300 ms as the signed-in feed (SCREENS.md §4).
   useEffect(() => {
@@ -81,15 +83,16 @@ export function PublicJobs() {
         q: q || undefined,
         source: source || undefined,
         remote: remoteOnly || undefined,
+        country: country || undefined,
       }),
-    [q, source, remoteOnly],
+    [q, source, remoteOnly, country],
   );
 
-  const listKey = `public:${JSON.stringify([q, source, remoteOnly])}`;
+  const listKey = `public:${JSON.stringify([q, source, remoteOnly, country])}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     PublicJobsPage
-  >(fetchPage, [q, source, remoteOnly], { cacheKey: listKey });
+  >(fetchPage, [q, source, remoteOnly, country], { cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   return (
@@ -128,6 +131,7 @@ export function PublicJobs() {
             <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
             Remote only
           </label>
+          <CountryFilter value={country} onChange={setCountry} />
           <TimezonePicker />
         </div>
         <SourceStatusStrip sources={sources ?? []} />
@@ -159,13 +163,14 @@ export function PublicJobs() {
             title="No jobs match yet"
             message="Try a different search, or clear the filters."
             action={
-              source || q || remoteOnly ? (
+              source || q || remoteOnly || country ? (
                 <button
                   type="button"
                   onClick={() => {
                     setDraftQ("");
                     setSource("");
                     setRemoteOnly(false);
+                    setCountry("");
                   }}
                   className={buttonClasses({ variant: "gray", size: "sm" })}
                 >
