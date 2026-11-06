@@ -137,3 +137,67 @@ Status: accepted. Code: `apps/web/src/app/roadmap/`, `apps/api/src/ujc_api/route
   `/contribute/` links to it.
 - **Feedback panel** sizes to its content (no inner scrollbar at 1440x900 or 390x844, signed in or
   out); it only scrolls when the viewport is too short.
+
+## Job list sort options (2026-11-07)
+
+Tony asked for sort options ("it sorts by created_at by default, right? sort by time zone, etc. —
+add the ones that are actually useful"). Code: `apps/api/src/ujc_api/job_sort.py`,
+`db/migrations/025_job_sort.sql`, `apps/web/src/app/job-filters.tsx` (`useSortOptions`).
+
+**Default stays "Newest first", and it was already right.** It never used a `created_at` (jobs has
+none): it orders by `coalesce(posted_at, first_seen_at)` — the board's own date, else when our
+crawler first saw the job — then `id`. That is the date a candidate cares about (a job crawled today
+but posted a month ago should not look new), so nothing changed there.
+
+Added (`sort=` on `GET /api/jobs` and `GET /api/feed`; the web keeps it in the URL as `?sort=`, the
+default is never written):
+
+| `sort` | Order | Why it earns a place |
+|---|---|---|
+| `newest` (default) | posted date, else first seen | unchanged |
+| `timezone` (+ `tz`) | fewest whole hours between the job's 9–5 and the viewer's 9–5, on a 24h circle; best of the job's zones; ties newest first; jobs with no known zone last | Most users are in Vietnam / Asia applying to remote jobs; hours overlap decides whether a job is livable. Same measure as the badge on each row (`workHoursFit` in `lib/work-hours.ts`), so a "Same time zone" job never sorts below a "Night shift" one. |
+| `salary` | `salary_usd_year` high to low; jobs without a comparable salary last | The one number candidates compare first. |
+| `match` (feed only) | CV match score, unscored jobs last | Replaces the old "Best matches" toggle (`sort=score`, still accepted). It is now paginated instead of a fixed top 50, and keeps unscored jobs after the scored ones instead of hiding them. |
+
+How it works:
+
+- **Pagination stays a keyset for every sort.** Keyed sorts order by `(key DESC, posted-or-seen
+  DESC, id DESC)` with `key` an integer that is never NULL (a sentinel puts "unknown" last), so one
+  row comparison pages it with no duplicates or gaps, even when many jobs share a key. Their cursor
+  is `{s, k, t, i}` and is refused (400 `invalid_cursor`) by any other sort; the newest cursor is
+  unchanged (`{t, i}`), so lists already open keep working.
+- **Time zone is computed per request, not stored.** It depends on the viewer's zone and on DST at
+  that moment, so a stored column would be wrong for everyone but one zone. The API builds a
+  `{zone: gap hours}` table for every IANA zone plus every `UTC±hh:mm` the crawler writes (~700
+  entries, cached per hour since DST changes on the hour) and passes it as one jsonb parameter; per
+  row SQL only looks up the job's zones. The web sends `tz` = the same zone it shows hours in (saved
+  preference, else the browser's). Cost: a scan of the filtered jobs, ~80–110 ms at 50k jobs on a
+  laptop (no index can serve a per-viewer key). Whole hours, not minutes, so a +8 job and a +7 job
+  count as equally good and newer jobs win inside each hour.
+- **Salary is normalised, roughly, in a generated column.** Top of the range (`salary_max`, else
+  `salary_min`), annualised like `Salary.yearly` (hour x 2080, day x 260, week x 52, month x 12)
+  and divided by fixed approximate rates (units per USD, late 2026) for the 29 currencies the
+  parser emits. Without conversion, a VND or INR monthly wage would top the list; with rough rates
+  the order is right to within the rate error, which is fine for ranking and is never shown as a
+  converted amount. Unknown currency or period = not comparable = last. It is a `STORED` generated
+  column with an index matching the keyset, so the sort is an index scan. Changing a rate means a
+  new migration that drops and re-adds the column.
+- "Best match" is not offered on the public catalogue (no CV score there; the API answers 400). A
+  shared `?sort=match` link opened in "All jobs" falls back to newest.
+- The sort is not a filter: "Clear all" and the "N filters" count ignore it, except the folded hero
+  summary and the phone "Filters" badge, which count a non-default order so a reordered list never
+  looks untouched.
+
+Rejected:
+
+- **"Open to me first"**: the "Open to me" toggle and the Remote region select already filter by
+  it; a sort would only move the excluded jobs to the bottom of an infinite list.
+- **Company, title, source A–Z**: nobody browses jobs alphabetically.
+- **Most relevant (full-text rank)** for a search: possible later, but `q` today is a filter and
+  `ts_rank` across short postings ranks poorly without tuning; out of scope.
+- **Lowest salary / oldest first**: no use case.
+
+Known data issue surfaced by the salary sort: a few salaries parsed from descriptions have the
+wrong period (e.g. an intern's "R$ 1.350" monthly stipend stored as hourly, a "$200 meal voucher"
+read as $200/hour), which puts them at the top. That is a `job_crawler.salary` parsing bug to fix
+there, not in the sort.

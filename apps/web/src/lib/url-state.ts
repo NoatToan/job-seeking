@@ -5,6 +5,7 @@ import {
   parseAsString,
   parseAsStringLiteral,
 } from "nuqs";
+import { JOB_SORTS } from "./api";
 
 /**
  * Query-string state shared by the pages (Slack request: "use nuqs for every query on the page").
@@ -56,6 +57,8 @@ export const jobFilterParsers = {
   posted: parseAsStringLiteral(POSTED_DAYS),
   access: parseAsStringLiteral(REMOTE_ACCESS),
   hours: parseAsHourRange,
+  /** List order; "newest" (the default) is never written to the URL. */
+  sort: parseAsStringLiteral(JOB_SORTS).withDefault("newest"),
 };
 
 /** `/` "All jobs | For you" when signed in. */

@@ -125,6 +125,39 @@ describe("phone filters (one modal view)", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("sorts from the same view: the order goes to the URL and the API, and counts on the badge", async () => {
+    const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
+    renderPhoneHome("", onUrlUpdate);
+    await waitFor(() => expect(screen.getByText("React Dev")).toBeTruthy(), { timeout: 5000 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    const sortGroup = within(dialog).getByRole("radiogroup", { name: "Sort by" });
+    expect(within(sortGroup).getByRole("radio", { name: "Newest first" }).getAttribute("aria-checked")).toBe("true");
+    // "Best match" needs a CV score: only the signed-in feed offers it.
+    expect(within(sortGroup).queryByRole("radio", { name: /Best match/ })).toBeNull();
+    fireEvent.click(within(sortGroup).getByRole("radio", { name: "Highest salary" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show jobs" }));
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalledTimes(1));
+    expect(onUrlUpdate.mock.calls[0][0].searchParams.get("sort")).toBe("salary");
+    await waitFor(() => expect(listCalls().some((u) => u.includes("sort=salary"))).toBe(true));
+  });
+
+  it("counts a non-default order on the Filters badge; ?sort=match falls back to newest here", async () => {
+    renderPhoneHome("?sort=timezone");
+    await waitFor(() => expect(screen.getByText("React Dev")).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByRole("button", { name: "Filters, 1 on" })).toBeTruthy();
+    expect(listCalls().some((u) => u.includes("sort=timezone") && /[?&]tz=[^&]+/.test(u))).toBe(true);
+    cleanup();
+    fetchMock.mockClear();
+
+    renderPhoneHome("?sort=match");
+    await waitFor(() => expect(screen.getByText("React Dev")).toBeTruthy(), { timeout: 5000 });
+    expect(screen.getByRole("button", { name: "Filters" })).toBeTruthy();
+    expect(listCalls().every((u) => !u.includes("sort="))).toBe(true);
+  });
+
   it("Reset clears the draft; closing without Apply discards it", async () => {
     const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
     renderPhoneHome("?remote=true", onUrlUpdate);

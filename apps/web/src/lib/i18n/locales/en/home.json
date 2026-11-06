@@ -127,7 +127,14 @@
     "collapsedAll": "All jobs",
     "collapsedFilters_one": "{{count}} filter",
     "collapsedFilters_other": "{{count}} filters",
-    "collapsedEdit": "Edit search"
+    "collapsedEdit": "Edit search",
+    "sort": {
+      "label": "Sort by",
+      "newest": "Newest first",
+      "timezone": "Best time-zone fit ({{abbr}})",
+      "salary": "Highest salary",
+      "match": "Best match for my CV"
+    }
   },
   "country": {
     "label": "Country",

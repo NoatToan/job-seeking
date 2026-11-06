@@ -1,15 +1,13 @@
 """`GET /api/feed` — jobs already in our DB, keyset-paginated (docs/product/FLOW_V2.md §3, §4)."""
 
-from datetime import datetime
 from typing import Any
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from ujc_api.auth.deps import AuthedUser, require_jobs_read
-from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
-from ujc_api.dto import JOB_COLUMNS, job_dto, job_sort_key
+from ujc_api.dto import JOB_COLUMNS, job_dto
 from ujc_api.feed_query import (
     COUNTRY_CLAUSE,
     TECH_CLAUSE,
@@ -18,12 +16,12 @@ from ujc_api.feed_query import (
     parse_tech,
     posted_within_clause,
 )
+from ujc_api.job_sort import FEED_SORTS, fetch_page, resolve_sort
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 50
-MAX_SCORE_SORT_LIMIT = 50
 
 
 def _job_dto_with_match(row: tuple) -> dict[str, Any]:
@@ -52,20 +50,14 @@ def get_feed(
     hours: int | None = Query(default=None),
     access: str | None = Query(default=None),
     based_in: str | None = Query(default=None),
+    tz: str | None = Query(default=None),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
+    """The signed-in feed. `sort`: `newest` (default) | `timezone` (+ `tz`) | `salary` | `match`
+    (CV match score, unscored jobs last; `score` is the old name). See ujc_api.job_sort."""
     limit = max(1, min(limit, MAX_LIMIT))
-    by_score = sort == "score"
-
-    cursor_state: tuple[datetime, int] | None = None
-    if cursor and not by_score:
-        try:
-            cursor_state = decode_feed_cursor(cursor)
-        except InvalidCursor as exc:
-            raise HTTPException(
-                status_code=400, detail={"code": "invalid_cursor", "message": "Invalid cursor"}
-            ) from exc
+    plan = resolve_sort(sort, tz, allowed=FEED_SORTS)
 
     prefs_row = conn.execute(
         "SELECT keywords, remote_only, candidate_country FROM user_preferences WHERE user_id = %s",
@@ -101,35 +93,17 @@ def get_feed(
         clauses.append(posted[0])
         where_params.append(posted[1])
 
-    if cursor_state:
-        cursor_t, cursor_i = cursor_state
-        clauses.append("(coalesce(posted_at, first_seen_at), id) < (%s, %s)")
-        where_params.append(cursor_t)
-        where_params.append(cursor_i)
-
-    if by_score:
-        clauses.append("um.score IS NOT NULL")
-
-    where = " AND ".join(clauses) if clauses else "TRUE"
-    select = f"SELECT {JOB_COLUMNS}, um.score, um.summary, um.missing_skills FROM jobs"
-    join = "LEFT JOIN user_matches um ON um.user_id = %s AND um.job_id = jobs.id"
-    order = (
-        "um.score DESC, jobs.id DESC"
-        if by_score
-        else "coalesce(posted_at, first_seen_at) DESC, jobs.id DESC"
+    page, next_cursor = fetch_page(
+        conn,
+        plan,
+        cursor,
+        columns=f"{JOB_COLUMNS}, um.score, um.summary, um.missing_skills",
+        from_sql="jobs LEFT JOIN user_matches um ON um.user_id = %s AND um.job_id = jobs.id",
+        from_params=[user.id],
+        clauses=clauses,
+        where_params=where_params,
+        limit=limit,
     )
-    page_limit = min(limit, MAX_SCORE_SORT_LIMIT) if by_score else limit + 1
-    sql = f"{select} {join} WHERE {where} ORDER BY {order} LIMIT %s"
-    params = [user.id, *where_params, page_limit]
-
-    rows = conn.execute(sql, params).fetchall()
-    has_more = not by_score and len(rows) > limit
-    page = rows[:limit]
-
-    next_cursor = None
-    if has_more and page:
-        ts, job_id = job_sort_key(page[-1])
-        next_cursor = encode_feed_cursor(ts, job_id)
 
     return {
         "items": [_job_dto_with_match(r) for r in page],

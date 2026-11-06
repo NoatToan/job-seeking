@@ -30,7 +30,7 @@ import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
 import { offsetLabel, shortZoneName, zoneOffsetMinutes } from "@/lib/work-hours";
 import { pillClasses } from "@/app/pill-controls";
 import type { JobFilterBarProps, JobFilterState, JobFilterValues } from "@/app/job-filters";
-import { hourLabel, ReadHistory, useHourPresets, usePostedOptions } from "@/app/job-filters";
+import { hourLabel, ReadHistory, useHourPresets, usePostedOptions, useSortOptions } from "@/app/job-filters";
 
 /** What a parent may do with the phone filter view. */
 export interface FilterModalHandle {
@@ -54,6 +54,7 @@ function valuesOf(f: JobFilterState): JobFilterValues {
     access: f.access,
     hours: f.hours,
     unreadOnly: f.hiddenIds !== null,
+    sort: f.sort,
   };
 }
 
@@ -67,18 +68,19 @@ const EMPTY: JobFilterValues = {
   access: "",
   hours: null,
   unreadOnly: false,
+  sort: "newest",
 };
 
 /**
  * Phone filter bar (< 768px): the search pill and ONE "Filters" button with the number of filters
  * on. Every other filter lives in `FilterModal` — no sideways-scrolling pill row, no popover per
- * pill. `extra` (feed: Best matches, Refresh scores) wraps under the search.
+ * pill. `extra` (feed: Refresh scores) wraps under the search.
  */
 export function MobileFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const { t } = useTranslation("home");
   const modalRef = useRef<FilterModalHandle>(null);
   // The search pill is visible next to the button, so the badge counts only what is inside the view.
-  const count = f.activeCount - (f.q ? 1 : 0) + (f.hiddenIds !== null ? 1 : 0);
+  const count = f.activeCount - (f.q ? 1 : 0) + (f.hiddenIds !== null ? 1 : 0) + (f.sortActive ? 1 : 0);
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-2">
@@ -228,6 +230,7 @@ export function FilterModal({
   const { t } = useTranslation("home");
   const strings = useUiStrings();
   const postedOptions = usePostedOptions();
+  const sortOptions = useSortOptions(f.matchSort);
   const hourPresets = useHourPresets();
   const { zone, setZone } = useUserTimezone();
   const toast = useToast();
@@ -402,6 +405,15 @@ export function FilterModal({
             label={t("filters.searchLabel")}
             placeholder={t("filters.searchPlaceholder")}
           />
+        </Section>
+        <Section title={t("filters.sort.label")}>
+          <div role="radiogroup" aria-label={t("filters.sort.label")} className="flex flex-wrap gap-2">
+            {sortOptions.map((o) => (
+              <Choice key={o.value} radio selected={draft.sort === o.value} onClick={() => set({ sort: o.value })}>
+                {o.label}
+              </Choice>
+            ))}
+          </div>
         </Section>
         <Section title={t("filters.mobile.where")}>
           <div className="flex flex-col rounded-card bg-background">

@@ -9,21 +9,18 @@ The SPA's `getPublicJobs`/`getJob`/`getSources` (apps/web/src/lib/api.ts) call t
 neither currently changes its response based on it — there's nothing owner-scoped in `jobs`.
 """
 
-from datetime import datetime
 from typing import Any
 
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException
 
 from ujc_api.auth.deps import AuthedUser, optional_user
-from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
 from ujc_api.dto import (
     JOB_COLUMNS,
     JOB_DETAIL_COLUMNS,
     job_detail_dto,
     job_dto,
-    job_sort_key,
     source_dto,
 )
 from ujc_api.feed_query import (
@@ -33,6 +30,7 @@ from ujc_api.feed_query import (
     parse_tech,
     posted_within_clause,
 )
+from ujc_api.job_sort import PUBLIC_SORTS, fetch_page, resolve_sort
 
 router = APIRouter(tags=["jobs"])
 
@@ -89,23 +87,17 @@ def list_jobs(
     hours: int | None = None,
     access: str | None = None,
     based_in: str | None = None,
+    sort: str | None = None,
+    tz: str | None = None,
     user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
-    """The public job catalogue: every job we've crawled, newest first, no sign-in required. Same
-    keyset cursor as `GET /api/feed` (routers/feed.py) — `{t, i}` over
-    `(coalesce(posted_at, first_seen_at), id)` — just without the per-user keyword/eligibility
-    filters (there's no signed-in user to personalise for; `user` is accepted but unused today)."""
+    """The public job catalogue: every job we've crawled, no sign-in required, newest first unless
+    `sort` says otherwise (`newest` | `timezone` (+ `tz`, the viewer's IANA zone) | `salary`; see
+    ujc_api.job_sort). Same keyset cursors as `GET /api/feed` (routers/feed.py), just without the
+    per-user keyword/eligibility filters (`user` is accepted but unused today)."""
     limit = max(1, min(limit, MAX_LIMIT))
-
-    cursor_state: tuple[datetime, int] | None = None
-    if cursor:
-        try:
-            cursor_state = decode_feed_cursor(cursor)
-        except InvalidCursor as exc:
-            raise HTTPException(
-                status_code=400, detail={"code": "invalid_cursor", "message": "Invalid cursor"}
-            ) from exc
+    plan = resolve_sort(sort, tz, allowed=PUBLIC_SORTS)
 
     clauses: list[str] = ["source != %s"]
     params: list[Any] = [_EXCLUDED_SOURCES]
@@ -137,25 +129,17 @@ def list_jobs(
         clauses.append(posted[0])
         params.append(posted[1])
 
-    if cursor_state:
-        cursor_t, cursor_i = cursor_state
-        clauses.append("(coalesce(posted_at, first_seen_at), id) < (%s, %s)")
-        params.append(cursor_t)
-        params.append(cursor_i)
-
-    where = " AND ".join(clauses)
-    sql = (
-        f"SELECT {JOB_COLUMNS} FROM jobs WHERE {where}"
-        " ORDER BY coalesce(posted_at, first_seen_at) DESC, id DESC LIMIT %s"
+    page, next_cursor = fetch_page(
+        conn,
+        plan,
+        cursor,
+        columns=JOB_COLUMNS,
+        from_sql="jobs",
+        from_params=[],
+        clauses=clauses,
+        where_params=params,
+        limit=limit,
     )
-    rows = conn.execute(sql, [*params, limit + 1]).fetchall()
-    has_more = len(rows) > limit
-    page = rows[:limit]
-
-    next_cursor = None
-    if has_more and page:
-        next_cursor = encode_feed_cursor(*job_sort_key(page[-1]))
-
     return {"items": [job_dto(r) for r in page], "nextCursor": next_cursor}
 
 

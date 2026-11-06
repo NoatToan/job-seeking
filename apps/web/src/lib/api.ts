@@ -171,7 +171,19 @@ export interface PublicJobsFilters {
   /** Remote-region filter, with `based_in` = the candidate's ISO country. */
   access?: "open" | "confirmed";
   based_in?: string;
+  /** List order (default newest). `match` is `GET /api/feed` only; `timezone` needs `tz`. */
+  sort?: JobSort;
+  /** The viewer's IANA time zone, for `sort: "timezone"`. */
+  tz?: string;
 }
+
+/**
+ * Job list orders (`sort=` on `GET /api/jobs` / `GET /api/feed`, apps/api ujc_api/job_sort.py):
+ * `newest` posted date (else first seen); `timezone` fewest hours between the job's 9–5 and the
+ * viewer's; `salary` highest yearly pay (rough USD); `match` CV match score (feed only).
+ */
+export const JOB_SORTS = ["newest", "timezone", "salary", "match"] as const;
+export type JobSort = (typeof JOB_SORTS)[number];
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
  * required: this is what `/` shows a signed-out visitor instead of their personalised `Feed`. */
@@ -322,8 +334,10 @@ export interface FeedFilters {
   limit?: number;
   q?: string;
   source?: string;
-  /** `"score"` sorts by CV match score (best matches first) instead of newest-first. */
-  sort?: "score";
+  /** List order (default newest); `match` = CV match score, unscored jobs last. */
+  sort?: JobSort;
+  /** The viewer's IANA time zone, for `sort: "timezone"`. */
+  tz?: string;
   /** ISO country code: jobs in / open to that country. */
   country?: string;
   /** Comma-separated tech ids: jobs mentioning all of them. */

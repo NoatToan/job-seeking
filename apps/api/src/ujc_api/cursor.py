@@ -55,6 +55,27 @@ def decode_feed_cursor(cursor: str) -> tuple[datetime, int]:
     return t, i_raw
 
 
+def encode_sort_cursor(s: str, k: int, t: datetime, i: int) -> str:
+    """Cursor of a keyed sort (ujc_api.job_sort): sort name, integer key, time, id."""
+    return _encode({"s": s, "k": k, "t": t.isoformat(), "i": i})
+
+
+def decode_sort_cursor(cursor: str) -> tuple[str, int, datetime, int]:
+    data = _decode_json(cursor)
+    if not isinstance(data, dict) or set(data) != {"s", "k", "t", "i"}:
+        raise InvalidCursor("expected {s, k, t, i}")
+    s, k, t_raw, i = data["s"], data["k"], data["t"], data["i"]
+    if not isinstance(s, str) or not isinstance(t_raw, str):
+        raise InvalidCursor("wrong field types")
+    if not _is_plain_int(k) or not _is_plain_int(i):
+        raise InvalidCursor("wrong field types")
+    try:
+        t = datetime.fromisoformat(t_raw)
+    except ValueError as exc:
+        raise InvalidCursor("bad timestamp") from exc
+    return s, k, t, i
+
+
 def encode_search_cursor(state: dict[str, int | None]) -> str:
     """Only encodes keys actually present in `state` — a source that was never requested (so
     never appears) stays absent, which `decode_search_cursor` treats as "not started yet" (page

@@ -56,7 +56,7 @@ export function PillSelect({
   );
 }
 
-/** On/off filter as a pill (`role="switch"`), e.g. "Remote", "Unread", "Best matches". */
+/** On/off filter as a pill (`role="switch"`), e.g. "Remote", "Unread", "Open to me". */
 export function PillToggle({
   label,
   checked,

@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useViewState } from "@/lib/view-cache";
 import { usePhoneLayout } from "@/lib/use-phone-layout";
 import { jobFilterParsers, POSTED_DAYS, postedParams, REMOTE_ACCESS } from "@/lib/url-state";
+import type { JobSort } from "@/lib/api";
 import { useBasedIn } from "@/lib/based-in";
 import { CountryFilter } from "@/app/country-filter";
 import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
@@ -50,6 +51,19 @@ export function usePostedOptions(): { value: string; label: string }[] {
   ];
 }
 
+/** Sort options for the list (`GET /api/jobs` / `GET /api/feed` `sort=`). "Best match" needs a CV
+ * score, so only the signed-in "For you" feed offers it. */
+export function useSortOptions(matchSort: boolean): { value: JobSort; label: string }[] {
+  const { t } = useTranslation("home");
+  const { zone } = useUserTimezone();
+  return [
+    { value: "newest", label: t("filters.sort.newest") },
+    ...(matchSort ? [{ value: "match" as const, label: t("filters.sort.match") }] : []),
+    { value: "timezone", label: t("filters.sort.timezone", { abbr: shortZoneName(zone) }) },
+    { value: "salary", label: t("filters.sort.salary") },
+  ];
+}
+
 /** Every filter value at once: what the phone filter view edits as a draft and applies together. */
 export interface JobFilterValues {
   q: string;
@@ -61,6 +75,7 @@ export interface JobFilterValues {
   access: string;
   hours: [number, number] | null;
   unreadOnly: boolean;
+  sort: JobSort;
 }
 
 export interface JobFilterState {
@@ -96,8 +111,18 @@ export interface JobFilterState {
     hours?: number;
     access?: RemoteAccessMode;
     based_in?: string;
+    sort?: JobSort;
+    tz?: string;
   };
+  /** Filters on (what "Clear all" undoes); the sort is not counted here — see `sortActive`. */
   activeCount: number;
+  /** List order. Not a filter: it never empties the list, so it isn't in `activeCount`. */
+  sort: JobSort;
+  setSort: (v: JobSort) => void;
+  /** A non-default sort is chosen (the folded hero and the phone "Filters" badge count it). */
+  sortActive: boolean;
+  /** This list offers "Best match" (the signed-in feed). */
+  matchSort: boolean;
   clear: () => void;
   /** Apply every value in one URL update (phone filter view: Apply). */
   apply: (v: JobFilterValues) => void;
@@ -118,9 +143,14 @@ export interface JobFilterState {
  * read in this browser, not something to put in a link. Shared by the public catalogue and the
  * signed-in feed.
  */
-export function useJobFilters(prefix: string): JobFilterState {
+export function useJobFilters(prefix: string, { matchSort = false }: { matchSort?: boolean } = {}): JobFilterState {
   const [url, setUrl] = useQueryStates(jobFilterParsers);
   const { q, source, remote: remoteOnly, country, tech, posted, hours, access } = url;
+  // `?sort=match` is shared with the feed; the public catalogue can't score jobs, so it shows newest.
+  const sort: JobSort = url.sort === "match" && !matchSort ? "newest" : url.sort;
+  // The time-zone sort ranks against the viewer's own zone (saved preference, else the browser's).
+  const { zone } = useUserTimezone();
+  const sortTz = sort === "timezone" ? zone : "";
   const { country: basedIn } = useBasedIn();
   // The search box shows keystrokes at once; the URL (and the request) follow 300 ms later
   // (SCREENS.md §4). An outside change of `q` (Clear, Back) resets the box.
@@ -162,7 +192,18 @@ export function useJobFilters(prefix: string): JobFilterState {
     setAccess: (v) =>
       void setUrl({ access: (REMOTE_ACCESS as readonly string[]).includes(v) ? (v as RemoteAccessMode) : null }),
     basedIn,
-    key: JSON.stringify([q, source, remoteOnly, country, techKey, postedValue, access ?? "", access ? basedIn : ""]),
+    key: JSON.stringify([
+      q,
+      source,
+      remoteOnly,
+      country,
+      techKey,
+      postedValue,
+      access ?? "",
+      access ? basedIn : "",
+      sort,
+      sortTz,
+    ]),
     params: {
       q: q || undefined,
       source: source || undefined,
@@ -171,8 +212,14 @@ export function useJobFilters(prefix: string): JobFilterState {
       tech: techKey || undefined,
       ...postedParams(posted),
       ...(access ? { access, based_in: basedIn ?? undefined } : {}),
+      ...(sort !== "newest" ? { sort } : {}),
+      ...(sortTz ? { tz: sortTz } : {}),
     },
     activeCount: [q, source, remoteOnly, country, posted, hours, access].filter(Boolean).length + tech.length,
+    sort,
+    setSort: (v) => void setUrl({ sort: v }),
+    sortActive: sort !== "newest",
+    matchSort,
     hours,
     setHours: (v) => void setUrl({ hours: v }),
     hiddenIds: hidden ? new Set(hidden) : null,
@@ -195,6 +242,7 @@ export function useJobFilters(prefix: string): JobFilterState {
         posted: (POSTED_DAYS as readonly string[]).includes(v.posted) ? (v.posted as PostedDays) : null,
         access: (REMOTE_ACCESS as readonly string[]).includes(v.access) ? (v.access as RemoteAccessMode) : null,
         hours: v.hours,
+        sort: v.sort,
       });
     },
   };
@@ -379,7 +427,7 @@ export interface JobFilterBarProps {
   filters: JobFilterState;
   /** Source ids to offer in the Source select. */
   sources: readonly string[];
-  /** Extra controls at the end of the bar (feed: Best matches, Refresh scores). */
+  /** Extra controls at the end of the bar (feed: Refresh scores). */
   extra?: ReactNode;
 }
 
@@ -400,6 +448,7 @@ export function JobFilterBar(props: JobFilterBarProps) {
 function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const { t } = useTranslation("home");
   const postedOptions = usePostedOptions();
+  const sortOptions = useSortOptions(f.matchSort);
   const strings = useUiStrings();
   // Native <option> text can't hold markup: flag emoji + short country code ("🇻🇳 VN").
   const accessYou = f.basedIn ? `${flagEmoji(f.basedIn)} ${countryName(f.basedIn, strings.locale)}` : null;
@@ -463,6 +512,18 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
         </PillSelect>
         <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
+        <PillSelect
+          label={t("filters.sort.label")}
+          // "" = the default order, so the pill stays untinted until another order is picked.
+          value={f.sortActive ? f.sort : ""}
+          onChange={(v) => f.setSort((v || "newest") as JobSort)}
+        >
+          {sortOptions.map((o) => (
+            <option key={o.value} value={o.value === "newest" ? "" : o.value}>
+              {o.label}
+            </option>
+          ))}
+        </PillSelect>
         <button
           type="button"
           aria-expanded={moreOpen}
@@ -518,15 +579,16 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
 export function JobFilterSummary({ filters }: { filters: JobFilterState }) {
   const { t } = useTranslation("home");
   const query = filters.draftQ.trim();
+  const count = filters.activeCount + (filters.sortActive ? 1 : 0);
   return (
     <>
       <SearchIcon size={16} strokeWidth={2.25} aria-hidden className="shrink-0" />
       <span className={cx("truncate", query ? "font-semibold text-label" : "font-medium")}>
         {query ? `“${query}”` : t("filters.collapsedAll")}
       </span>
-      {filters.activeCount ? (
+      {count ? (
         <span className="shrink-0 rounded-full bg-tint-soft px-2 py-0.5 text-caption font-semibold text-tint-ink">
-          {t("filters.collapsedFilters", { count: filters.activeCount })}
+          {t("filters.collapsedFilters", { count })}
         </span>
       ) : null}
       <span className="sr-only">{t("filters.collapsedEdit")}</span>

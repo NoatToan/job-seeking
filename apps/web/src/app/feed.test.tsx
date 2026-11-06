@@ -151,7 +151,7 @@ describe("Feed", () => {
     await waitFor(() => expect(screen.getByText(/No matches yet/)).toBeTruthy(), { timeout: 5000 });
   });
 
-  it("flipping the Best matches toggle re-fetches the feed with sort=score", async () => {
+  it("the Sort by select re-fetches the feed in the chosen order (match, time-zone fit + tz)", async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url.startsWith("/api/feed")) {
         return Promise.resolve(
@@ -169,12 +169,25 @@ describe("Feed", () => {
     expect(feedCallsBefore.every(([u]) => !(u as string).includes("sort="))).toBe(true);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("switch", { name: "Best matches" }));
+      fireEvent.change(screen.getByRole("combobox", { name: "Sort by" }), { target: { value: "match" } });
     });
 
     await waitFor(() => {
-      const scoreCalls = fetchMock.mock.calls.filter(([u]) => (u as string).includes("sort=score"));
-      expect(scoreCalls.length).toBeGreaterThan(0);
+      const matchCalls = fetchMock.mock.calls.filter(([u]) => (u as string).includes("sort=match"));
+      expect(matchCalls.length).toBeGreaterThan(0);
+    });
+    // Only the time-zone order sends the viewer's zone.
+    expect(fetchMock.mock.calls.some(([u]) => (u as string).includes("tz="))).toBe(false);
+
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Sort by" }), { target: { value: "timezone" } });
+    });
+
+    await waitFor(() => {
+      const tzCalls = fetchMock.mock.calls.filter(
+        ([u]) => (u as string).includes("sort=timezone") && /[?&]tz=[^&]+/.test(u as string),
+      );
+      expect(tzCalls.length).toBeGreaterThan(0);
     });
   });
 
