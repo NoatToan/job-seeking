@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalZone,
   clockLabel,
   jobZonesLabel,
   workHoursFit,
@@ -20,6 +21,13 @@ describe("zoneOffsetMinutes", () => {
     expect(zoneOffsetMinutes("America/New_York", SUMMER)).toBe(-240);
     expect(zoneOffsetMinutes("Europe/London", WINTER)).toBe(0);
     expect(zoneOffsetMinutes("Not/A_Zone")).toBeNull();
+  });
+});
+
+describe("canonicalZone", () => {
+  it("maps legacy aliases browsers report", () => {
+    expect(canonicalZone("Asia/Saigon")).toBe("Asia/Ho_Chi_Minh");
+    expect(canonicalZone("Europe/Berlin")).toBe("Europe/Berlin");
   });
 });
 

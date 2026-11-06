@@ -150,6 +150,8 @@ REGION_ZONES: dict[str, list[str]] = {
 }  # fmt: skip
 
 _MAX_OFFSET_MIN = 14 * 60
+# A structured offset range this wide (or wider) doesn't restrict anything in practice.
+_WIDE_SPAN_MIN = 12 * 60
 
 
 def format_offset(minutes: int) -> str:
@@ -193,6 +195,10 @@ def _structured(raw: dict[str, Any] | None) -> list[str]:
         if abs(m) <= _MAX_OFFSET_MIN:
             minutes.append(m)
     if not minutes:
+        return []
+    # Some postings tick every offset (UTC-10 … UTC+14): that's "no time-zone restriction", not a
+    # constraint — let the location decide instead.
+    if max(minutes) - min(minutes) >= _WIDE_SPAN_MIN:
         return []
     return (
         _offset_range(min(minutes), max(minutes))

@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { updatePreferences } from "./api";
 import { useSession } from "./session";
-import { browserTimezone } from "./work-hours";
+import { browserTimezone, canonicalZone } from "./work-hours";
 
 const STORAGE_KEY = "ujc:timezone";
 const listeners = new Set<() => void>();
@@ -84,5 +84,7 @@ export function timezoneOptions(current: string): string[] {
       "UTC",
     ];
   }
+  // Show current names only (Intl lists some legacy aliases such as Asia/Saigon too).
+  zones = [...new Set(zones.map(canonicalZone))].sort();
   return zones.includes(current) ? zones : [current, ...zones];
 }
