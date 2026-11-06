@@ -63,7 +63,9 @@ function useNavItems(): NavItem[] {
       { key: "tracker", label: t("nav.tracker"), href: "/tracker/", icon: <KanbanIcon size={22} /> },
       { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
       { key: "connections", label: t("nav.connections"), href: "/connections/", icon: <LinkIcon size={22} /> },
-      { key: "blog", label: t("nav.blog"), href: "/blog/", icon: <NewspaperIcon /> },
+      // Blog hidden from navigation for now (Tony, 2026-11-07): the daily blog crawl and the
+      // /blog/ pages keep running and stay in the sitemap; only the links are gone. To bring it
+      // back: { key: "blog", label: t("nav.blog"), href: "/blog/", icon: <NewspaperIcon /> },
       { key: "roadmap", label: t("nav.roadmap"), href: "/roadmap/", icon: <RoadmapIcon /> },
     ],
     // `t` keeps its identity across language changes.
@@ -162,9 +164,6 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
             linkAs={Link}
             onClick={() => setOpen(false)}
           />
-          {/* The phone tab bar has no room for a sixth tab when signed in: the blog is reached here
-              (and from the TopNav on >= md). */}
-          <ListRow title={t("nav.blog")} href="/blog/" linkAs={Link} onClick={() => setOpen(false)} />
           <ListRow title={t("nav.roadmap")} href="/roadmap/" linkAs={Link} onClick={() => setOpen(false)} />
           <ListRow
             title={tc("nav.contribute")}
