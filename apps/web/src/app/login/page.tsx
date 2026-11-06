@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Sign in", robots: NO_INDEX };
 export default function LoginPage() {
   return (
     <Suspense
-      fallback={<p className="mx-auto w-full max-w-sm px-4 py-12 text-sm text-zinc-500">Loading…</p>}
+      fallback={<p className="mx-auto w-full max-w-sm px-4 py-12 text-sm text-label-secondary">Loading…</p>}
     >
       <LoginForm />
     </Suspense>

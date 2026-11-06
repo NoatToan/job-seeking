@@ -109,7 +109,7 @@ export function BrandMark({ name, className }: BrandMarkProps) {
     <span className={cx("inline-flex items-center gap-2.5", className)}>
       <span
         aria-hidden
-        className="flex size-8 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#fb923c_0%,#f43f5e_55%,#a855f7_100%)] text-white shadow-raised"
+        className="flex size-8 items-center justify-center rounded-[10px] bg-[image:var(--ujc-brand-gradient)] text-white shadow-raised"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round">
           <path d="M5 17a7 7 0 0 1 14 0" />
@@ -238,7 +238,7 @@ export function Sidebar({
                   </span>
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.badge ? (
-                    <span className="min-w-6 rounded-full bg-fill-secondary px-1.5 text-center text-caption font-semibold text-label-secondary tabular-nums">
+                    <span className="min-w-6 rounded-full bg-fill-secondary px-1.5 text-center text-caption font-semibold text-label tabular-nums">
                       {item.badge}
                     </span>
                   ) : null}

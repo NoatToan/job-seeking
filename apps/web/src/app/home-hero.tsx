@@ -9,6 +9,7 @@ import { BrandMark, ChevronDownIcon, cx, FloatingPanel, Sheet } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
 import { LanguageSwitch, useLanguage } from "@/lib/i18n/provider";
+import { ThemeToggle } from "@/lib/theme";
 import { useHeroCollapse } from "@/lib/use-hero-collapse";
 import { usePhoneLayout } from "@/lib/use-phone-layout";
 
@@ -51,6 +52,7 @@ export function HomeHero({
             <BrandMark name={BRAND_NAME} />
           </Link>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <LanguageSwitch />
             <AccountMenu />
           </div>

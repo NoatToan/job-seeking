@@ -15,14 +15,14 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { t } = useTranslation("home");
 
   if (loading) {
-    return <p className="px-4 py-8 text-sm text-zinc-500">{t("requireAuth.checking")}</p>;
+    return <p className="px-4 py-8 text-sm text-label-secondary">{t("requireAuth.checking")}</p>;
   }
 
   if (error) {
     return (
       <div
         role="alert"
-        className="mx-4 mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+        className="mx-4 mt-8 rounded-card border border-danger/30 bg-danger-soft p-4 text-sm text-danger-ink"
       >
         <p>{t("requireAuth.errorMessage", { message: error.message })}</p>
         <button type="button" onClick={() => void refresh()} className="mt-2 underline">

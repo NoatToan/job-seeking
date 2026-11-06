@@ -5,6 +5,8 @@ import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { SessionProvider } from "@/lib/session";
+import { ThemeSync } from "@/lib/theme";
+import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme-core";
 import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { AppShell } from "./nav";
 import { ViewedSync } from "./viewed-sync";
@@ -36,8 +38,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    // Page background (`bg-grouped`) per palette. A forced Light/Dark choice rewrites both
+    // metas on the client (lib/theme.tsx `applyTheme`).
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
   ],
 };
 
@@ -49,9 +53,16 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-WSR78ZW4";
 // theme.css already covers SF Pro / Inter / Segoe UI / Roboto with full Vietnamese coverage).
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    // suppressHydrationWarning: the theme script below may add `dark`/`light` to <html> before
+    // React hydrates (and I18nProvider rewrites `lang`).
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Appearance (System/Light/Dark) applied before first paint, no flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       {GTM_ID ? <GoogleTagManager gtmId={GTM_ID} /> : null}
       <body className="min-h-full bg-grouped text-label">
+        <ThemeSync />
         <NuqsAdapter>
           <I18nProvider>
             <SessionProvider>

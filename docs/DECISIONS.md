@@ -90,3 +90,30 @@ and turned on here.
   `feedback_items.author_id` nullable and adds `author_name` and `anon_key`. A CHECK keeps both
   fields on anonymous rows only. Account deletion still cascades to the user's own items.
 
+
+## Appearance setting: System / Light / Dark (2026-11-06)
+
+Tony asked for dark mode across the whole app. The palette already had dark values that followed
+the OS; this adds a user choice and cleans up the few places that bypassed the tokens.
+
+- **Setting.** `system` (default, no class), `light` or `dark` (`<html class="light|dark">`, which
+  theme.css already honours). Stored in localStorage `ujc:theme` (removed for System; every
+  access wrapped in try/catch, falls back to memory for the page view). Code in
+  `apps/web/src/lib/theme-core.ts` (pure, usable from the server layout) and `lib/theme.tsx`
+  (hook + controls). Changes in another tab sync through the `storage` event.
+- **No flash.** A tiny inline script in the root layout's `<head>` adds the saved class before
+  the body paints; `<html>` has `suppressHydrationWarning` for that. The theme-color metas now
+  use the real page background (`#f4f2ef` / `#0e0d0c`) and are rewritten to the forced palette
+  when Light or Dark is picked.
+- **Controls.** A compact icon button next to the language switch (TopNav on wide screens, the
+  phone hero row) cycles System → Light → Dark; icon = current mode (monitor / sun / moon),
+  accessible name "Appearance: X. Switch to Y". The account sheet has a three-way segmented
+  picker. The styleguide's appearance switch now drives the same setting; its `?theme=` query
+  is a preview only and the saved choice comes back when leaving `/design`.
+- **Token clean-up.** `text-zinc-500` loading text, the red `require-auth` error box, the
+  hard-coded brand gradient in `BrandMark` and the "love" text gradient now use tokens; the text
+  gradient got a lighter dark-mode variant (`--ujc-brand-text-gradient`). The sidebar badge used
+  label-secondary on fill-secondary (4.1:1 in dark) and now uses label. Left as is on purpose:
+  the white tile behind tech logos (so dark logos stay visible), white glyphs on the brand
+  gradient, the Toggle knob, source brand colours, the canvas screenshot fill in
+  contributor-box and the OG image.
