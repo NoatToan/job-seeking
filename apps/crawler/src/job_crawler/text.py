@@ -63,9 +63,82 @@ def html_to_text(value: str | None, *, escaped: bool = False) -> str | None:
     parser.close()
     text = "".join(parser.parts).replace("\xa0", " ")
     lines = [re.sub(r"[ \t\r\f\v]+", " ", line).strip() for line in text.split("\n")]
-    text = "\n".join(lines)
-    text = re.sub(r"\n{3,}", "\n\n", text).strip()
-    return text or None
+    return normalize_description("\n".join(lines))
+
+
+_INVISIBLE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff\u00ad]")
+_ODD_SPACES = re.compile(r"[\xa0\u2000-\u200a\u202f\u205f\u3000]")
+# A bullet marker alone on its line (`<li><p>text</p></li>` renders as "-" then the text).
+_LONE_MARKER = re.compile(r"^(?:[-*•·▪●◦‣–—]|\d{1,2}[.)])$")
+# Bullet glyphs at the start of a line, unified to "- ".
+_GLYPH_BULLET = re.compile(r"^[•·▪●◦‣]\s*|^[*–—]\s+")
+_BULLET_LINE = re.compile(r"^(?:- |\d{1,2}[.)] )")
+_SENTENCE_END = (".", "!", "?", "…")
+
+
+def _is_bullet(line: str) -> bool:
+    return bool(_BULLET_LINE.match(line))
+
+
+def _is_short(line: str) -> bool:
+    """Heading-like: short and not a sentence ("Responsibilities", "Location: Remote")."""
+    return len(line) <= 80 and not line.endswith(_SENTENCE_END) and not _is_bullet(line)
+
+
+def normalize_description(text: str | None) -> str | None:
+    """Tidy a job description's whitespace so it reads compactly (Slack request: "too much empty
+    space in the JD"):
+
+    - invisible characters dropped, odd spaces / tabs / runs of spaces -> one space, lines trimmed;
+    - a lone bullet marker is joined to the text after it ("-\nBuild X" -> "- Build X"),
+      "•", "▪", "*"… bullets become "- ", empty bullets are dropped;
+    - at most one blank line in a row, none at the start or end;
+    - no blank line between list items, after a line introducing a list ("We offer:"), after a
+      heading before its paragraph, or between short "Key: value" lines.
+    """
+    if not text:
+        return None
+    text = _INVISIBLE.sub("", text.replace("\r\n", "\n").replace("\r", "\n"))
+    text = _ODD_SPACES.sub(" ", text)
+    lines: list[str] = []
+    marker: str | None = None
+    for raw in text.split("\n"):
+        line = re.sub(r"[ \t\f\v]+", " ", raw).strip()
+        if marker is not None:
+            if not line:
+                continue
+            if _LONE_MARKER.match(line):
+                marker = line
+                continue
+            line = f"{marker} {line}" if marker[0].isdigit() else f"- {line}"
+            marker = None
+        elif _LONE_MARKER.match(line):
+            marker = line
+            continue
+        line = _GLYPH_BULLET.sub("- ", line)
+        if line in ("-", "- "):
+            continue
+        lines.append(line)
+
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        if line:
+            out.append(line)
+            continue
+        if not out or not out[-1]:
+            continue  # leading or repeated blank line
+        nxt = next((n for n in lines[i + 1 :] if n), None)
+        if nxt is None:
+            continue  # trailing blank line
+        prev = out[-1]
+        if _is_bullet(nxt) and (_is_bullet(prev) or prev.endswith(":") or _is_short(prev)):
+            continue
+        if _is_short(prev) and not _is_short(nxt):
+            continue  # heading -> its paragraph
+        if _is_short(prev) and _is_short(nxt) and ": " in prev and ": " in nxt:
+            continue  # "Location: Remote" / "Salary: …" block
+        out.append("")
+    return "\n".join(out).strip() or None
 
 
 def clean(value: object) -> str | None:

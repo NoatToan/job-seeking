@@ -188,7 +188,7 @@ export function JobDetail({
               <ExternalLinkIcon size={16} />
             </a>
           </div>
-          <div className="fixed inset-x-0 bottom-0 z-20 material-bar hairline-t p-4 sm:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-20 material-bar hairline-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:hidden">
             <a
               href={applyHref}
               target="_blank"

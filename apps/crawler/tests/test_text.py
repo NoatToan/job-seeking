@@ -7,7 +7,7 @@ from job_crawler.text import clean, format_salary, html_to_text, parse_datetime
 
 def test_html_to_text_blocks_lists_and_entities():
     html = "<h2>Role</h2><p>Hello&nbsp;&amp;   welcome</p><ul><li>One</li><li>Two</li></ul>"
-    assert html_to_text(html) == "Role\n\nHello & welcome\n\n- One\n\n- Two"
+    assert html_to_text(html) == "Role\n\nHello & welcome\n- One\n- Two"
 
 
 def test_html_to_text_skips_script_and_style():
@@ -78,3 +78,26 @@ def test_parse_datetime_is_always_aware():
 )
 def test_format_salary(args, expected):
     assert format_salary(*args) == expected
+
+
+def test_normalize_description_compacts_whitespace():
+    from job_crawler.text import normalize_description
+
+    raw = (
+        "\n\nOverview\n\nBuild the site.\n\n\n\nEngagement: Freelance\n\nLocation: Remote\n\n"
+        "Responsibilities:\n\n-\nDevelop the website\n\n-\n\nShip it   fast​\n\n•  Test\n\n"
+        "We value   honesty.\n\nAbout us\n\nWe are small.\n\n-\n\n"
+    )
+    assert normalize_description(raw) == (
+        "Overview\nBuild the site.\n\nEngagement: Freelance\nLocation: Remote\n\n"
+        "Responsibilities:\n- Develop the website\n- Ship it fast\n- Test\n\n"
+        "We value honesty.\n\nAbout us\nWe are small."
+    )
+
+
+def test_normalize_description_numbered_and_empty():
+    from job_crawler.text import normalize_description
+
+    assert normalize_description("Steps\n1.\nApply\n2)\nWait") == "Steps\n1. Apply\n2) Wait"
+    assert normalize_description(" \n\xa0\n") is None
+    assert normalize_description(None) is None
