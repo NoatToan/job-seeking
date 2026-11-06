@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import type { Job, PublicJobsPage, SourceInfo } from "@ujc/core";
 import { sourceMeta } from "@ujc/core";
@@ -9,7 +9,6 @@ import {
   buttonClasses,
   Chip,
   EmptyState,
-  JobCard,
   JobCardSkeleton,
   NavBar,
   RefreshIcon,
@@ -21,8 +20,9 @@ import { getPublicJobs, getSources } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { useApi } from "@/lib/use-api";
 import { useInfiniteList } from "@/lib/use-infinite";
+import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
-import { SaveJobButton } from "@/app/save-job-button";
+import { JobBrowser } from "@/app/job-browser";
 
 function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
   if (status === "error") return "danger";
@@ -59,18 +59,19 @@ function SourceStatusStrip({ sources }: { sources: SourceInfo[] }) {
  * never redirects to `/login` (see `lib/session.tsx` `isPublicRoute`).
  */
 export function PublicJobs() {
-  const [draftQ, setDraftQ] = useState("");
-  const [q, setQ] = useState("");
-  const [source, setSource] = useState("");
-  const [remoteOnly, setRemoteOnly] = useState(false);
+  // Filters live in the view cache, so Back from a job restores the same filtered list.
+  const [draftQ, setDraftQ] = useViewState("public:draftQ", "");
+  const [q, setQ] = useViewState("public:q", "");
+  const [source, setSource] = useViewState("public:source", "");
+  const [remoteOnly, setRemoteOnly] = useViewState("public:remote", false);
 
   // Debounced filter, same 300 ms as the signed-in feed (SCREENS.md §4).
   useEffect(() => {
     const timer = setTimeout(() => setQ(draftQ), 300);
     return () => clearTimeout(timer);
-  }, [draftQ]);
+  }, [draftQ, setQ]);
 
-  const { data: sources } = useApi(getSources, []);
+  const { data: sources } = useApi(getSources, [], { cacheKey: "sources" });
 
   const fetchPage = useCallback(
     (cursor: string | undefined) =>
@@ -83,14 +84,17 @@ export function PublicJobs() {
     [q, source, remoteOnly],
   );
 
-  const { items, nextCursor, loading, error, initialized, loadMore, retry } = useInfiniteList<
+  const listKey = `public:${JSON.stringify([q, source, remoteOnly])}`;
+  const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     PublicJobsPage
-  >(fetchPage, [q, source, remoteOnly]);
+  >(fetchPage, [q, source, remoteOnly], { cacheKey: listKey });
+  useScrollRestoration(listKey, restored);
 
   return (
     <>
       <NavBar
+        wide
         title="Every job, from every source, in one place"
         trailing={<div className="md:hidden"><AccountMenu /></div>}
       >
@@ -125,7 +129,7 @@ export function PublicJobs() {
         <SourceStatusStrip sources={sources ?? []} />
       </NavBar>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-10 sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading jobs" className="flex flex-col gap-3">
             <JobCardSkeleton />
@@ -167,30 +171,27 @@ export function PublicJobs() {
             }
           />
         ) : (
-          <div className="flex flex-col gap-3">
-            {items.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                detailsHref={`/jobs/view?id=${encodeURIComponent(job.id)}`}
-                linkAs={Link}
-                actions={<SaveJobButton jobId={job.id} signedIn={false} />}
-              />
-            ))}
-          </div>
+          <JobBrowser
+            jobs={items}
+            stateKey="public"
+            signedIn={false}
+            footer={
+              <>
+                {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}
+                {loading && items.length > 0 ? (
+                  <p className="flex items-center justify-center gap-2 py-2 text-footnote text-label-secondary">
+                    <Spinner size={14} /> Loading more…
+                  </p>
+                ) : null}
+                {initialized && !nextCursor && items.length > 0 ? (
+                  <p role="status" className="py-4 text-center text-footnote text-label-secondary">
+                    You&apos;ve reached the end — new jobs are crawled every day.
+                  </p>
+                ) : null}
+              </>
+            }
+          />
         )}
-
-        {nextCursor ? <LoadMoreSentinel active={!loading} onVisible={loadMore} /> : null}
-        {loading && items.length > 0 ? (
-          <p className="flex items-center justify-center gap-2 py-2 text-footnote text-label-secondary">
-            <Spinner size={14} /> Loading more…
-          </p>
-        ) : null}
-        {initialized && !nextCursor && items.length > 0 ? (
-          <p role="status" className="py-4 text-center text-footnote text-label-secondary">
-            You&apos;ve reached the end — new jobs are crawled every day.
-          </p>
-        ) : null}
       </div>
     </>
   );
