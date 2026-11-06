@@ -3,7 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Card, Chip, cx, ExternalLinkIcon, NavBar, SparklesIcon } from "@ujc/ui";
+import { Badge, Card, Chip, cx, NavBar, SparklesIcon } from "@ujc/ui";
 import type { Tone } from "@ujc/ui";
 import { AccountMenu } from "@/app/nav";
 import { useLanguage } from "@/lib/i18n/provider";
@@ -16,7 +16,6 @@ import {
   RELEASE_NOTES,
 } from "@/lib/release-notes";
 import type { HeatmapDay, ReleaseCategory, ReleaseEntry } from "@/lib/release-notes";
-import { REPO_URL } from "@/lib/site";
 
 const ICON_PROPS = {
   width: 14,
@@ -271,15 +270,6 @@ function EntryItem({
         ) : null}
         <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-footnote text-label-tertiary">
           <span>{t("commits", { count: entry.commits.count })}</span>
-          <a
-            href={`${REPO_URL}/commits/${entry.commits.to}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-control-sm font-medium text-tint hover:underline focus-ring"
-          >
-            {t("viewCode")}
-            <ExternalLinkIcon size={12} />
-          </a>
         </p>
       </Card>
     </li>

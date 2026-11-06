@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
@@ -32,7 +32,14 @@ function errorMessage(err: unknown, t: TFunction<"auth">): string {
   return err instanceof Error ? err.message : t("errors.generic");
 }
 
-export function LoginForm() {
+export interface LoginFormProps {
+  /** In-place sign-in (the login modal): no page chrome, and on success this runs instead of a
+   * navigation, so the visitor stays where they were and the action they started continues. */
+  onSignedIn?: () => void;
+}
+
+export function LoginForm({ onSignedIn }: LoginFormProps = {}) {
+  const embedded = Boolean(onSignedIn);
   // Only same-site paths: `?next=https://evil.example` must not turn sign-in into an open redirect.
   const [nextParam] = useQueryState("next");
   const next = nextParam?.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
@@ -95,7 +102,9 @@ export function LoginForm() {
     try {
       await verifyOtp(email, value);
       const me = await refresh();
-      if (next) {
+      if (onSignedIn) {
+        onSignedIn();
+      } else if (next) {
         router.replace(next);
       } else if (!me?.user.onboardedAt) {
         router.replace("/onboarding/");
@@ -116,29 +125,34 @@ export function LoginForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col justify-center gap-8 px-4 py-12">
+    <Wrapper embedded={embedded}>
       <div className="flex flex-col items-center gap-6">
-        {/* The login screen has no app chrome, so it carries its own way back. */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 self-start rounded-control px-1 py-1 text-subheadline font-medium text-tint hover:underline focus-ring"
-        >
-          <ChevronLeftIcon size={16} strokeWidth={2.25} aria-hidden />
-          {t("backHome")}
-        </Link>
-        <Link href="/" aria-label={t("backHome")} className="rounded-control focus-ring">
-          <BrandMark name="JobSeeking" />
-        </Link>
+        {embedded ? null : (
+          <>
+            {/* The login screen has no app chrome, so it carries its own way back. */}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 self-start rounded-control px-1 py-1 text-subheadline font-medium text-tint hover:underline focus-ring"
+            >
+              <ChevronLeftIcon size={16} strokeWidth={2.25} aria-hidden />
+              {t("backHome")}
+            </Link>
+            <Link href="/" aria-label={t("backHome")} className="rounded-control focus-ring">
+              <BrandMark name="JobSeeking" />
+            </Link>
+          </>
+        )}
 
         {step === "email" ? (
           <>
-            <div className="flex flex-col gap-2 text-center">
-              <h1 className="text-large-title text-label font-display">{t("title")}</h1>
-              <p className="text-body text-label-secondary">
-                {t("subtitle")}
-              </p>
-            </div>
-            <Card padding="lg" className="w-full">
+            {/* In the modal the sheet's own title + description already say this. */}
+            {embedded ? null : (
+              <div className="flex flex-col gap-2 text-center">
+                <h1 className="text-large-title text-label font-display">{t("title")}</h1>
+                <p className="text-body text-label-secondary">{t("subtitle")}</p>
+              </div>
+            )}
+            <Card padding={embedded ? "none" : "lg"} className={embedded ? "w-full bg-transparent shadow-none" : "w-full"}>
               <form onSubmit={handleEmailSubmit} aria-label={t("formAriaLabel")} className="flex flex-col gap-4">
                 <TextField
                   label={t("emailLabel")}
@@ -241,6 +255,14 @@ export function LoginForm() {
           </div>
         )}
       </div>
-    </main>
+    </Wrapper>
+  );
+}
+
+/** The /login page is a full screen; inside the login modal the sheet already frames the form. */
+function Wrapper({ embedded, children }: { embedded: boolean; children: ReactNode }) {
+  if (embedded) return <div className="flex w-full flex-col gap-6">{children}</div>;
+  return (
+    <main className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col justify-center gap-8 px-4 py-12">{children}</main>
   );
 }

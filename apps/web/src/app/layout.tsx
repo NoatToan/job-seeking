@@ -5,6 +5,7 @@ import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { SessionProvider } from "@/lib/session";
+import { LoginGateProvider } from "@/lib/login-modal";
 import { ThemeSync } from "@/lib/theme";
 import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme-core";
 import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
@@ -68,7 +69,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <SessionProvider>
               <ViewedSync />
               <ToastProvider>
-                <AppShell>{children}</AppShell>
+                <LoginGateProvider>
+                  <AppShell>{children}</AppShell>
+                </LoginGateProvider>
               </ToastProvider>
             </SessionProvider>
           </I18nProvider>

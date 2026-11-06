@@ -177,6 +177,7 @@
     "save": "Lưu",
     "saved": "Đã lưu ✓",
     "signInTo": "Đăng nhập để {{action}}",
-    "errorMessage": "Không thể lưu việc làm này."
+    "errorMessage": "Không thể lưu việc làm này.",
+    "signInReason": "Đăng nhập để lưu việc này vào danh sách theo dõi."
   }
 }

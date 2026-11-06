@@ -1,6 +1,9 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const { requireLoginMock } = vi.hoisted(() => ({ requireLoginMock: vi.fn() }));
+vi.mock("@/lib/login-modal", () => ({ useRequireLogin: () => requireLoginMock }));
+
 import { SaveJobButton } from "./save-job-button";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -53,16 +56,23 @@ describe("SaveJobButton", () => {
     expect(JSON.parse((postCalls[0][1] as RequestInit).body as string)).toEqual({ jobId: "42" });
   });
 
-  it("prompts sign-in instead of calling the API when signedIn is false", () => {
-    const fetchMock = vi.fn(() => Promise.reject(new Error("should not call the API")));
+  it("signed out: opens the login modal in place and saves only after sign-in", async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(new Response(JSON.stringify({ id: "1" }), { status: 201 })),
+    );
     vi.stubGlobal("fetch", fetchMock);
+    requireLoginMock.mockReset();
 
     render(<SaveJobButton jobId="42" signedIn={false} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
-    const link = screen.getByRole("link", { name: /Sign in to save/i });
-    // next/link's own trailingSlash normalisation (next.config `trailingSlash: true`) doesn't
-    // run in this unit-test environment, so just check the path rather than an exact match.
-    expect(link.getAttribute("href")).toMatch(/^\/login\/?$/);
+    // Not navigated, not saved yet: the modal was asked for, with the save as its follow-up.
+    expect(requireLoginMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).not.toHaveBeenCalled();
+    const [afterSignIn, options] = requireLoginMock.mock.calls[0];
+    expect(options).toEqual({ reason: expect.any(String) });
+    await act(async () => afterSignIn());
+    expect(fetchMock.mock.calls.some(([u]) => u === "/api/applications")).toBe(true);
   });
 });

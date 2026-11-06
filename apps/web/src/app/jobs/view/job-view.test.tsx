@@ -122,9 +122,9 @@ describe("JobView", () => {
     render(<JobView />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     await waitFor(() => expect(screen.getByText("Staff Engineer")).toBeTruthy());
-    const trackLink = screen.getByRole("link", { name: /Sign in to track/i });
-    // next/link's trailingSlash normalisation doesn't run in this unit-test environment.
-    expect(trackLink.getAttribute("href")).toMatch(/^\/login\/?$/);
+    // Signed out the Track button is the same button (it opens the login modal); no /login link.
+    expect(screen.getByRole("button", { name: /^Track$/i })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Sign in to track/i })).toBeNull();
     const calledPaths = fetchMock.mock.calls.map(([u]) => u as string);
     expect(calledPaths.every((u) => u !== "/api/applications")).toBe(true);
   });

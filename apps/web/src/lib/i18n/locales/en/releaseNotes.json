@@ -31,7 +31,6 @@
   "latest": "Latest",
   "commits_one": "{{count}} code change",
   "commits_other": "{{count}} code changes",
-  "viewCode": "View code",
   "screenshotAlt": "The site on {{date}}",
   "empty": "No updates in this category yet.",
   "whatsNew": "What's new",

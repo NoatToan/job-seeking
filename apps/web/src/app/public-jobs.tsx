@@ -13,6 +13,7 @@ import { useScrollRestoration } from "@/lib/view-cache";
 import { HomeHero, SourcesSummary } from "@/app/home-hero";
 import { SaveJobButton } from "@/app/save-job-button";
 import { useSession } from "@/lib/session";
+import { useLoginGate } from "@/lib/login-modal";
 import { greeting, greetingName } from "@/app/feed";
 import { JobBrowser } from "@/app/job-browser";
 import { JobBrowserSkeleton, SourcesPillSkeleton } from "@/app/skeletons";
@@ -36,6 +37,7 @@ export function PublicJobs({
   modeSwitch?: ReactNode;
 } = {}) {
   const { me } = useSession();
+  const { openLogin } = useLoginGate();
   const filters = useJobFilters("public");
   const { data: sources, error: sourcesError } = useApi(getSources, [], { cacheKey: "sources" });
 
@@ -94,10 +96,10 @@ export function PublicJobs({
             {sources || sourcesError ? <SourcesSummary sources={sources ?? []} /> : <SourcesPillSkeleton />}
             <WhatsNewChip />
             <span className={signedIn ? "hidden" : "hidden lg:inline-flex"}>
-              <Link href="/login/" className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
+              <button type="button" onClick={() => openLogin()} className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
                 <SparklesIcon size={16} />
                 Sign in to get matches from your CV
-              </Link>
+              </button>
             </span>
           </>
         }

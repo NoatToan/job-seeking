@@ -65,7 +65,8 @@ describe("Release notes page", () => {
     expect(within(items[1]).getByRole("img", { name: /The site on/ }).getAttribute("src")).toBe(
       "/release-notes/2026-11-06-home.jpg",
     );
-    expect(within(items[0]).getByRole("link", { name: /View code/ }).getAttribute("href")).toMatch(/\/commits\/bbbbbbb$/);
+    // No link to the source code (release notes are for users, not a commit log).
+    expect(within(items[0]).queryByRole("link", { name: /View code/ })).toBeNull();
     expect(screen.getByRole("link", { name: "RSS feed" }).getAttribute("href")).toBe("/release-notes/feed.xml");
     expect(screen.getByRole("img", { name: "Code changes per day, last 12 weeks" })).toBeTruthy();
   });

@@ -179,6 +179,7 @@
     "save": "Save",
     "saved": "Saved ✓",
     "signInTo": "Sign in to {{action}}",
-    "errorMessage": "Could not save this job."
+    "errorMessage": "Could not save this job.",
+    "signInReason": "Sign in to save this job to your tracker."
   }
 }

@@ -114,11 +114,8 @@ describe("Home", () => {
     const jobsCalls = fetchMock.mock.calls.filter(([u]) => isJobsListCall(u as string));
     expect(jobsCalls.length).toBeGreaterThan(0);
 
-    // The "sign in to get matches" CTA is the public hero's call to action, and links to /login/
-    // (next/link's trailingSlash normalisation doesn't run in this unit-test environment).
-    expect(
-      screen.getByRole("link", { name: /Sign in to get matches from your CV/i }).getAttribute("href"),
-    ).toMatch(/^\/login\/?$/);
+    // The "sign in to get matches" CTA opens the login modal in place (a button, not a /login link).
+    expect(screen.getByRole("button", { name: /Sign in to get matches from your CV/i })).toBeTruthy();
   });
 
   it("applies filters from the URL (?q=…&remote=true&tech=…) to the first request", async () => {

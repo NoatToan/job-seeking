@@ -24,6 +24,7 @@ import { ContributorRoot } from "@/lib/contributor";
 import { LanguageSwitch } from "@/lib/i18n/provider";
 import { ThemeToggle } from "@/lib/theme";
 import { GitHubLink } from "@/app/github-link";
+import { useLoginGate } from "@/lib/login-modal";
 import { ProfileMenuButton, ProfileSheet, profileMenuKeyFor } from "@/app/profile-menu";
 import { isPublicRoute } from "@/lib/public-routes";
 import { jobIdFromPath } from "@/lib/job-url";
@@ -90,10 +91,13 @@ const PHONE_TAB_KEYS = ["tracker", "cv"] as const;
 export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "pill" }) {
   const { me } = useSession();
   const { t } = useTranslation("common");
+  const { openLogin } = useLoginGate();
   if (me) return null;
+  // Opens the login modal over the current page; /login stays for direct links.
   return (
-    <Link
-      href="/login/"
+    <button
+      type="button"
+      onClick={() => openLogin()}
       className={buttonClasses({
         variant: "tinted",
         size: "sm",
@@ -101,7 +105,7 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "pill" })
       })}
     >
       {t("nav.signIn")}
-    </Link>
+    </button>
   );
 }
 
