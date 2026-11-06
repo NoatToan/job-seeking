@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import Link from "next/link";
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
@@ -13,6 +13,14 @@ import { JobDetail } from "@/app/jobs/job-detail";
 import { WorkHoursBadge } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { markViewed, useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
+import {
+  OVERSCAN_ROWS,
+  type RowWindow,
+  layoutRows,
+  nextSelection,
+  offsetToReveal,
+  refreshWindow,
+} from "@/lib/windowed-list";
 
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
 const WIDE_QUERY = "(min-width: 64rem)";
@@ -28,9 +36,8 @@ const NO_TERMS: readonly string[] = [];
 /** Load the next page once the user has scrolled through this share of the list (Slack: "load
  * more at 70%, don't wait until I hit the bottom"). */
 const PRELOAD_AT = 0.7;
-/** After a keyboard / click selection, ignore the scroll-spy while the list scrolls the row into
- * view, so the selection doesn't jump back to whatever row passes the top edge. */
-const SPY_PAUSE_MS = 500;
+/** Space between rows: the list's `gap-2.5`. */
+const ROW_GAP_PX = 10;
 
 export function jobHref(id: string): string {
   return `/jobs/view?id=${encodeURIComponent(id)}`;
@@ -132,9 +139,11 @@ function isTyping(target: EventTarget | null): boolean {
  * Home page list + detail (Slack requests: "small job list on the left, detail on the right; while
  * scrolling, the job at the top loads its detail", then "the job list must be its own scrolling
  * list, not the window"). On wide screens (`lg`) both columns fill the viewport under the sticky
- * nav bar and scroll independently: the list scrolls in its own container, the row at the top of
- * that container is the selected job, and clicking a row selects it. On narrower screens the
- * panel is hidden, the page scrolls normally and each row is a plain link to `/jobs/view`.
+ * nav bar and scroll independently: the list scrolls in its own container, clicking a row selects
+ * it, and scrolling keeps the selection until it leaves the viewport (then the nearest visible row
+ * takes over). Only ~50 rows around the viewport are mounted, so long lists stay fast. On narrower
+ * screens the panel is hidden, the page scrolls normally and each row is a plain link to
+ * `/jobs/view`.
  */
 export function JobBrowser({
   jobs,
@@ -195,22 +204,89 @@ export function JobBrowser({
     };
   }, []);
 
-  // Scroll-spy: the first row that is at least half visible below the list's top edge is the
-  // one "on top" (rows also snap to that edge, so it normally sits fully in view).
-  const spyPausedUntil = useRef(0);
-  const pickTopRow = useCallback(() => {
+  // Windowing: only ~50 rows around the viewport are in the DOM (lib/windowed-list). Heights of
+  // rows already rendered are remembered (also across Back) so the spacers stay accurate.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const heightsKey = `row-heights:${stateKey}`;
+  const [heights, setHeights] = useState<ReadonlyMap<string, number>>(
+    () => readViewCache<ReadonlyMap<string, number>>(heightsKey) ?? new Map(),
+  );
+  const layout = useMemo(() => layoutRows(jobs.map((j) => j.id), heights, ROW_GAP_PX), [jobs, heights]);
+  const layoutRef = useRef(layout);
+  const jobsRef = useRef(jobs);
+  // Layout effect, so the window update below (also a layout effect) already sees the new rows.
+  useLayoutEffect(() => {
+    layoutRef.current = layout;
+    jobsRef.current = jobs;
+  }, [layout, jobs]);
+  const [range, setRange] = useViewState<RowWindow>(`rows:${stateKey}`, {
+    start: 0,
+    end: 2 * OVERSCAN_ROWS,
+  });
+  const rangeRef = useRef(range);
+
+  /** Where the viewport is, in px from the top of the list: the list's own scroll box on wide
+   * screens, the window on phones. */
+  const viewport = useCallback((): { offset: number; view: number } | null => {
+    const list = listRef.current;
+    if (!list) return null;
     const el = scrollRef.current;
-    if (!el || !isWide() || Date.now() < spyPausedUntil.current) return;
-    const line = el.getBoundingClientRect().top;
-    for (const row of el.querySelectorAll<HTMLElement>("[data-job-id]")) {
-      const rect = row.getBoundingClientRect();
-      if (rect.top + rect.height / 2 > line) {
-        const id = row.dataset.jobId ?? null;
-        if (id && id !== selectedRef.current) setSelectedId(id);
-        return;
+    if (el && isWide()) {
+      return {
+        offset: el.scrollTop - (list.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop),
+        view: el.clientHeight,
+      };
+    }
+    return { offset: -list.getBoundingClientRect().top, view: window.innerHeight };
+  }, []);
+
+  const updateWindow = useCallback(() => {
+    const vp = viewport();
+    if (!vp) return;
+    const next = refreshWindow(rangeRef.current, layoutRef.current, vp.offset, vp.view);
+    if (next !== rangeRef.current) {
+      rangeRef.current = next;
+      setRange(next);
+    }
+  }, [setRange, viewport]);
+
+  // Measure the rows just rendered; remember heights that changed and re-layout once.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    let next: Map<string, number> | null = null;
+    for (const row of list.querySelectorAll<HTMLElement>("[data-row-id]")) {
+      const h = row.offsetHeight;
+      const id = row.dataset.rowId;
+      if (!id || h <= 0) continue; // not laid out (tests, hidden)
+      if (Math.abs((heights.get(id) ?? -1) - h) > 0.5) {
+        next ??= new Map(heights);
+        next.set(id, h);
       }
     }
-  }, [setSelectedId]);
+    if (next) {
+      writeViewCache(heightsKey, next);
+      setHeights(next);
+    }
+  }, [jobs, range, heights, heightsKey]);
+
+  // New rows (load more, filters) or new heights: make sure the window still covers the viewport.
+  useLayoutEffect(() => {
+    updateWindow();
+  }, [layout, updateWindow]);
+
+  // Scroll-spy: keep the selected job while at least half of it is still visible; once it
+  // scrolls out, the nearest visible row on that side takes over (lib/windowed-list
+  // `nextSelection`). No snapping and no scroll-to, so scrolling stays smooth.
+  const spy = useCallback(() => {
+    if (!isWide()) return;
+    const vp = viewport();
+    if (!vp) return;
+    const list = jobsRef.current;
+    const current = list.findIndex((j) => j.id === (selectedRef.current ?? list[0]?.id));
+    const next = nextSelection(layoutRef.current, current, vp.offset, vp.view);
+    if (next !== null && list[next]) setSelectedId(list[next].id);
+  }, [setSelectedId, viewport]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -220,15 +296,26 @@ export function JobBrowser({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         writeViewCache(scrollKey, el.scrollTop);
-        pickTopRow();
+        updateWindow();
+        spy();
       });
     };
+    let windowFrame = 0;
+    const onWindowScroll = () => {
+      cancelAnimationFrame(windowFrame);
+      windowFrame = requestAnimationFrame(updateWindow);
+    };
     el.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onWindowScroll, { passive: true });
+    window.addEventListener("resize", onWindowScroll);
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(windowFrame);
       el.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onWindowScroll);
+      window.removeEventListener("resize", onWindowScroll);
     };
-  }, [pickTopRow, scrollKey]);
+  }, [spy, updateWindow, scrollKey]);
 
   // Preload the next page at 70%: the list's own scroll on wide screens, the window on phones.
   const nearEndRef = useRef(onNearEnd);
@@ -267,33 +354,42 @@ export function JobBrowser({
       const current = jobs.findIndex((j) => j.id === (selectedRef.current ?? jobs[0]?.id));
       const next = jobs[Math.max(0, Math.min(jobs.length - 1, current + step))];
       if (!next) return;
-      spyPausedUntil.current = Date.now() + SPY_PAUSE_MS;
       setSelectedId(next.id);
-      const rows = scrollRef.current?.querySelectorAll<HTMLElement>("[data-job-id]") ?? [];
-      Array.from(rows)
-        .find((row) => row.dataset.jobId === next.id)
-        ?.scrollIntoView?.({ block: "nearest" });
+      // Keep it on screen with the least movement, instantly (an animated scroll-to felt laggy).
+      // It is then fully visible, so the scroll-spy leaves the selection alone.
+      const vp = viewport();
+      const el = scrollRef.current;
+      const target = vp ? offsetToReveal(layoutRef.current, jobs.indexOf(next), vp.offset, vp.view) : null;
+      if (el && vp && target !== null) el.scrollTop += target - vp.offset;
       // Stepping onto the last loaded rows counts as reaching the end of the list.
       if (jobs.indexOf(next) >= jobs.length * PRELOAD_AT) nearEndRef.current?.();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [jobs, setSelectedId]);
+  }, [jobs, setSelectedId, viewport]);
 
   const onSelect = useCallback(
     (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
       // Wide screens: show it in the panel. Phones, or ⌘/ctrl-click: follow the link.
       if (!isWide() || event.metaKey || event.ctrlKey || event.shiftKey) return;
       event.preventDefault();
-      spyPausedUntil.current = Date.now() + SPY_PAUSE_MS;
       setSelectedId(id);
       // A click is a deliberate open: mark it read now (local store first, API synced behind),
       // no dwell wait. Scroll-spy selections still need the dwell.
       markViewed(id);
-      event.currentTarget.closest("[data-job-id]")?.scrollIntoView?.({ block: "nearest" });
     },
     [setSelectedId],
   );
+
+  // Rows to render, clamped to the current list (it can shrink when filters change). The flex gap
+  // already separates each spacer from its neighbour row, so the spacers leave one gap out.
+  const n = jobs.length;
+  const start = Math.min(range.start, Math.max(0, n - 1));
+  const end = Math.min(n, Math.max(range.end, start + 1));
+  const topSpacer = start > 0 ? layout.tops[start] - ROW_GAP_PX : 0;
+  const lastShown = end - 1;
+  const bottomSpacer =
+    end < n && lastShown >= 0 ? layout.total - (layout.tops[lastShown] + layout.heights[lastShown]) - ROW_GAP_PX : 0;
 
   return (
     <div
@@ -303,11 +399,12 @@ export function JobBrowser({
       <div
         ref={scrollRef}
         data-testid="job-list-scroll"
-        className="lg:-mx-1 lg:min-h-0 lg:snap-y lg:snap-proximity lg:overflow-y-auto lg:overscroll-y-contain lg:px-1 lg:py-1"
+        className="lg:-mx-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:px-1 lg:py-1"
       >
-        <div role="list" aria-label={t("list.jobsAriaLabel")} className="flex flex-col gap-2.5">
-          {jobs.map((job) => (
-            <div role="listitem" key={job.id} className="snap-start scroll-mt-1">
+        <div ref={listRef} role="list" aria-label={t("list.jobsAriaLabel")} className="flex flex-col gap-2.5">
+          {topSpacer > 0 ? <div aria-hidden="true" style={{ height: topSpacer }} /> : null}
+          {jobs.slice(start, end).map((job) => (
+            <div role="listitem" key={job.id} data-row-id={job.id}>
               <JobListItem
                 job={job}
                 href={jobHref(job.id)}
@@ -321,6 +418,7 @@ export function JobBrowser({
               />
             </div>
           ))}
+          {bottomSpacer > 0 ? <div aria-hidden="true" style={{ height: bottomSpacer }} /> : null}
         </div>
         {footer}
       </div>
