@@ -355,7 +355,16 @@ describe("Home", () => {
       if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
       if (url.startsWith("/api/jobs/facets")) {
         return Promise.resolve(
-          jsonResponse(200, { countries: [], tech: [{ id: "react", count: 9 }, { id: "python", count: 4 }] }),
+          jsonResponse(200, {
+            countries: [],
+            tech: [
+              { id: "react", count: 9 },
+              { id: "python", count: 4 },
+              { id: "aws", count: 3 },
+              { id: "postgresql", count: 2 },
+              { id: "react-native", count: 1 },
+            ],
+          }),
         );
       }
       if (isJobsListCall(url)) {
@@ -371,10 +380,19 @@ describe("Home", () => {
     renderHome();
     await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
     fireEvent.click(screen.getByRole("button", { name: /More filters/ }));
-    const frontend = await screen.findByRole("group", { name: "Frontend tech" });
+    await screen.findByRole("group", { name: "Frontend tech" });
     expect(screen.getByRole("group", { name: "Backend tech" }).textContent).toContain("Python");
+    // Every tech the facets return is offered, not just frontend/backend (AWS used to be missing).
+    expect(screen.getByRole("group", { name: "Cloud & DevOps tech" }).textContent).toContain("AWS");
+    expect(screen.getByRole("group", { name: "Data tech" }).textContent).toContain("PostgreSQL");
+    expect(screen.getByRole("group", { name: "Mobile tech" }).textContent).toContain("React Native");
+    // The tech search narrows the chips (fuzzy, in the browser).
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter tech" }), { target: { value: "postgres" } });
+    expect(screen.queryByRole("group", { name: "Frontend tech" })).toBeNull();
+    expect(screen.getByRole("group", { name: "Data tech" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Filter tech" }), { target: { value: "" } });
 
-    fireEvent.click(within(frontend).getByRole("button", { name: /React/ }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Frontend tech" })).getByRole("button", { name: /React/ }));
     await waitFor(() => expect(screen.getByText("React Job")).toBeTruthy(), { timeout: 5000 });
     expect(screen.getAllByRole("img", { name: "Next.js" }).length).toBeGreaterThan(0);
   });
@@ -394,7 +412,9 @@ describe("Home", () => {
 
     renderHome();
     await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
-    fireEvent.change(screen.getByRole("combobox", { name: "Posted" }), { target: { value: "7" } });
+    // Our own select (no native <select>): open it, pick the row.
+    fireEvent.click(screen.getByRole("combobox", { name: "Posted" }));
+    fireEvent.click(screen.getByRole("option", { name: "Past 7 days" }));
     await waitFor(() => expect(screen.getByText("This Week Job")).toBeTruthy(), { timeout: 5000 });
   });
 });

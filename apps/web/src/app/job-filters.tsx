@@ -450,7 +450,7 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const postedOptions = usePostedOptions();
   const sortOptions = useSortOptions(f.matchSort);
   const strings = useUiStrings();
-  // Native <option> text can't hold markup: flag emoji + short country code ("🇻🇳 VN").
+  // Option labels are plain text: flag emoji + country name ("🇻🇳 Vietnam").
   const accessYou = f.basedIn ? `${flagEmoji(f.basedIn)} ${countryName(f.basedIn, strings.locale)}` : null;
   const [moreOpen, setMoreOpen] = useState(false);
   const panelId = useId();
@@ -467,22 +467,17 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
           className="w-full md:max-w-2xl"
         />
         <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-        <PillSelect label={t("filters.sourceLabel")} value={f.source} onChange={f.setSource}>
-          <option value="">{t("filters.allSources")}</option>
-          {sources.map((id) => (
-            <option key={id} value={id}>
-              {sourceMeta(id).label}
-            </option>
-          ))}
-        </PillSelect>
+        <PillSelect
+          label={t("filters.sourceLabel")}
+          value={f.source}
+          onChange={f.setSource}
+          options={[
+            { value: "", label: t("filters.allSources") },
+            ...sources.map((id) => ({ value: id, label: sourceMeta(id).label, keywords: id })),
+          ]}
+        />
         <CountryFilter value={f.country} onChange={f.setCountry} compact />
-        <PillSelect label={t("filters.postedLabel")} value={f.posted} onChange={f.setPosted}>
-          {postedOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </PillSelect>
+        <PillSelect label={t("filters.postedLabel")} value={f.posted} onChange={f.setPosted} options={postedOptions} />
         <PillToggle
           label={t("common:ui.remote")}
           checked={f.remoteOnly}
@@ -503,13 +498,19 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
             ) : undefined
           }
         />
-        <PillSelect label={t("filters.access.label")} value={f.access} onChange={f.setAccess}>
-          <option value="">{t("filters.access.any")}</option>
-          <option value="open">{accessYou ? t("filters.access.open", { you: accessYou }) : t("filters.access.openWorldwide")}</option>
-          <option value="confirmed">
-            {accessYou ? t("filters.access.confirmed", { you: accessYou }) : t("filters.access.confirmedWorldwide")}
-          </option>
-        </PillSelect>
+        <PillSelect
+          label={t("filters.access.label")}
+          value={f.access}
+          onChange={f.setAccess}
+          options={[
+            { value: "", label: t("filters.access.any") },
+            { value: "open", label: accessYou ? t("filters.access.open", { you: accessYou }) : t("filters.access.openWorldwide") },
+            {
+              value: "confirmed",
+              label: accessYou ? t("filters.access.confirmed", { you: accessYou }) : t("filters.access.confirmedWorldwide"),
+            },
+          ]}
+        />
         <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
         <PillSelect
@@ -517,13 +518,8 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
           // "" = the default order, so the pill stays untinted until another order is picked.
           value={f.sortActive ? f.sort : ""}
           onChange={(v) => f.setSort((v || "newest") as JobSort)}
-        >
-          {sortOptions.map((o) => (
-            <option key={o.value} value={o.value === "newest" ? "" : o.value}>
-              {o.label}
-            </option>
-          ))}
-        </PillSelect>
+          options={sortOptions.map((o) => ({ value: o.value === "newest" ? "" : o.value, label: o.label }))}
+        />
         <button
           type="button"
           aria-expanded={moreOpen}

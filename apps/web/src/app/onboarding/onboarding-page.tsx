@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Cv } from "@ujc/core";
-import { CANDIDATE_COUNTRIES } from "@ujc/core";
 import {
   Button,
-  ChevronRightIcon,
+  FuzzySelect,
   Chip,
   NavBar,
   ProgressSteps,
@@ -17,6 +16,9 @@ import { ApiError, markOnboarded, updatePreferences } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { CvUploadCard } from "@/app/cv/cv-upload-card";
+import { candidateCountryOptions } from "@/app/country-filter";
+
+const COUNTRY_OPTIONS = candidateCountryOptions("Select a country…");
 
 const STEPS = ["Welcome", "Your CV", "Keywords"];
 
@@ -196,23 +198,21 @@ function OnboardingInner() {
                 <span className="flex-1 text-body text-label">Remote only</span>
                 <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
               </div>
-              <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
-                <span className="flex-1 text-body text-label">I&apos;m based in</span>
-                <select
+              <div className="relative flex min-h-11 items-center gap-3 px-4 py-0 hairline-t transition-colors duration-150 focus-within:bg-fill-tertiary">
+                <span aria-hidden className="flex-1 text-body text-label">I&apos;m based in</span>
+                <FuzzySelect
                   id="candidate-country"
+                  name="candidateCountry"
+                  variant="row"
+                  label="I'm based in"
                   value={candidateCountry ?? ""}
-                  onChange={(e) => setCandidateCountry(e.target.value)}
-                  className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
-                >
-                  <option value="">Select a country…</option>
-                  {CANDIDATE_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
-              </label>
+                  onChange={setCandidateCountry}
+                  options={COUNTRY_OPTIONS}
+                  placeholder="Select a country…"
+                  searchPlaceholder="Type a country…"
+                  className="min-w-0"
+                />
+              </div>
             </div>
           </section>
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { WeatherIcon } from "@/app/sky-scene";
 import type { Job } from "@ujc/core";
-import { Badge, Card, ClockIcon, FuzzySelect } from "@ujc/ui";
+import { Badge, Card, ClockIcon, FuzzySelect, zoneKeywords } from "@ujc/ui";
 import type { SelectOption } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
@@ -36,6 +36,22 @@ function useFitLabels(): Record<FitLevel, string> {
   };
 }
 
+/** Every time zone as select options ("Asia/Ho Chi Minh", hint "UTC+7"), searchable by city,
+ * abbreviation ("VNT", "EST"), offset ("UTC+7") and aliases ("Saigon", "Hà Nội"). All ~420 zones:
+ * the select virtualises the list, nothing is cut off. */
+export function timezoneSelectOptions(current: string): SelectOption[] {
+  return timezoneOptions(current).map((z) => {
+    const o = zoneOffsetMinutes(z);
+    const offset = o === null ? undefined : offsetLabel(o);
+    return {
+      value: z,
+      label: z.replace(/_/g, " "),
+      hint: offset,
+      keywords: [shortZoneName(z), ...(offset ? [offset, offset.replace("UTC", "GMT")] : []), ...zoneKeywords(z)],
+    };
+  });
+}
+
 /** "Your time zone" picker (fuzzy search over every zone, all in the browser). Changing it
  * re-labels every job's hours at once. */
 export function TimezonePicker({ className }: { className?: string }) {
@@ -43,19 +59,7 @@ export function TimezonePicker({ className }: { className?: string }) {
   const { zone, setZone } = useUserTimezone();
   const [saving, setSaving] = useState(false);
   const offset = zoneOffsetMinutes(zone);
-  const options = useMemo<SelectOption[]>(
-    () =>
-      timezoneOptions(zone).map((z) => {
-        const o = zoneOffsetMinutes(z);
-        return {
-          value: z,
-          label: z.replace(/_/g, " "),
-          hint: o === null ? undefined : offsetLabel(o),
-          keywords: shortZoneName(z),
-        };
-      }),
-    [zone],
-  );
+  const options = useMemo(() => timezoneSelectOptions(zone), [zone]);
   return (
     <span className={`flex items-center gap-2 text-subheadline text-label-secondary ${className ?? ""}`}>
       <ClockIcon size={15} aria-hidden />

@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { MeResponse, UserProfile, UserProfilePatch } from "@ujc/core";
-import { CANDIDATE_COUNTRIES } from "@ujc/core";
-import { Avatar, Button, Chip, NavBar, Skeleton, TextField, Toggle, useToast } from "@ujc/ui";
+import { Avatar, Button, Chip, FuzzySelect, NavBar, Skeleton, TextField, Toggle, useToast } from "@ujc/ui";
+import type { SelectOption } from "@ujc/ui";
 import { ApiError, getProfile, updateProfile } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
-import { timezoneOptions } from "@/lib/user-timezone";
+import { candidateCountryOptions } from "@/app/country-filter";
+import { timezoneSelectOptions } from "@/app/work-hours";
 import { displayNameOf } from "@/app/profile-menu";
 
 const MAX_KEYWORDS = 30;
@@ -89,29 +90,34 @@ function SelectRow({
   hint,
   value,
   onChange,
-  children,
+  options,
+  searchPlaceholder,
 }: {
   id: string;
   label: string;
   hint?: string;
   value: string;
   onChange: (value: string) => void;
-  children: ReactNode;
+  options: readonly SelectOption[];
+  searchPlaceholder?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-subheadline font-medium text-label">
         {label}
       </label>
-      <select
+      <FuzzySelect
         id={id}
+        name={id}
+        variant="form"
+        label={label}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-describedby={hint ? `${id}-hint` : undefined}
-        className="h-11 w-full rounded-control border border-control-border bg-background px-3 text-body text-label focus-ring"
-      >
-        {children}
-      </select>
+        onChange={onChange}
+        options={options}
+        placeholder={options[0]?.label}
+        searchPlaceholder={searchPlaceholder}
+        describedBy={hint ? `${id}-hint` : undefined}
+      />
       {hint ? (
         <p id={`${id}-hint`} className="text-footnote text-label-secondary">
           {hint}
@@ -130,7 +136,8 @@ function ProfileForm({ initial }: { initial: UserProfile }) {
   const [keywordInput, setKeywordInput] = useState("");
   const [keywordError, setKeywordError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const zones = useMemo(() => timezoneOptions(draft.timeZone), [draft.timeZone]);
+  const zones = useMemo(() => timezoneSelectOptions(draft.timeZone), [draft.timeZone]);
+  const countryOptions = useMemo(() => candidateCountryOptions(t("profile.location.selectCountry")), [t]);
 
   const linkErrors = Object.fromEntries(
     (Object.keys(LINK_HOSTS) as LinkKey[]).map((key) => {
@@ -253,27 +260,16 @@ function ProfileForm({ initial }: { initial: UserProfile }) {
           hint={t("profile.location.basedInHint")}
           value={draft.candidateCountry ?? ""}
           onChange={(v) => set("candidateCountry", v || null)}
-        >
-          <option value="">{t("profile.location.selectCountry")}</option>
-          {CANDIDATE_COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.label}
-            </option>
-          ))}
-        </SelectRow>
+          options={countryOptions}
+        />
         <SelectRow
           id="profile-timezone"
           label={t("profile.location.timeZone")}
           hint={t("profile.location.timeZoneHint")}
           value={draft.timeZone}
           onChange={(v) => set("timeZone", v)}
-        >
-          {zones.map((z) => (
-            <option key={z} value={z}>
-              {z.replace(/_/g, " ")}
-            </option>
-          ))}
-        </SelectRow>
+          options={zones}
+        />
       </Section>
 
       <Section title={t("profile.links.header")}>

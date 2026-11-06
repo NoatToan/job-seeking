@@ -1,8 +1,8 @@
 "use client";
 
-import { useId } from "react";
 import type { ReactNode } from "react";
-import { ChevronDownIcon, cx } from "@ujc/ui";
+import { cx, FuzzySelect } from "@ujc/ui";
+import type { SelectOption } from "@ujc/ui";
 
 /** Shared look of the filter pills: white pill with a hairline; tinted once it filters something. */
 export function pillClasses(active: boolean): string {
@@ -15,44 +15,36 @@ export function pillClasses(active: boolean): string {
 }
 
 /**
- * Native `<select>` dressed as a filter pill (keeps the platform picker on phones and full
- * keyboard / screen-reader support). `active` = a non-default value is chosen.
+ * Single-choice filter pill: our `FuzzySelect` in its pill look (never a native `<select>`).
+ * Short fixed lists (Posted, Sort, Remote region) open without a search box; longer ones (Source)
+ * get one. Phones get a bottom sheet. `active` = a non-default value is chosen (`value !== ""`).
  */
 export function PillSelect({
   label,
   value,
   onChange,
-  children,
+  options,
+  searchPlaceholder,
   className,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  children: ReactNode;
+  options: readonly SelectOption[];
+  searchPlaceholder?: string;
   className?: string;
 }) {
-  const id = useId();
   return (
-    <span className={cx("relative inline-flex", className)}>
-      <label htmlFor={id} className="sr-only">
-        {label}
-      </label>
-      <select
-        id={id}
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cx(pillClasses(Boolean(value)), "max-w-[14rem] appearance-none truncate pr-8 pl-3.5")}
-      >
-        {children}
-      </select>
-      <ChevronDownIcon
-        size={14}
-        strokeWidth={2.25}
-        aria-hidden
-        className={cx("pointer-events-none absolute top-1/2 right-3 -translate-y-1/2", value ? "text-tint-ink" : "text-label-tertiary")}
-      />
-    </span>
+    <FuzzySelect
+      variant="pill"
+      label={label}
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={options[0]?.label}
+      searchPlaceholder={searchPlaceholder}
+      className={cx("shrink-0", className)}
+    />
   );
 }
 

@@ -142,7 +142,12 @@
   "tech": {
     "frontend": "Frontend",
     "backend": "Backend",
-    "groupAriaLabel": "Công nghệ {{label}}"
+    "groupAriaLabel": "Công nghệ {{label}}",
+    "mobile": "Mobile",
+    "database": "Dữ liệu",
+    "cloud": "Cloud & DevOps",
+    "searchPlaceholder": "Lọc công nghệ (vd. aws, postgres)…",
+    "searchLabel": "Lọc công nghệ"
   },
   "workHours": {
     "yourTimeZone": "Múi giờ của bạn",

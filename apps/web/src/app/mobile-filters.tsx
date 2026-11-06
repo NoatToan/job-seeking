@@ -2,13 +2,13 @@
 
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
-import type { TechCategory } from "@ujc/core";
 import { sourceMeta, techInfo } from "@ujc/core";
 import {
   buttonClasses,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  countryKeywords,
   countryName,
   cx,
   fuzzyFilter,
@@ -26,8 +26,10 @@ import type { ModalViewHandle } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { getJobFacets } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
-import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
-import { offsetLabel, shortZoneName, zoneOffsetMinutes } from "@/lib/work-hours";
+import { useUserTimezone } from "@/lib/user-timezone";
+import { shortZoneName } from "@/lib/work-hours";
+import { useTechGroups } from "@/app/tech-filter";
+import { timezoneSelectOptions } from "@/app/work-hours";
 import { pillClasses } from "@/app/pill-controls";
 import type { JobFilterBarProps, JobFilterState, JobFilterValues } from "@/app/job-filters";
 import { hourLabel, ReadHistory, useHourPresets, usePostedOptions, useSortOptions } from "@/app/job-filters";
@@ -271,7 +273,8 @@ export function FilterModal({
     ...(draft.country && !facetCountries.some((c) => c.code === draft.country) ? [{ code: draft.country, count: 0 }] : []),
     ...facetCountries,
   ];
-  const zones = useMemo(() => (step === "timezone" ? timezoneOptions(draftZone) : []), [step, draftZone]);
+  const zones = useMemo(() => (step === "timezone" ? timezoneSelectOptions(draftZone) : []), [step, draftZone]);
+  const tech = useTechGroups(draft.tech, step === "tech" ? search : "");
 
   const titles: Record<Step, string> = {
     list: t("filters.mobile.title"),
@@ -313,7 +316,7 @@ export function FilterModal({
     const options = fuzzyFilter(
       [{ code: "", count: 0 }, ...countries],
       search,
-      (c) => (c.code ? `${countryName(c.code, strings.locale)} ${c.code}` : t("country.allCountries")),
+      (c) => (c.code ? [countryName(c.code, strings.locale), ...countryKeywords(c.code)] : t("country.allCountries")),
     );
     body = (
       <div className="flex flex-col gap-2">
@@ -337,45 +340,37 @@ export function FilterModal({
       </div>
     );
   } else if (step === "timezone") {
-    const options = fuzzyFilter(zones, search, (z) => `${z.replace(/_/g, " ")} ${shortZoneName(z)}`).slice(0, 200);
+    // Every zone (~420), never cut off: "Asia/Ho Chi Minh" sits past the 200th row alphabetically.
+    const options = fuzzyFilter(zones, search, (z) => [z.label, ...(Array.isArray(z.keywords) ? z.keywords : [])]);
     body = (
       <div className="flex flex-col gap-2">
         <SearchField value={search} onChange={setSearch} label={t("workHours.searchPlaceholder")} placeholder={t("workHours.searchPlaceholder")} />
         <ul role="radiogroup" aria-label={titles[step]} className="flex flex-col">
           {options.length === 0 ? <li className="px-3 py-2 text-body text-label-secondary">{strings.noMatches}</li> : null}
-          {options.map((z) => {
-            const offset = zoneOffsetMinutes(z);
-            return (
-              <OptionRow
-                key={z}
-                selected={draftZone === z}
-                hint={offset === null ? undefined : offsetLabel(offset)}
-                onPick={() => {
-                  setDraftZone(z);
-                  setStep("list");
-                }}
-              >
-                {z.replace(/_/g, " ")}
-              </OptionRow>
-            );
-          })}
+          {options.map((z) => (
+            <OptionRow
+              key={z.value}
+              selected={draftZone === z.value}
+              hint={z.hint}
+              onPick={() => {
+                setDraftZone(z.value);
+                setStep("list");
+              }}
+            >
+              {z.label}
+            </OptionRow>
+          ))}
         </ul>
       </div>
     );
   } else if (step === "tech") {
-    const groups: { category: TechCategory; label: string }[] = [
-      { category: "frontend", label: t("tech.frontend") },
-      { category: "backend", label: t("tech.backend") },
-    ];
-    const counts = facets?.tech ?? [];
     const toggle = (id: string) =>
       set({ tech: draft.tech.includes(id) ? draft.tech.filter((v) => v !== id) : [...draft.tech, id] });
     body = (
       <div className="flex flex-col gap-5">
-        {groups.map(({ category, label }) => {
-          const ids = counts.map((c) => c.id).filter((id) => techInfo(id).category === category);
-          for (const id of draft.tech) if (techInfo(id).category === category && !ids.includes(id)) ids.push(id);
-          if (!ids.length) return null;
+        <SearchField value={search} onChange={setSearch} label={t("tech.searchLabel")} placeholder={t("tech.searchPlaceholder")} />
+        {search && tech.groups.length === 0 ? <p className="px-1 text-body text-label-secondary">{strings.noMatches}</p> : null}
+        {tech.groups.map(({ category, label, ids }) => {
           return (
             <Section key={category} title={label}>
               <div role="group" aria-label={`${label} tech`} className="flex flex-wrap gap-2">

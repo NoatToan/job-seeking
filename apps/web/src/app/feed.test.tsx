@@ -168,8 +168,9 @@ describe("Feed", () => {
     const feedCallsBefore = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/feed"));
     expect(feedCallsBefore.every(([u]) => !(u as string).includes("sort="))).toBe(true);
 
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort by" }));
     await act(async () => {
-      fireEvent.change(screen.getByRole("combobox", { name: "Sort by" }), { target: { value: "match" } });
+      fireEvent.click(screen.getByRole("option", { name: "Best match for my CV" }));
     });
 
     await waitFor(() => {
@@ -179,8 +180,9 @@ describe("Feed", () => {
     // Only the time-zone order sends the viewer's zone.
     expect(fetchMock.mock.calls.some(([u]) => (u as string).includes("tz="))).toBe(false);
 
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort by" }));
     await act(async () => {
-      fireEvent.change(screen.getByRole("combobox", { name: "Sort by" }), { target: { value: "timezone" } });
+      fireEvent.click(screen.getByRole("option", { name: /time-zone/i }));
     });
 
     await waitFor(() => {

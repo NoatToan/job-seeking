@@ -5,7 +5,8 @@ import type { Job } from "@ujc/core";
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
 vi.mock("@/lib/session", () => ({ useSession: () => useSessionMock() }));
 
-import { TimezonePicker, WorkHoursBadge, WorkHoursCard } from "./work-hours";
+import { timezoneSelectOptions, TimezonePicker, WorkHoursBadge, WorkHoursCard } from "./work-hours";
+import { fuzzyFilter } from "@ujc/ui";
 
 function job(timezones: string[] | null, timezoneSource: "stated" | "location" | null = "stated"): Job {
   return {
@@ -73,5 +74,19 @@ describe("work hours", () => {
     fireEvent.click(screen.getByRole("option", { name: /America\/New York/ }));
     expect(window.localStorage.getItem("ujc:timezone")).toBe("America/New_York");
     expect(badge()).toMatch(/^\d\d:00–\d\d:00 E[SD]T · Night shift$/);
+  });
+});
+
+describe("timezoneSelectOptions", () => {
+  const options = timezoneSelectOptions("Asia/Ho_Chi_Minh");
+  const top = (q: string) => fuzzyFilter(options, q, (o) => [o.label, ...(o.keywords as string[])])[0]?.value;
+
+  it("offers every zone (no 200-row cut: Asia, Europe and Pacific sort after it)", () => {
+    expect(options.length).toBeGreaterThan(300);
+    expect(options.map((o) => o.value)).toEqual(expect.arrayContaining(["Asia/Ho_Chi_Minh", "Europe/London", "Pacific/Auckland"]));
+  });
+
+  it("finds Vietnam's zone by Vietnamese and English queries", () => {
+    for (const q of ["ho chi minh", "hồ chí minh", "saigon", "hà nội", "hanoi", "hcm", "VNT"]) expect(top(q)).toBe("Asia/Ho_Chi_Minh");
   });
 });
