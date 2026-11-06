@@ -94,23 +94,40 @@ export function RemoteAccessBadge({ openTo, basedIn, className }: RemoteAccessBa
  */
 export function AccessStamp({ openTo, basedIn, className }: RemoteAccessBadgeProps) {
   const strings = useUiStrings();
-  const access = remoteAccess(openTo, basedIn);
-  if (access.acceptsCandidate !== true) return null;
+  if (!fitsCandidate(openTo, basedIn)) return null;
   const you = basedIn ? countryName(basedIn, strings.locale) : "";
   return (
+    // Outer: position + drop shadow (a filter, because the inner clip-path would cut a box-shadow).
     <span
       data-access-stamp="open"
       title={strings.remoteAccess.openToYou(you)}
       className={cx(
-        "pointer-events-none absolute -top-1 -left-1 z-[1] inline-flex items-center gap-1 overflow-hidden rounded-r-full rounded-tl-md bg-success py-0.5 pr-2.5 pl-2 text-[0.6875rem] font-bold tracking-wide text-white uppercase shadow-sm",
-        // The fold: a small darker triangle under the tag's left end, as if it wraps the card edge.
-        "after:absolute after:top-full after:left-0 after:border-t-[5px] after:border-l-[4px] after:border-t-[var(--ujc-stamp-open-fold)] after:border-l-transparent after:content-['']",
+        // Flush with the card's top border, 4px past its left edge (the list keeps 4px of room).
+        "pointer-events-none absolute top-0 -left-1 z-[1] [filter:drop-shadow(0_2px_3px_rgb(0_0_0/0.28))]",
         className,
       )}
     >
-      <CheckIcon size={11} strokeWidth={3} aria-hidden />
-      {strings.remoteAccess.stampOpen}
-      <span aria-hidden className="absolute inset-y-0 -left-full w-1/2 -skew-x-12 bg-white/45 animate-stamp-shine motion-reduce:hidden" />
+      <span className="relative inline-flex h-[22px] items-center gap-1 overflow-hidden rounded-tl-[6px] bg-[image:var(--ujc-stamp-open-bg)] pr-4 pl-2.5 text-[0.6875rem] leading-none font-extrabold tracking-[0.06em] text-white uppercase shadow-[var(--ujc-stamp-open-shadow)] [clip-path:polygon(0_0,100%_0,calc(100%-8px)_50%,100%_100%,0_100%)] [text-shadow:0_1px_0_rgb(0_0_0/0.25)]">
+        <CheckIcon size={11} strokeWidth={3.25} aria-hidden />
+        {strings.remoteAccess.stampOpen}
+        <span aria-hidden className="absolute inset-y-0 -left-full w-1/2 -skew-x-12 bg-white/40 animate-stamp-shine motion-reduce:hidden" />
+      </span>
     </span>
   );
+}
+
+/** The fold under the ribbon's left end (outside the ribbon's clip-path, so it is its own node). */
+export function AccessStampFold({ openTo, basedIn }: RemoteAccessBadgeProps) {
+  if (!fitsCandidate(openTo, basedIn)) return null;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute top-[22px] -left-1 z-[1] h-0 w-0 border-t-[5px] border-l-[4px] border-t-[var(--ujc-stamp-open-fold)] border-l-transparent"
+    />
+  );
+}
+
+/** Whether the posting takes candidates from `basedIn` (the stamp only shows then). */
+export function fitsCandidate(openTo: string[] | null | undefined, basedIn: string | null | undefined): boolean {
+  return remoteAccess(openTo, basedIn).acceptsCandidate === true;
 }

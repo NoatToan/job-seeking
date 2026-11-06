@@ -30,7 +30,7 @@ export function RoadmapPage() {
           </div>
         }
       />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-24 sm:px-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-24">
         <p className="max-w-2xl text-callout text-label-secondary">{t("roadmap.subtitle")}</p>
         <Roadmap />
       </div>

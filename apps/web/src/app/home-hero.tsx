@@ -68,7 +68,8 @@ export function HomeHero({
             collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
           )}
         >
-          <div className="flex min-h-0 flex-col gap-3.5 overflow-hidden">
+          {/* -m-1 p-1: 4px of room inside the clip for the 2px focus ring + 2px offset (focus-ring). */}
+          <div className="-m-1 flex min-h-0 flex-col gap-3.5 overflow-hidden p-1">
             <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
               <div className="min-w-0">
                 <h1 className="font-display text-title1 font-bold tracking-[-0.025em] text-label md:text-[2rem] md:leading-tight">
@@ -95,7 +96,7 @@ export function HomeHero({
               collapsed ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
             )}
           >
-            <div className="flex min-h-0 items-center gap-2 overflow-hidden">
+            <div className="-m-1 flex min-h-0 items-center gap-2 overflow-hidden p-1">
               <button
                 type="button"
                 onClick={toggle}

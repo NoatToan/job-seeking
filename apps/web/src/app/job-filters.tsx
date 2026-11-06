@@ -466,7 +466,7 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
           placeholder={t("filters.searchPlaceholder")}
           className="w-full md:max-w-2xl"
         />
-        <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-4 -my-1 flex items-center gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:mx-0 sm:my-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:py-0 [&::-webkit-scrollbar]:hidden">
         <PillSelect label={t("filters.sourceLabel")} value={f.source} onChange={f.setSource}>
           <option value="">{t("filters.allSources")}</option>
           {sources.map((id) => (

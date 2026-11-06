@@ -10,7 +10,7 @@ import type { UiStrings } from "../strings";
 import { CheckIcon, ChevronRightIcon, ClockIcon, EyeIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
-import { AccessStamp, RemoteAccessBadge } from "./remote-access";
+import { AccessStamp, AccessStampFold, fitsCandidate, RemoteAccessBadge } from "./remote-access";
 import { LocationText } from "./location-text";
 import { TechStackRow } from "./tech-icon";
 
@@ -212,13 +212,16 @@ export function JobListItem({
 }: JobListItemProps) {
   const strings = useUiStrings();
   const posted = timeAgo(job.postedAt ?? job.firstSeenAt, Date.now(), strings);
+  // Rows with the "For you" ribbon get extra top padding so it never sits on the avatar or title.
+  const stamped = Boolean(job.remote) && fitsCandidate(job.openTo, basedIn);
   return (
     <article
       data-job-id={job.id}
       data-viewed={viewed ? "true" : undefined}
+      data-stamped={stamped ? "true" : undefined}
       aria-current={selected ? "true" : undefined}
       className={cx(
-        "group relative isolate flex scroll-my-1 gap-3 rounded-[18px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 ease-spring",
+        "group relative isolate flex scroll-my-1 gap-3 rounded-[18px] border p-3.5 data-[stamped=true]:pt-8 transition-[background-color,border-color,box-shadow] duration-200 ease-spring",
         // Border colour (not an outer ring) marks the selection, so it is never clipped by the
         // scrolling list's overflow.
         selected
@@ -228,7 +231,12 @@ export function JobListItem({
       )}
     >
       {backdrop}
-      {job.remote ? <AccessStamp openTo={job.openTo} basedIn={basedIn} /> : null}
+      {stamped ? (
+        <>
+          <AccessStamp openTo={job.openTo} basedIn={basedIn} />
+          <AccessStampFold openTo={job.openTo} basedIn={basedIn} />
+        </>
+      ) : null}
       <Avatar
         name={job.company || job.title}
         shape="rounded"
