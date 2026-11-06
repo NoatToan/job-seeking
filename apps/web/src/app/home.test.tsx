@@ -287,11 +287,31 @@ describe("Home", () => {
 
     renderHome();
     await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: /More filters/ }));
     const frontend = await screen.findByRole("group", { name: "Frontend tech" });
     expect(screen.getByRole("group", { name: "Backend tech" }).textContent).toContain("Python");
 
     fireEvent.click(within(frontend).getByRole("button", { name: /React/ }));
     await waitFor(() => expect(screen.getByText("React Job")).toBeTruthy(), { timeout: 5000 });
     expect(screen.getAllByRole("img", { name: "Next.js" }).length).toBeGreaterThan(0);
+  });
+
+  it("filters by posted date (3 days / 7 days / month)", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs/facets")) return Promise.resolve(jsonResponse(200, { countries: [], tech: [] }));
+      if (isJobsListCall(url)) {
+        const title = url.includes("days=7") ? "This Week Job" : "Any Job";
+        return Promise.resolve(jsonResponse(200, { items: [job("1", title)], nextCursor: null }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHome();
+    await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
+    fireEvent.change(screen.getByRole("combobox", { name: "Posted" }), { target: { value: "7" } });
+    await waitFor(() => expect(screen.getByText("This Week Job")).toBeTruthy(), { timeout: 5000 });
   });
 });

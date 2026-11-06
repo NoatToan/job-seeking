@@ -10,6 +10,7 @@ import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
 import { WorkHoursBadge } from "@/app/work-hours";
+import { useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
 
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
 const WIDE_QUERY = "(min-width: 64rem)";
@@ -20,6 +21,8 @@ const BOTTOM_GAP_PX = 16;
 /** Wait for the scroll to settle before fetching a description, so flicking past 30 rows
  * doesn't fire 30 requests (the header still updates instantly from the list row). */
 const DETAIL_FETCH_DELAY_MS = 150;
+
+const NO_TERMS: readonly string[] = [];
 
 export function jobHref(id: string): string {
   return `/jobs/view?id=${encodeURIComponent(id)}`;
@@ -51,15 +54,31 @@ function useDebounced<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-function DetailPanel({ job, signedIn }: { job: Job; signedIn: boolean }) {
+function DetailPanel({
+  job,
+  signedIn,
+  highlight,
+}: {
+  job: Job;
+  signedIn: boolean;
+  highlight: readonly string[];
+}) {
   const fetchId = useDebounced(job.id, DETAIL_FETCH_DELAY_MS);
+  // Read once it has stayed in the panel a moment (scroll-spy flicks past many rows).
+  useMarkViewedAfterDwell(job.id);
   const { data, error, reload } = useApi(() => getJob(fetchId), [fetchId], { cacheKey: `job:${fetchId}` });
   // A job opened before is already in the view cache: show it without waiting for the debounce.
   const full = data && data.id === job.id ? data : (readViewCache<JobDetailType>(`api:job:${job.id}`) ?? null);
   return (
     // `key` re-mounts the content per job, replaying the slide-in animation.
     <div key={job.id} className="animate-detail-in">
-      <JobDetail job={full ?? job} loadingDescription={!full && !error} signedIn={signedIn} variant="panel" />
+      <JobDetail
+        job={full ?? job}
+        loadingDescription={!full && !error}
+        signedIn={signedIn}
+        highlight={highlight}
+        variant="panel"
+      />
       {error && fetchId === job.id ? (
         <div className="mt-4">
           <EmptyState
@@ -88,6 +107,8 @@ export interface JobBrowserProps {
   renderActions?: (job: Job) => ReactNode;
   /** Rendered under the list (load-more sentinel, "Loading more…", end of list). */
   footer?: ReactNode;
+  /** Words to highlight in the detail panel (lib/highlight `highlightTerms`). */
+  highlight?: readonly string[];
 }
 
 /**
@@ -98,7 +119,14 @@ export interface JobBrowserProps {
  * that container is the selected job, and clicking a row selects it. On narrower screens the
  * panel is hidden, the page scrolls normally and each row is a plain link to `/jobs/view`.
  */
-export function JobBrowser({ jobs, stateKey, signedIn, renderActions, footer }: JobBrowserProps) {
+export function JobBrowser({
+  jobs,
+  stateKey,
+  signedIn,
+  renderActions,
+  footer,
+  highlight = NO_TERMS,
+}: JobBrowserProps) {
   const [selectedId, setSelectedId] = useViewState<string | null>(`selected:${stateKey}`, null);
   const wide = useIsWide();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +137,7 @@ export function JobBrowser({ jobs, stateKey, signedIn, renderActions, footer }: 
   }, [selectedId]);
 
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null;
+  const viewed = useViewedJobs();
   const scrollKey = `list-scroll:${stateKey}`;
 
   // Back navigation: put the list's own scroll position back (the window's is restored by the
@@ -212,6 +241,7 @@ export function JobBrowser({ jobs, stateKey, signedIn, renderActions, footer }: 
                 onSelect={onSelect(job.id)}
                 actions={renderActions?.(job)}
                 meta={<WorkHoursBadge job={job} />}
+                viewed={viewed.has(job.id)}
               />
             </div>
           ))}
@@ -223,7 +253,7 @@ export function JobBrowser({ jobs, stateKey, signedIn, renderActions, footer }: 
         aria-live="polite"
         className="hidden min-h-0 overflow-y-auto overscroll-contain rounded-card bg-grouped-secondary p-6 shadow-card lg:block"
       >
-        {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} /> : null}
+        {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
       </aside>
     </div>
   );

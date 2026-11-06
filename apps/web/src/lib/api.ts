@@ -164,12 +164,29 @@ export interface PublicJobsFilters {
   country?: string;
   /** Comma-separated tech ids: jobs mentioning all of them (`jobs.tech_stack`). */
   tech?: string;
+  /** Only jobs posted (or first seen) within this many days. */
+  days?: number;
 }
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
  * required: this is what `/` shows a signed-out visitor instead of their personalised `Feed`. */
 export function getPublicJobs(filters: PublicJobsFilters = {}): Promise<PublicJobsPage> {
   return apiFetch<PublicJobsPage>(`/api/jobs${buildQuery(filters)}`);
+}
+
+/** `GET /api/me/viewed` — ids of the jobs the signed-in user has read, newest first. */
+export function getViewedJobs(): Promise<{ jobIds: string[] }> {
+  return apiFetch<{ jobIds: string[] }>("/api/me/viewed");
+}
+
+/** `POST /api/me/viewed` — record jobs as read (at most 500 ids per call). */
+export function markJobsViewed(jobIds: string[]): Promise<{ saved: number }> {
+  return apiFetch<{ saved: number }>("/api/me/viewed", { method: "POST", body: { jobIds } });
+}
+
+/** `DELETE /api/me/viewed` — forget the account's read history. */
+export function clearViewedJobs(): Promise<void> {
+  return apiFetch<void>("/api/me/viewed", { method: "DELETE" });
 }
 
 /** `GET /api/jobs/facets` — filter options with job counts (countries, most common first). */
@@ -297,6 +314,8 @@ export interface FeedFilters {
   country?: string;
   /** Comma-separated tech ids: jobs mentioning all of them. */
   tech?: string;
+  /** Only jobs posted (or first seen) within this many days. */
+  days?: number;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

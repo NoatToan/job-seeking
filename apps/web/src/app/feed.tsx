@@ -1,17 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import type { FeedPage, Job } from "@ujc/core";
-import { SOURCE_IDS, sourceMeta } from "@ujc/core";
+import { SOURCE_IDS } from "@ujc/core";
 import {
   buttonClasses,
-  Chip,
   EmptyState,
   JobCardSkeleton,
   NavBar,
   RefreshIcon,
-  SearchField,
   Spinner,
   Toggle,
   useToast,
@@ -25,9 +23,8 @@ import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
-import { TimezonePicker } from "@/app/work-hours";
-import { CountryFilter } from "@/app/country-filter";
-import { TechFilter } from "@/app/tech-filter";
+import { JobFilterBar, useJobFilters } from "@/app/job-filters";
+import { highlightTerms } from "@/lib/highlight";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -46,42 +43,26 @@ function greeting(): string {
 function FeedInner() {
   const { me } = useSession();
   const toast = useToast();
-  // Filters live in the view cache, so Back from a job restores the same filtered feed.
-  const [draftQ, setDraftQ] = useViewState("feed:draftQ", "");
-  const [q, setQ] = useViewState("feed:q", "");
-  const [source, setSource] = useViewState("feed:source", "");
+  const filters = useJobFilters("feed");
   const [bestMatches, setBestMatches] = useViewState("feed:best", false);
-  const [country, setCountry] = useViewState("feed:country", "");
-  const [tech, setTech] = useViewState<string[]>("feed:tech", []);
-  const techKey = tech.join(",");
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Debounced filter, per SCREENS.md §4 ("SearchField (q, debounced 300 ms)").
-  useEffect(() => {
-    const timer = setTimeout(() => setQ(draftQ), 300);
-    return () => clearTimeout(timer);
-  }, [draftQ, setQ]);
-
+  const { params: filterParams } = filters;
   const fetchPage = useCallback(
     (cursor: string | undefined) =>
-      getFeed({
-        cursor,
-        q: q || undefined,
-        source: source || undefined,
-        sort: bestMatches ? "score" : undefined,
-        country: country || undefined,
-        tech: techKey || undefined,
-      }),
-    [q, source, bestMatches, country, techKey],
+      getFeed({ cursor, ...filterParams, sort: bestMatches ? "score" : undefined }),
+    // `filters.key` captures every value in `filterParams`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filters.key, bestMatches],
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
-  const listKey = `feed:${JSON.stringify([q, source, bestMatches, country, techKey])}`;
+  const listKey = `feed:${filters.key}:${bestMatches}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [q, source, bestMatches, country, techKey], { onPage, cacheKey: listKey });
+  >(fetchPage, [filters.key, bestMatches], { onPage, cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   async function handleRefreshScores() {
@@ -112,52 +93,44 @@ function FeedInner() {
 
   return (
     <>
-      <NavBar wide title={title} trailing={<div className="md:hidden"><AccountMenu /></div>}>
-        <div className="flex flex-wrap items-center gap-1.5">
+      <NavBar wide largeTitle={false} title={title} trailing={<div className="md:hidden"><AccountMenu /></div>}>
+        <JobFilterBar
+          filters={filters}
+          sources={SOURCE_IDS}
+          extra={
+            <>
+              <label className="flex items-center gap-1.5 text-subheadline text-label-secondary">
+                <Toggle label="Best matches" checked={bestMatches} onChange={setBestMatches} />
+                Best matches
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleRefreshScores()}
+                disabled={refreshing}
+                className={buttonClasses({ variant: "gray", size: "sm", className: "disabled:opacity-40" })}
+              >
+                {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
+                Refresh scores
+              </button>
+            </>
+          }
+        />
+        <p className="flex flex-wrap items-center gap-1.5 text-footnote text-label-secondary">
           {feedKeywords.length > 0 ? (
-            <p className="text-subheadline text-label-secondary">
-              {feedKeywords.slice(0, 3).join(", ")}
-              {feedKeywords.length > 3 ? `, +${feedKeywords.length - 3}` : ""}
-            </p>
+            <span>
+              Your keywords: {feedKeywords.slice(0, 5).join(", ")}
+              {feedKeywords.length > 5 ? `, +${feedKeywords.length - 5}` : ""}
+            </span>
           ) : (
-            <p className="text-subheadline text-label-secondary">No keywords yet — add some to personalise your feed.</p>
+            <span>No keywords yet — add some to personalise your feed.</span>
           )}
-          <Link href="/cv/" aria-label="Edit keywords" className="rounded-control-sm text-subheadline font-medium text-tint hover:underline focus-ring">
+          <Link href="/cv/" aria-label="Edit keywords" className="rounded-control-sm font-medium text-tint hover:underline focus-ring">
             Edit
           </Link>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-subheadline text-label-secondary">
-            <Toggle label="Best matches" checked={bestMatches} onChange={setBestMatches} />
-            Best matches
-          </label>
-          <button
-            type="button"
-            onClick={() => void handleRefreshScores()}
-            disabled={refreshing}
-            className={buttonClasses({ variant: "gray", size: "sm", className: "disabled:opacity-40" })}
-          >
-            {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
-            Refresh scores
-          </button>
-          <CountryFilter value={country} onChange={setCountry} />
-          <TimezonePicker />
-        </div>
-        <SearchField value={draftQ} onChange={setDraftQ} label="Filter your feed" placeholder="Filter your feed" />
-        <div role="group" aria-label="Filter by source" className="flex flex-wrap gap-2">
-          <Chip selected={source === ""} onClick={() => setSource("")}>
-            All sources
-          </Chip>
-          {SOURCE_IDS.map((id) => (
-            <Chip key={id} selected={source === id} onClick={() => setSource(id)}>
-              {sourceMeta(id).label}
-            </Chip>
-          ))}
-        </div>
-        <TechFilter value={tech} onChange={setTech} />
+        </p>
       </NavBar>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 sm:px-6">
+      <div className="flex w-full flex-col gap-4 px-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading your feed" className="flex flex-col gap-3">
             <JobCardSkeleton />
@@ -195,8 +168,9 @@ function FeedInner() {
           />
         ) : (
           <JobBrowser
-            jobs={items}
+            jobs={filters.hiddenIds ? items.filter((j) => !filters.hiddenIds?.has(j.id)) : items}
             stateKey="feed"
+            highlight={highlightTerms({ q: filters.q, tech: filters.tech, keywords: feedKeywords })}
             signedIn={true}
             renderActions={(job) => <SaveJobButton jobId={job.id} />}
             footer={

@@ -6,6 +6,7 @@ import { Button, buttonClasses, ChevronLeftIcon, EmptyState, NavBar, Skeleton } 
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
+import { useMarkViewedAfterDwell } from "@/lib/viewed";
 import { JobDetail } from "../job-detail";
 
 const BACK_LINK = (
@@ -23,6 +24,8 @@ export function JobView() {
   const { me } = useSession();
   const id = searchParams.get("id") ?? "";
   const { data: job, loading, error, reload } = useApi(() => getJob(id), [id], { cacheKey: `job:${id}` });
+  // Opening the full page counts as reading it straight away.
+  useMarkViewedAfterDwell(job ? id : null, 0);
 
   if (!id) {
     return (

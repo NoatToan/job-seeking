@@ -1,31 +1,27 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import Link from "next/link";
 import type { Job, PublicJobsPage, SourceInfo } from "@ujc/core";
 import { sourceMeta } from "@ujc/core";
 import {
   Badge,
   buttonClasses,
-  Chip,
   EmptyState,
   JobCardSkeleton,
   NavBar,
   RefreshIcon,
-  SearchField,
   Spinner,
-  Toggle,
 } from "@ujc/ui";
 import { getPublicJobs, getSources } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { useApi } from "@/lib/use-api";
 import { useInfiniteList } from "@/lib/use-infinite";
-import { useScrollRestoration, useViewState } from "@/lib/view-cache";
+import { useScrollRestoration } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { JobBrowser } from "@/app/job-browser";
-import { TimezonePicker } from "@/app/work-hours";
-import { CountryFilter } from "@/app/country-filter";
-import { TechFilter } from "@/app/tech-filter";
+import { JobFilterBar, useJobFilters } from "@/app/job-filters";
+import { highlightTerms } from "@/lib/highlight";
 
 function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
   if (status === "error") return "danger";
@@ -62,87 +58,46 @@ function SourceStatusStrip({ sources }: { sources: SourceInfo[] }) {
  * never redirects to `/login` (see `lib/session.tsx` `isPublicRoute`).
  */
 export function PublicJobs() {
-  // Filters live in the view cache, so Back from a job restores the same filtered list.
-  const [draftQ, setDraftQ] = useViewState("public:draftQ", "");
-  const [q, setQ] = useViewState("public:q", "");
-  const [source, setSource] = useViewState("public:source", "");
-  const [remoteOnly, setRemoteOnly] = useViewState("public:remote", false);
-  const [country, setCountry] = useViewState("public:country", "");
-  const [tech, setTech] = useViewState<string[]>("public:tech", []);
-  const techKey = tech.join(",");
-
-  // Debounced filter, same 300 ms as the signed-in feed (SCREENS.md §4).
-  useEffect(() => {
-    const timer = setTimeout(() => setQ(draftQ), 300);
-    return () => clearTimeout(timer);
-  }, [draftQ, setQ]);
-
+  const filters = useJobFilters("public");
   const { data: sources } = useApi(getSources, [], { cacheKey: "sources" });
 
+  const { params: filterParams } = filters;
   const fetchPage = useCallback(
-    (cursor: string | undefined) =>
-      getPublicJobs({
-        cursor,
-        q: q || undefined,
-        source: source || undefined,
-        remote: remoteOnly || undefined,
-        country: country || undefined,
-        tech: techKey || undefined,
-      }),
-    [q, source, remoteOnly, country, techKey],
+    (cursor: string | undefined) => getPublicJobs({ cursor, ...filterParams }),
+    // `filters.key` captures every value in `filterParams`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filters.key],
   );
 
-  const listKey = `public:${JSON.stringify([q, source, remoteOnly, country, techKey])}`;
+  const listKey = `public:${filters.key}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     PublicJobsPage
-  >(fetchPage, [q, source, remoteOnly, country, techKey], { cacheKey: listKey });
+  >(fetchPage, [filters.key], { cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   return (
     <>
       <NavBar
         wide
+        largeTitle={false}
         title="Every job, from every source, in one place"
-        trailing={<div className="md:hidden"><AccountMenu /></div>}
+        trailing={
+          <>
+            <Link href="/login/" className={buttonClasses({ size: "sm", className: "hidden md:inline-flex" })}>
+              Sign in to get matches from your CV
+            </Link>
+            <div className="md:hidden">
+              <AccountMenu />
+            </div>
+          </>
+        }
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-subheadline text-label-secondary">
-            Sign in to see matches picked for your CV, and to track applications.
-          </p>
-          <Link href="/login/" className={buttonClasses({ size: "sm" })}>
-            Sign in to get matches from your CV
-          </Link>
-        </div>
-        <SearchField
-          value={draftQ}
-          onChange={setDraftQ}
-          label="Search jobs"
-          placeholder="Job title, company or skill"
-        />
-        <div role="group" aria-label="Filter by source" className="flex flex-wrap gap-2">
-          <Chip selected={source === ""} onClick={() => setSource("")}>
-            All sources
-          </Chip>
-          {(sources ?? []).map((s) => (
-            <Chip key={s.source} selected={source === s.source} onClick={() => setSource(s.source)}>
-              {sourceMeta(s.source).label}
-            </Chip>
-          ))}
-        </div>
-        <TechFilter value={tech} onChange={setTech} />
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <label className="flex items-center gap-2 text-subheadline text-label-secondary">
-            <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
-            Remote only
-          </label>
-          <CountryFilter value={country} onChange={setCountry} />
-          <TimezonePicker />
-        </div>
+        <JobFilterBar filters={filters} sources={(sources ?? []).map((s) => s.source)} />
         <SourceStatusStrip sources={sources ?? []} />
       </NavBar>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-10 sm:px-6">
+      <div className="flex w-full flex-col gap-4 px-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
           <div aria-busy="true" aria-label="Loading jobs" className="flex flex-col gap-3">
             <JobCardSkeleton />
@@ -168,16 +123,10 @@ export function PublicJobs() {
             title="No jobs match yet"
             message="Try a different search, or clear the filters."
             action={
-              source || q || remoteOnly || country || tech.length ? (
+              filters.activeCount ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setDraftQ("");
-                    setSource("");
-                    setRemoteOnly(false);
-                    setCountry("");
-                    setTech([]);
-                  }}
+                  onClick={filters.clear}
                   className={buttonClasses({ variant: "gray", size: "sm" })}
                 >
                   Clear filters
@@ -187,8 +136,9 @@ export function PublicJobs() {
           />
         ) : (
           <JobBrowser
-            jobs={items}
+            jobs={filters.hiddenIds ? items.filter((j) => !filters.hiddenIds?.has(j.id)) : items}
             stateKey="public"
+            highlight={highlightTerms({ q: filters.q, tech: filters.tech })}
             signedIn={false}
             footer={
               <>

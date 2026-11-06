@@ -3,6 +3,7 @@ import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
 import { AppShell } from "./nav";
+import { ViewedSync } from "./viewed-sync";
 
 export const metadata: Metadata = {
   title: "Unified Job Crawler",
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full bg-grouped text-label">
         <SessionProvider>
+          <ViewedSync />
           <ToastProvider>
             <AppShell>{children}</AppShell>
           </ToastProvider>
