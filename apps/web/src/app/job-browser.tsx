@@ -15,7 +15,7 @@ import { useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
 const WIDE_QUERY = "(min-width: 64rem)";
 /** Below this, the browser stops shrinking to fit and the page scrolls a little instead. */
-const MIN_BROWSER_HEIGHT_PX = 420;
+const MIN_BROWSER_HEIGHT_PX = 280;
 /** Air under the two columns, matching the page's bottom padding. */
 const BOTTOM_GAP_PX = 16;
 /** Wait for the scroll to settle before fetching a description, so flicking past 30 rows

@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SOURCES } from "@ujc/core";
 import {
   Avatar,
   BrandMark,
@@ -128,39 +127,6 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
   );
 }
 
-function Footer() {
-  return (
-    <footer className="hairline-t bg-background px-4 py-8 text-footnote text-label-secondary sm:px-6">
-      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex max-w-md flex-col gap-2">
-          <BrandMark name={BRAND_NAME} />
-          <p>Tech jobs from the boards you already use, in one calm feed — matched to your CV.</p>
-        </div>
-        <div className="flex max-w-md flex-col gap-1 sm:text-right">
-          <p>
-            Jobs from We Work Remotely, Greenhouse, Lever, Ashby, Himalayas, Remotive, and{" "}
-            <a
-              href={SOURCES.adzuna.homepage}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
-            >
-              Jobs by Adzuna
-            </a>
-            .
-          </p>
-          <p>Every job links to its original posting.</p>
-          <p>
-            <Link href="/privacy/" className="rounded-control-sm font-medium text-label hover:underline focus-ring">
-              Privacy
-            </Link>
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 /**
  * App shell: TopNav (>= md) or TabBar (< md), hidden on `/login` and `/design` (both are their
  * own self-contained layouts). Each page renders its own `NavBar`.
@@ -203,7 +169,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       ) : null}
       {/* Phones: the fixed bottom bar (tab bar, or the job page's Apply bar) must never cover the
-          end of the page, so the whole column — footer included — is padded by its height. */}
+          end of the page, so the whole column is padded by its height. No site footer (Slack: "drop
+          the extra footer, full-screen home"): source attribution lives in the "N sources" popover. */}
       <div
         className={cx(
           "flex min-w-0 flex-1 flex-col",
@@ -212,7 +179,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className="flex-1">{children}</div>
-        <Footer />
       </div>
       {showTabBar ? <TabBar items={navItems} activeKey={activeKey} linkAs={Link} /> : null}
     </div>
