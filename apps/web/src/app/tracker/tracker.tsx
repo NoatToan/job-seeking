@@ -9,7 +9,6 @@ import {
   Card,
   EmptyState,
   IconButton,
-  JobCardSkeleton,
   NavBar,
   RefreshIcon,
   SegmentedControl,
@@ -26,6 +25,7 @@ import {
 import { RequireAuth } from "@/lib/require-auth";
 import { useApi } from "@/lib/use-api";
 import { AccountMenu } from "@/app/nav";
+import { TrackerPageSkeleton, TrackerSkeleton } from "@/app/skeletons";
 
 type ColumnKey = "saved" | "applied" | "interviewing" | "offer" | "closed";
 type ViewMode = "board" | "list";
@@ -222,10 +222,7 @@ function TrackerInner() {
         ) : null}
 
         {loading ? (
-          <div aria-busy="true" aria-label={t("loadingAria")} className="flex flex-col gap-3">
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-          </div>
+          <TrackerSkeleton />
         ) : error ? (
           <EmptyState
             tone="error"
@@ -292,7 +289,7 @@ function TrackerInner() {
 
 export function Tracker() {
   return (
-    <RequireAuth>
+    <RequireAuth fallback={<TrackerPageSkeleton />}>
       <TrackerInner />
     </RequireAuth>
   );

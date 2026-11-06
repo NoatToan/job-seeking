@@ -40,5 +40,7 @@
     "notSet": "Not set",
     "searchCountry": "Type a country…",
     "guessed": "(guessed from your time zone)"
-  }
+  },
+  "loadingAria": "Loading job",
+  "loadingDescriptionAria": "Loading description"
 }

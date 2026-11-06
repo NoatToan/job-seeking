@@ -15,7 +15,6 @@ import {
   EmptyState,
   ExternalLinkIcon,
   GroupedList,
-  JobCardSkeleton,
   ListRow,
   NavBar,
   RefreshIcon,
@@ -32,6 +31,7 @@ import {
 import { RequireAuth } from "@/lib/require-auth";
 import { useApi } from "@/lib/use-api";
 import { AccountMenu } from "@/app/nav";
+import { ConnectionsPageSkeleton, ConnectionsSkeleton } from "@/app/skeletons";
 
 const UPWORK_MCP_URL = "https://mcp.upwork.com/mcp";
 const UPWORK_SEARCH_URL = DEEP_LINK_SITES.find((s) => s.label === "Upwork")?.search("") ?? "https://www.upwork.com/nx/search/jobs/";
@@ -298,10 +298,7 @@ function ConnectionsInner() {
       <NavBar title="Connections" trailing={<div className="md:hidden"><AccountMenu /></div>} />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-16 sm:px-6">
         {loading ? (
-          <div aria-busy="true" aria-label="Loading your connections" className="flex flex-col gap-3">
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-          </div>
+          <ConnectionsSkeleton />
         ) : error ? (
           <EmptyState
             tone="error"
@@ -330,7 +327,7 @@ function ConnectionsInner() {
 
 export function Connections() {
   return (
-    <RequireAuth>
+    <RequireAuth fallback={<ConnectionsPageSkeleton />}>
       <ConnectionsInner />
     </RequireAuth>
   );

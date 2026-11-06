@@ -17,7 +17,7 @@ import {
   matchBand,
   MatchBadge,
   RemoteAccessBadge,
-  Skeleton,
+  DescriptionSkeleton,
   SourceBadge,
   TechIcon,
 } from "@ujc/ui";
@@ -27,6 +27,7 @@ import { SkyScene } from "@/app/sky-scene";
 import { useWorkHoursPhase, WorkHoursCard } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { Highlighted, matchedTerms } from "@/lib/highlight";
+import { useTranslation } from "react-i18next";
 
 export interface JobDetailProps {
   /** The list row is enough for the header; `description` arrives with `GET /api/jobs/{id}`. */
@@ -58,6 +59,7 @@ export function JobDetail({
   const source = sourceMeta(job.source).label;
   const { country: basedIn } = useBasedIn();
   const phase = useWorkHoursPhase()(job);
+  const { t } = useTranslation("job");
   return (
     <article className="relative isolate flex flex-col gap-4">
       {/* The sky at the job's hours on your clock, bleeding to the panel's padded corner. */}
@@ -185,10 +187,8 @@ export function JobDetail({
       <div className="hairline-t pt-4">
         <h2 className="text-title3 text-label">About the role</h2>
         {loadingDescription ? (
-          <div aria-busy="true" aria-label="Loading description" className="mt-3 flex flex-col gap-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className={i === 5 ? "h-3 w-2/3" : "h-3 w-full"} />
-            ))}
+          <div aria-busy="true" aria-label={t("loadingDescriptionAria")}>
+            <DescriptionSkeleton />
           </div>
         ) : description ? (
           <p className="mt-2 max-w-2xl whitespace-pre-line text-body leading-relaxed text-label">

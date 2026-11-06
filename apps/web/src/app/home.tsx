@@ -8,6 +8,7 @@ import { Feed } from "./feed";
 import { PublicJobs } from "./public-jobs";
 import { useSession } from "@/lib/session";
 import { homeModeParser } from "@/lib/url-state";
+import { HomeSkeleton } from "./skeletons";
 
 export type HomeMode = "all" | "matches";
 
@@ -51,13 +52,12 @@ export function HomeModeSwitch({ value, onChange }: { value: HomeMode; onChange:
  * never flashes the public list first.
  */
 export function Home() {
-  const { t } = useTranslation("common");
   const { me, loading } = useSession();
   const [urlMode, setUrlMode] = useQueryState("view", homeModeParser);
   const [stored, setStored] = useState<HomeMode | null>(() => (typeof window === "undefined" ? null : readMode()));
 
   if (loading) {
-    return <p className="px-4 py-8 text-body text-label-secondary">{t("loading")}</p>;
+    return <HomeSkeleton />;
   }
   if (!me) return <PublicJobs />;
 

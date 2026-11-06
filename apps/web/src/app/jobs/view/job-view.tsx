@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { parseAsString, useQueryState } from "nuqs";
-import { Button, buttonClasses, ChevronLeftIcon, EmptyState, NavBar, Skeleton } from "@ujc/ui";
+import { Button, buttonClasses, ChevronLeftIcon, EmptyState, NavBar } from "@ujc/ui";
+import { JobViewSkeleton } from "@/app/skeletons";
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
@@ -53,13 +54,7 @@ export function JobView() {
       <NavBar title={job?.company ?? "Job details"} largeTitle={false} leading={BACK_LINK} />
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:pb-10">
         {loading ? (
-          <div aria-busy="true" aria-label="Loading job" className="flex flex-col gap-3">
-            <Skeleton className="h-7 w-2/3" />
-            <Skeleton className="h-4 w-1/3" />
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-3 w-full" />
-            ))}
-          </div>
+          <JobViewSkeleton />
         ) : error ? (
           <EmptyState
             tone="error"

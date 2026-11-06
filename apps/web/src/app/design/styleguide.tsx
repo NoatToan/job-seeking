@@ -697,7 +697,8 @@ function StyleguideBody() {
 export function Styleguide() {
   return (
     <ToastProvider>
-      <Suspense fallback={<p className="p-8 text-body text-label-secondary">Loading styleguide…</p>}>
+      {/* No text fallback: the styleguide renders on the first client pass. */}
+      <Suspense fallback={null}>
         <StyleguideBody />
       </Suspense>
     </ToastProvider>

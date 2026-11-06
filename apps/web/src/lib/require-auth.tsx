@@ -9,13 +9,16 @@ import { useSession } from "./session";
  * centrally in `SessionProvider`'s 401 handler (every API call goes through it, not just the
  * initial load), so this component only needs to reflect the current state: a loading
  * placeholder, a retryable error, or (while redirecting) nothing.
+ *
+ * `fallback`: the page's own skeleton (same blocks as the loaded screen) shown while the session
+ * check runs. Without one, an empty busy region — never a text spinner.
  */
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
   const { me, loading, error, refresh } = useSession();
   const { t } = useTranslation("home");
 
   if (loading) {
-    return <p className="px-4 py-8 text-sm text-label-secondary">{t("requireAuth.checking")}</p>;
+    return fallback ?? <div aria-busy="true" aria-label={t("requireAuth.checking")} className="min-h-dvh" />;
   }
 
   if (error) {

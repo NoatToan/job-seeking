@@ -40,5 +40,7 @@
     "notSet": "Chưa chọn",
     "searchCountry": "Gõ tên nước…",
     "guessed": "(đoán theo múi giờ của bạn)"
-  }
+  },
+  "loadingAria": "Đang tải việc làm",
+  "loadingDescriptionAria": "Đang tải mô tả"
 }

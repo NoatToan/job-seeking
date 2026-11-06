@@ -237,7 +237,7 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
 
   if (scanning && cv) {
     return (
-      <div className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
+      <div aria-busy="true" className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
         <div className="flex items-start gap-3">
           <span className="flex size-[29px] shrink-0 items-center justify-center rounded-icon bg-tint text-on-tint">
             <DocumentIcon size={16} />
@@ -256,7 +256,7 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
             <Badge>{t("status.queued")}</Badge>
           )}
         </div>
-        <Skeleton className="h-2 w-full animate-shimmer" />
+        <Skeleton className="h-2 w-full rounded-full" />
         <p className="text-footnote text-label-secondary">
           {showWaitingNote ? t("scanning.safeNote") : t("scanning.normalNote")}
         </p>

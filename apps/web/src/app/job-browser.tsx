@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode, RefObject } from "react";
 import Link from "next/link";
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
 import { Button, EmptyState, JobListItem } from "@ujc/ui";
@@ -121,6 +121,45 @@ function DetailPanel({
   );
 }
 
+/**
+ * lg: the two columns take exactly the room left under the filters, so the list (not the window)
+ * scrolls and its last row is never below the fold. Re-measured whenever the page above changes
+ * height (filters wrap, the source strip loads, the hero folds) or the window resizes. Shared with
+ * `JobBrowserSkeleton`, so the loading state fills the same box as the loaded browser.
+ */
+export function useFitToViewport(rootRef: RefObject<HTMLElement | null>): void {
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const html = document.documentElement;
+    const fit = () => {
+      if (!isWide()) {
+        root.style.height = "";
+        html.style.overflowY = "";
+        return;
+      }
+      const top = root.getBoundingClientRect().top + window.scrollY;
+      const room = window.innerHeight - top - BOTTOM_GAP_PX;
+      root.style.height = `${Math.round(Math.max(MIN_BROWSER_HEIGHT_PX, room))}px`;
+      // Full-screen: when the browser fits, the window never scrolls, so the hero folding or
+      // unfolding can't flash a window scrollbar mid-animation. A window too short for the
+      // minimum height still scrolls.
+      html.style.overflowY = room >= MIN_BROWSER_HEIGHT_PX ? "hidden" : "";
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    observer?.observe(document.body);
+    // The home hero's headline folds while the body keeps its min-height, so watch it directly.
+    document.querySelectorAll("[data-hero-headline]").forEach((el) => observer?.observe(el));
+    return () => {
+      window.removeEventListener("resize", fit);
+      observer?.disconnect();
+      html.style.overflowY = "";
+    };
+  }, [rootRef]);
+}
+
 export interface JobBrowserProps {
   jobs: Job[];
   /** View-cache key for the selected job (e.g. "public" / "feed"), so Back keeps the selection. */
@@ -194,40 +233,7 @@ export function JobBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // lg: the two columns take exactly the room left under the filters, so the list (not the
-  // window) scrolls and its last row is never below the fold. Re-measured whenever the page
-  // above changes height (filters wrap, the source strip loads, the hero folds) or the window
-  // resizes.
-  useLayoutEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const html = document.documentElement;
-    const fit = () => {
-      if (!isWide()) {
-        root.style.height = "";
-        html.style.overflowY = "";
-        return;
-      }
-      const top = root.getBoundingClientRect().top + window.scrollY;
-      const room = window.innerHeight - top - BOTTOM_GAP_PX;
-      root.style.height = `${Math.round(Math.max(MIN_BROWSER_HEIGHT_PX, room))}px`;
-      // Full-screen: when the browser fits, the window never scrolls, so the hero folding or
-      // unfolding can't flash a window scrollbar mid-animation. A window too short for the
-      // minimum height still scrolls.
-      html.style.overflowY = room >= MIN_BROWSER_HEIGHT_PX ? "hidden" : "";
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
-    observer?.observe(document.body);
-    // The home hero's headline folds while the body keeps its min-height, so watch it directly.
-    document.querySelectorAll("[data-hero-headline]").forEach((el) => observer?.observe(el));
-    return () => {
-      window.removeEventListener("resize", fit);
-      observer?.disconnect();
-      html.style.overflowY = "";
-    };
-  }, []);
+  useFitToViewport(rootRef);
 
   // Windowing: only ~50 rows around the viewport are in the DOM (lib/windowed-list). Heights of
   // rows already rendered are remembered (also across Back) so the spacers stay accurate.

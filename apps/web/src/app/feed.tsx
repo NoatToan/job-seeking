@@ -9,7 +9,6 @@ import {
   buttonClasses,
   cx,
   EmptyState,
-  JobCardSkeleton,
   RefreshIcon,
   SparklesIcon,
   Spinner,
@@ -25,6 +24,7 @@ import { HomeHero } from "@/app/home-hero";
 import { pillClasses, PillToggle } from "@/app/pill-controls";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
+import { JobBrowserSkeleton } from "@/app/skeletons";
 import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
@@ -151,11 +151,7 @@ function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
 
       <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
-          <div aria-busy="true" aria-label="Loading your feed" className="flex flex-col gap-3">
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-          </div>
+          <JobBrowserSkeleton label="Loading your feed" actions />
         ) : error ? (
           <EmptyState
             tone="error"

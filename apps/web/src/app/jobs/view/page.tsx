@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { JobView } from "./job-view";
+import { JobViewPageSkeleton } from "@/app/skeletons";
 
 // The job itself loads in the browser (`?id=`); `JobView` then sets the real title and
 // description. Not indexed: one URL for every job, so the indexable copy of a job is its static
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function JobViewPage() {
   return (
-    <Suspense fallback={<p className="px-4 py-8 text-body text-label-secondary">Loading job…</p>}>
+    <Suspense fallback={<JobViewPageSkeleton />}>
       <JobView />
     </Suspense>
   );

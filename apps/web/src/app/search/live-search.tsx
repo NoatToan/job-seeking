@@ -8,7 +8,6 @@ import {
   Chip,
   EmptyState,
   JobCard,
-  JobCardSkeleton,
   NavBar,
   RefreshIcon,
   SearchField,
@@ -23,6 +22,7 @@ import { useInfiniteList } from "@/lib/use-infinite";
 import { liveSearchParsers } from "@/lib/url-state";
 import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
+import { LiveSearchPageSkeleton, LiveSearchResultsSkeleton } from "@/app/skeletons";
 
 // Live-search source ids, per docs/product/FLOW_V2.md §4 (`sources=seek,himalayas,remotive,wwr,arc`).
 // Distinct from packages/core's SOURCES catalogue (which covers the daily-crawl feed sources).
@@ -166,11 +166,7 @@ function LiveSearchInner() {
         ) : null}
 
         {loading && items.length === 0 ? (
-          <div aria-busy="true" aria-label="Searching" className="flex flex-col gap-3">
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-          </div>
+          <LiveSearchResultsSkeleton />
         ) : error ? (
           <EmptyState
             tone="error"
@@ -238,7 +234,7 @@ function LiveSearchInner() {
 
 export function LiveSearch() {
   return (
-    <RequireAuth>
+    <RequireAuth fallback={<LiveSearchPageSkeleton />}>
       <LiveSearchInner />
     </RequireAuth>
   );
