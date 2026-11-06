@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withNuqsTestingAdapter } from "nuqs/adapters/testing";
 
 const searchParamsMock = new URLSearchParams();
 const replaceMock = vi.fn();
 const refreshMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => searchParamsMock,
   useRouter: () => ({ replace: replaceMock }),
 }));
 
@@ -55,7 +55,7 @@ describe("LoginForm", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<LoginForm />);
+    render(<LoginForm />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
@@ -85,7 +85,7 @@ describe("LoginForm", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<LoginForm />);
+    render(<LoginForm />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
@@ -123,7 +123,7 @@ describe("LoginForm", () => {
       latestCv: null,
     });
 
-    render(<LoginForm />);
+    render(<LoginForm />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },
@@ -158,7 +158,7 @@ describe("LoginForm", () => {
       latestCv: null,
     });
 
-    render(<LoginForm />);
+    render(<LoginForm />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "person@example.com" },

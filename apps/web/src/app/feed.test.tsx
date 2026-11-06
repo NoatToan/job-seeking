@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withNuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ToastProvider } from "@ujc/ui";
 
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
@@ -15,6 +16,7 @@ function renderFeed() {
     <ToastProvider>
       <Feed />
     </ToastProvider>,
+    { wrapper: withNuqsTestingAdapter() },
   );
 }
 

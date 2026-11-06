@@ -1,12 +1,9 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withNuqsTestingAdapter } from "nuqs/adapters/testing";
 
 const searchParamsMock = new URLSearchParams();
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
-
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => searchParamsMock,
-}));
 
 vi.mock("@/lib/session", () => ({
   useSession: () => useSessionMock(),
@@ -73,7 +70,7 @@ describe("JobView", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<JobView />);
+    render(<JobView />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     await waitFor(() => expect(screen.getByText("Staff Engineer")).toBeTruthy());
     const [url] = fetchMock.mock.calls[0] as [string];
@@ -81,7 +78,7 @@ describe("JobView", () => {
   });
 
   it("shows an alert when the job id is missing", () => {
-    render(<JobView />);
+    render(<JobView />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
     expect(screen.getByRole("alert").textContent).toContain("Missing job id");
   });
 
@@ -92,7 +89,7 @@ describe("JobView", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<JobView />);
+    render(<JobView />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
     expect(screen.getByRole("alert").textContent).toContain("Job not found");
@@ -122,7 +119,7 @@ describe("JobView", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<JobView />);
+    render(<JobView />, { wrapper: withNuqsTestingAdapter({ searchParams: searchParamsMock.toString() }) });
 
     await waitFor(() => expect(screen.getByText("Staff Engineer")).toBeTruthy());
     const trackLink = screen.getByRole("link", { name: /Sign in to track/i });

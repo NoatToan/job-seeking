@@ -14,11 +14,13 @@ import {
   SearchField,
   Spinner,
 } from "@ujc/ui";
+import { useQueryStates } from "nuqs";
 import { liveSearch } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useInfiniteList } from "@/lib/use-infinite";
+import { liveSearchParsers } from "@/lib/url-state";
 import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
 
@@ -42,10 +44,21 @@ interface SourceAgg {
 function LiveSearchInner() {
   const { me } = useSession();
   const firstKeyword = me?.preferences.keywords[0] ?? "";
-  const [draftQuery, setDraftQuery] = useState(firstKeyword);
-  const [query, setQuery] = useState(firstKeyword);
-  const [enabledSources, setEnabledSources] = useState<Set<LiveSourceId>>(
-    () => new Set(LIVE_SOURCES.map((s) => s.id)),
+  // Query and switched-off platforms live in the URL (`?q=react&off=seek,arc`), so a search can be
+  // shared and Back restores it. No `q` yet = start from the user's first keyword.
+  const [url, setUrl] = useQueryStates(liveSearchParsers);
+  const query = url.q ?? firstKeyword;
+  const setQuery = useCallback((q: string) => void setUrl({ q }), [setUrl]);
+  const [draftQuery, setDraftQuery] = useState(query);
+  const [syncedQuery, setSyncedQuery] = useState(query);
+  if (query !== syncedQuery) {
+    setSyncedQuery(query);
+    setDraftQuery(query);
+  }
+  const offKey = url.off.join(",");
+  const enabledSources = useMemo(
+    () => new Set<LiveSourceId>(LIVE_SOURCES.map((s) => s.id).filter((id) => !offKey.split(",").includes(id))),
+    [offKey],
   );
   const [sourceAgg, setSourceAgg] = useState<Partial<Record<LiveSourceId, SourceAgg>>>({});
 
@@ -57,9 +70,10 @@ function LiveSearchInner() {
 
   // Commit the draft 500ms after the user stops typing (Enter commits immediately below).
   useEffect(() => {
+    if (draftQuery === query) return;
     const timer = setTimeout(() => setQuery(draftQuery), 500);
     return () => clearTimeout(timer);
-  }, [draftQuery]);
+  }, [draftQuery, query, setQuery]);
 
   const fetchPage = useCallback(
     (cursor: string | undefined) => liveSearch({ q: query, sources: sourceIds, cursor }),
@@ -86,12 +100,8 @@ function LiveSearchInner() {
   >(fetchPage, [query, sourcesKey], onPage);
 
   function toggleSource(id: LiveSourceId) {
-    setEnabledSources((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const off = enabledSources.has(id) ? [...url.off, id] : url.off.filter((s) => s !== id);
+    void setUrl({ off });
   }
 
   function commitQuery() {

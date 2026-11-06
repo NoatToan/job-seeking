@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { parseAsString, useQueryState } from "nuqs";
 import { Button, buttonClasses, ChevronLeftIcon, EmptyState, NavBar, Skeleton } from "@ujc/ui";
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
 import { useMarkViewedAfterDwell } from "@/lib/viewed";
+import { JobSeo } from "@/lib/job-seo";
 import { JobDetail } from "../job-detail";
 
 const BACK_LINK = (
@@ -20,9 +21,8 @@ const BACK_LINK = (
 );
 
 export function JobView() {
-  const searchParams = useSearchParams();
   const { me } = useSession();
-  const id = searchParams.get("id") ?? "";
+  const [id] = useQueryState("id", parseAsString.withDefault(""));
   const { data: job, loading, error, reload } = useApi(() => getJob(id), [id], { cacheKey: `job:${id}` });
   // Opening the full page counts as reading it straight away.
   useMarkViewedAfterDwell(job ? id : null, 0);
@@ -74,6 +74,7 @@ export function JobView() {
           />
         ) : job ? (
           <div className="rounded-[22px] border border-separator bg-background p-5 shadow-raised sm:p-7">
+            <JobSeo job={job} />
             <JobDetail job={job} signedIn={Boolean(me)} />
           </div>
         ) : null}

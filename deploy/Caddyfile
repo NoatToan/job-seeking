@@ -18,6 +18,9 @@
 		-Server
 	}
 
+	# Link-preview image from apps/web/src/app/opengraph-image.tsx: exported without an extension.
+	header /opengraph-image Content-Type image/png
+
 	handle /api/* {
 		reverse_proxy api:8000
 	}

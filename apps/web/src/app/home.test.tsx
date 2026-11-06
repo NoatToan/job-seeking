@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type OnUrlUpdateFunction, withNuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ToastProvider } from "@ujc/ui";
 
 const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
@@ -10,11 +11,12 @@ vi.mock("@/lib/session", () => ({
 
 import { Home } from "./home";
 
-function renderHome() {
+function renderHome(searchParams = "", onUrlUpdate?: OnUrlUpdateFunction) {
   return render(
     <ToastProvider>
       <Home />
     </ToastProvider>,
+    { wrapper: withNuqsTestingAdapter({ searchParams, onUrlUpdate }) },
   );
 }
 
@@ -117,6 +119,49 @@ describe("Home", () => {
     expect(
       screen.getByRole("link", { name: /Sign in to get matches from your CV/i }).getAttribute("href"),
     ).toMatch(/^\/login\/?$/);
+  });
+
+  it("applies filters from the URL (?q=…&remote=true&tech=…) to the first request", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs")) {
+        return Promise.resolve(jsonResponse(200, { items: [job("1", "React Dev")], nextCursor: null }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderHome("?q=react&remote=true&tech=nextjs,react&posted=7");
+
+    await waitFor(() => expect(screen.getByText("React Dev")).toBeTruthy(), { timeout: 5000 });
+    const jobsCalls = fetchMock.mock.calls.map(([u]) => u as string).filter(isJobsListCall);
+    expect(jobsCalls).toHaveLength(1);
+    const params = new URL(jobsCalls[0], "http://x").searchParams;
+    expect(params.get("q")).toBe("react");
+    expect(params.get("remote")).toBe("true");
+    expect(params.get("tech")).toBe("nextjs,react");
+    expect(params.get("days")).toBe("7");
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("react");
+  });
+
+  it("writes the typed search to the URL after the debounce", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        Promise.resolve(
+          url.startsWith("/api/sources") ? jsonResponse(200, []) : jsonResponse(200, { items: [], nextCursor: null }),
+        ),
+      ),
+    );
+    const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
+
+    renderHome("", onUrlUpdate);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "golang" } });
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled(), { timeout: 2000 });
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get("q")).toBe("golang");
   });
 
   it("infinite scroll requests the next cursor exactly once per sentinel intersection", async () => {

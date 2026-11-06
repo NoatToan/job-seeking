@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryState } from "nuqs";
 import { SegmentedControl } from "@ujc/ui";
 import { Feed } from "./feed";
 import { PublicJobs } from "./public-jobs";
 import { useSession } from "@/lib/session";
+import { homeModeParser } from "@/lib/url-state";
 
 export type HomeMode = "all" | "matches";
 
@@ -41,22 +43,25 @@ export function HomeModeSwitch({ value, onChange }: { value: HomeMode; onChange:
  * mode that doesn't match my profile"):
  *  - "All jobs": the same whole catalogue, free search, with Track and synced read history;
  *  - "For you": the personalised `Feed` (keywords, remote / country preferences, CV scores).
- * Default is "For you" once there is a CV, else "All jobs"; the choice is remembered in this browser.
+ * `?view=all|matches` picks one (shareable); otherwise the last choice in this browser, else "For you"
+ * once there is a CV, else "All jobs".
  * Neither branch renders until the initial `GET /api/me` check resolves, so a signed-in visitor
  * never flashes the public list first.
  */
 export function Home() {
   const { me, loading } = useSession();
-  const [chosen, setChosen] = useState<HomeMode | null>(() => (typeof window === "undefined" ? null : readMode()));
+  const [urlMode, setUrlMode] = useQueryState("view", homeModeParser);
+  const [stored, setStored] = useState<HomeMode | null>(() => (typeof window === "undefined" ? null : readMode()));
 
   if (loading) {
     return <p className="px-4 py-8 text-body text-label-secondary">Loading…</p>;
   }
   if (!me) return <PublicJobs />;
 
-  const mode: HomeMode = chosen ?? (me.latestCv ? "matches" : "all");
+  const mode: HomeMode = urlMode ?? stored ?? (me.latestCv ? "matches" : "all");
   const setMode = (m: HomeMode) => {
-    setChosen(m);
+    setStored(m);
+    void setUrlMode(m);
     try {
       window.localStorage.setItem(MODE_KEY, m);
     } catch {

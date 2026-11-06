@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import type { ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { SOURCES } from "@ujc/core";
@@ -60,8 +60,9 @@ type ThemeMode = "system" | "light" | "dark";
 /** Sets `.light` / `.dark` on <html> (system = neither). Cleans up when leaving the page. */
 function useThemeMode(): [ThemeMode, (m: ThemeMode) => void] {
   // `?theme=dark` / `?theme=light` preselects an appearance (handy for screenshots).
-  const fromUrl = useSearchParams().get("theme");
-  const [mode, setMode] = useState<ThemeMode>(fromUrl === "light" || fromUrl === "dark" ? fromUrl : "system");
+  const [fromUrl, setFromUrl] = useQueryState("theme", parseAsStringLiteral(["light", "dark"] as const));
+  const mode: ThemeMode = fromUrl ?? "system";
+  const setMode = (m: ThemeMode) => void setFromUrl(m === "system" ? null : m);
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove("light", "dark");

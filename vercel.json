@@ -33,6 +33,11 @@
       "continue": true
     },
     {
+      "src": "/opengraph-image",
+      "headers": { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" },
+      "continue": true
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.py"
     },
