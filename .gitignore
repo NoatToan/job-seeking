@@ -1,6 +1,8 @@
 node_modules/
 .next/
 out/
+# build-time job snapshot for the static SEO pages (scripts/seo-snapshot.mjs)
+apps/web/.seo/
 build/
 dist/
 coverage/

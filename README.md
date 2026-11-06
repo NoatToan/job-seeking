@@ -47,6 +47,7 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 
 - Web: Vercel project `unified-job-crawler`. `vercel.json` points the build at `apps/web`, and the build runs the migrations first.
 - Daily crawl: `.github/workflows/daily-crawl.yml` (05:00 Vietnam time). Set the repository secrets `DATABASE_URL` (and optionally `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`).
+- Daily rebuild of the static job pages: create a Vercel Deploy Hook for `main` (Project → Settings → Git → Deploy Hooks) and save its URL as the repository secret `VERCEL_DEPLOY_HOOK_URL`; the daily crawl calls it when it finishes.
 
 ## Analytics
 
@@ -75,7 +76,8 @@ Then restart Claude Code and approve the servers in `/mcp`.
 ## URL state and SEO (web)
 
 - Every query on a page lives in the URL via [nuqs](https://nuqs.dev) (`apps/web/src/lib/url-state.ts`): home filters `?q=&source=&country=&remote=&tech=&posted=&hours=9-17&view=all|matches`, live search `?q=&off=`, job page `?id=`, sign-in `?next=`. Links are shareable and Back restores them; updates replace the history entry instead of pushing one per keystroke.
-- SEO: per-page titles (`%s · JobSeeking`), description, Open Graph/Twitter card with a build-time preview image (`opengraph-image.tsx`), `robots.txt` and `sitemap.xml` (signed-in pages are `noindex` and disallowed), schema.org `WebSite` + `SearchAction` on `/` and `JobPosting` on job pages. `NEXT_PUBLIC_SITE_URL` sets the canonical domain (default: the Vercel URL).
+- SEO: per-page titles (`%s · JobSeeking`), description, Open Graph/Twitter card with a build-time preview image (`opengraph-image.tsx`), `robots.txt` and `sitemap.xml` (signed-in pages are `noindex` and disallowed), schema.org `WebSite` + `SearchAction` on `/`. `NEXT_PUBLIC_SITE_URL` sets the canonical domain (default: the Vercel URL).
+- Static job pages for search engines (docs/product/ARCHITECTURE.md D12, §13): `/jobs/<title>-<company>-<id>/` with `JobPosting` JSON-LD, plus listings `/jobs/`, `/jobs/tech/<id>/`, `/jobs/country/<cc>/`, `/jobs/source/<id>/` and job sitemaps `/jobs/sitemap/<n>.xml`. They are prerendered from a build-time snapshot (`scripts/seo-snapshot.mjs`, read-only, needs `DATABASE_URL`; without it the build has no job pages). `/jobs/view/?id=` stays the live, `noindex` job screen; the home detail panel links to the static page ("Open job page").
 
 ## CI
 

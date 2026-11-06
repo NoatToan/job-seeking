@@ -24,6 +24,7 @@ import {
 import type { NavItem } from "@ujc/ui";
 import { LanguageSwitch } from "@/lib/i18n/provider";
 import { isPublicRoute } from "@/lib/public-routes";
+import { jobIdFromPath } from "@/lib/job-url";
 import { useSession } from "@/lib/session";
 
 /** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
@@ -161,9 +162,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
   // desktop for pushed screens too.
-  const showTabBar = showChrome && !pathname.startsWith("/jobs/view");
-  // `JobDetail variant="page"` pins an Apply bar to the bottom on phones (< sm).
-  const showApplyBar = pathname.startsWith("/jobs/view");
+  // `JobDetail variant="page"` pins an Apply bar to the bottom on phones (< sm): `/jobs/view/`
+  // and the static job pages `/jobs/<slug>/`.
+  const showApplyBar = pathname.startsWith("/jobs/view") || jobIdFromPath(pathname) !== null;
+  const showTabBar = showChrome && !showApplyBar;
 
   return (
     // `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop.

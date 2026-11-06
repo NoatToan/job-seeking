@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
 import { sortTech, sourceMeta, techInfo } from "@ujc/core";
 import {
@@ -7,6 +8,7 @@ import {
   Badge,
   buttonClasses,
   Card,
+  ChevronRightIcon,
   cx,
   employmentLabel,
   ExternalLinkIcon,
@@ -35,6 +37,8 @@ export interface JobDetailProps {
   highlight?: readonly string[];
   /** "page" = `/jobs/view` (sticky Apply bar on phones); "panel" = right-hand pane on the home page. */
   variant?: "page" | "panel";
+  /** Panel only: the job's own page (`/jobs/<slug>/`), shown as an "Open job page" link. */
+  pageHref?: string;
 }
 
 /** Everything about one job: header, badges, Track, CV fit, description and Apply. Shared by the
@@ -45,6 +49,7 @@ export function JobDetail({
   signedIn,
   highlight = [],
   variant = "page",
+  pageHref,
 }: JobDetailProps) {
   const description = "description" in job ? job.description : null;
   const matches = highlight.length ? matchedTerms(`${job.title}\n${description ?? ""}`, highlight) : [];
@@ -112,6 +117,18 @@ export function JobDetail({
           size="md"
           signedIn={signedIn}
         />
+        {variant === "panel" && pageHref ? (
+          // Plain client navigation, no prefetch: selecting jobs in the list never fetches pages,
+          // and Back returns to the list exactly as it was (view cache).
+          <Link
+            href={pageHref}
+            prefetch={false}
+            className={buttonClasses({ variant: "plain", size: "md", className: "rounded-full px-3" })}
+          >
+            Open job page
+            <ChevronRightIcon size={16} />
+          </Link>
+        ) : null}
       </div>
 
       <RemoteAccessCard job={job} />
