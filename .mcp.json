@@ -2,15 +2,36 @@
   "mcpServers": {
     "job-search": {
       "command": "uv",
-      "args": ["run", "--quiet", "--directory", "apps/mcp", "job-search-mcp"]
+      "args": [
+        "run",
+        "--quiet",
+        "--directory",
+        "apps/mcp",
+        "job-search-mcp"
+      ]
     },
     "jobspy": {
       "command": "uvx",
-      "args": ["jobspy-mcp"]
+      "args": [
+        "jobspy-mcp"
+      ]
     },
     "upwork": {
       "type": "http",
       "url": "https://mcp.upwork.com/mcp"
+    },
+    "gcloud": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "@google-cloud/gcloud-mcp"
+      ]
+    },
+    "google-analytics": {
+      "command": "uvx",
+      "args": [
+        "analytics-mcp"
+      ]
     }
   }
 }
