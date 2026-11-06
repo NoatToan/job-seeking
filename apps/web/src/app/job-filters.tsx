@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { Job } from "@ujc/core";
 import type { ReactNode } from "react";
 import { sourceMeta, techInfo } from "@ujc/core";
-import { Chip, cx, GlobeIcon, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
+import { Chip, ClockIcon, cx, GlobeIcon, RangeSlider, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
 import { useViewState } from "@/lib/view-cache";
 import { CountryFilter } from "@/app/country-filter";
 import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
 import { TechFilter } from "@/app/tech-filter";
 import { TimezonePicker } from "@/app/work-hours";
 import { clearViewed, useViewedJobs } from "@/lib/viewed";
+import { useUserTimezone } from "@/lib/user-timezone";
+import { jobFitsHours, shortZoneName } from "@/lib/work-hours";
 
 /** "Posted within" options (Slack request: 3 days, 7 days, 1 month). Value = days, "" = any. */
 export const POSTED_OPTIONS = [
@@ -44,6 +47,10 @@ export interface JobFilterState {
    * now doesn't vanish from the list under you). `null` = show everything. */
   hiddenIds: ReadonlySet<string> | null;
   setUnreadOnly: (on: boolean) => void;
+  /** "Hours I want to work", whole hours on the user's clock ([9, 17]); `null` = any. Applied in
+   * the browser (it depends on the user's time zone), so it is not part of `key` / `params`. */
+  hours: [number, number] | null;
+  setHours: (v: [number, number] | null) => void;
 }
 
 /**
@@ -59,6 +66,7 @@ export function useJobFilters(prefix: string): JobFilterState {
   const [tech, setTech] = useViewState<string[]>(`${prefix}:tech`, []);
   const [posted, setPosted] = useViewState(`${prefix}:posted`, "");
   const [hidden, setHidden] = useViewState<string[] | null>(`${prefix}:hidden`, null);
+  const [hours, setHours] = useViewState<[number, number] | null>(`${prefix}:hours`, null);
   const viewed = useViewedJobs();
 
   // Debounced search, 300 ms (SCREENS.md §4).
@@ -91,7 +99,9 @@ export function useJobFilters(prefix: string): JobFilterState {
       tech: techKey || undefined,
       days: posted ? Number(posted) : undefined,
     },
-    activeCount: [q, source, remoteOnly, country, posted].filter(Boolean).length + tech.length,
+    activeCount: [q, source, remoteOnly, country, posted, hours].filter(Boolean).length + tech.length,
+    hours,
+    setHours,
     hiddenIds: hidden ? new Set(hidden) : null,
     setUnreadOnly: (on: boolean) => setHidden(on ? [...viewed] : null),
     clear: () => {
@@ -103,8 +113,148 @@ export function useJobFilters(prefix: string): JobFilterState {
       setTech([]);
       setPosted("");
       setHidden(null);
+      setHours(null);
     },
   };
+}
+
+/** The loaded jobs minus what the browser-side filters hide ("Unread", "Hours I want to work"). */
+export function useVisibleJobs(f: JobFilterState, items: Job[]): Job[] {
+  const { zone } = useUserTimezone();
+  return useMemo(() => {
+    let out = f.hiddenIds ? items.filter((j) => !f.hiddenIds?.has(j.id)) : items;
+    if (f.hours) {
+      const [from, to] = f.hours;
+      out = out.filter((j) => jobFitsHours(j.timezones, zone, from * 60, to * 60));
+    }
+    return out;
+  }, [items, f.hiddenIds, f.hours, zone]);
+}
+
+const HOUR_PRESETS: { label: string; value: [number, number] }[] = [
+  { label: "Office 9–17", value: [9, 17] },
+  { label: "Early 6–14", value: [6, 14] },
+  { label: "Late 13–22", value: [13, 22] },
+  { label: "Evening 18–24", value: [18, 24] },
+];
+
+const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+/**
+ * "Hours" pill (Slack request: "a filter to drag my preferred hours"): a two-thumb slider on the
+ * user's own clock. Keeps jobs whose 9–5 overlaps the chosen hours by at least 4h (or the whole
+ * window when it is shorter); jobs with no stated time zone always stay.
+ */
+function HoursFilter({ value, onChange }: { value: [number, number] | null; onChange: (v: [number, number] | null) => void }) {
+  const { zone } = useUserTimezone();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<[number, number]>(value ?? [9, 17]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const abbr = shortZoneName(zone);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Dragging applies live, so the list behind updates while the thumb moves.
+  const apply = (v: [number, number]) => {
+    setDraft(v);
+    onChange(v);
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => {
+          setDraft(value ?? [9, 17]);
+          setOpen((o) => !o);
+        }}
+        className={cx(pillClasses(value !== null), "px-3.5")}
+      >
+        <ClockIcon size={15} strokeWidth={2} aria-hidden />
+        {value ? `${hourLabel(value[0])}–${hourLabel(value[1])} ${abbr}` : "Hours"}
+      </button>
+      {open ? (
+        <div
+          id={panelId}
+          role="dialog"
+          aria-label="Hours I want to work"
+          className="absolute left-0 z-50 mt-2 w-80 rounded-[18px] border border-separator bg-background p-4 shadow-overlay animate-pop-in"
+        >
+          <p className="text-headline text-label">Hours I want to work</p>
+          <p className="mt-0.5 text-footnote text-label-secondary">
+            On your clock ({abbr}). Shows jobs whose 9–5 overlaps these hours by 4h or more.
+          </p>
+          <p className="mt-3 text-title3 font-semibold text-label tabular-nums">
+            {hourLabel(draft[0])} – {hourLabel(draft[1])}
+          </p>
+          <RangeSlider
+            className="mt-2"
+            labels={["Start of your day", "End of your day"]}
+            min={0}
+            max={24}
+            value={draft}
+            onChange={apply}
+            format={hourLabel}
+          />
+          <div aria-hidden className="mt-1 flex justify-between text-caption text-label-tertiary tabular-nums">
+            <span>00</span>
+            <span>06</span>
+            <span>12</span>
+            <span>18</span>
+            <span>24</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {HOUR_PRESETS.map((p) => (
+              <Chip
+                key={p.label}
+                selected={draft[0] === p.value[0] && draft[1] === p.value[1]}
+                onClick={() => apply(p.value)}
+                className="h-7 text-footnote"
+              >
+                {p.label}
+              </Chip>
+            ))}
+          </div>
+          <div className="mt-3 flex justify-between hairline-t pt-3">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
+              className="rounded-control-sm text-subheadline font-medium text-tint hover:underline focus-ring"
+            >
+              Any hours
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-full bg-label px-4 py-1.5 text-subheadline font-semibold text-background focus-ring"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** "Read 42 jobs · Clear" — the read history kept in this browser (and the account). */
@@ -185,6 +335,7 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
           onChange={f.setRemoteOnly}
           icon={<GlobeIcon size={15} strokeWidth={2} aria-hidden />}
         />
+        <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label="Unread" checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
         <button
           type="button"

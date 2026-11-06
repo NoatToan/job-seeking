@@ -236,3 +236,31 @@ export function browserTimezone(): string {
     return "Asia/Ho_Chi_Minh";
   }
 }
+
+/**
+ * "Hours I want to work" filter (Slack request: "a filter to drag my preferred hours"): does the
+ * job's 09:00–17:00, on the user's clock, overlap `[from, to)` (minutes, user's clock) by at least
+ * `minMinutes` — or by the whole window when it is shorter? Any of the job's zones may qualify.
+ * Jobs without a known zone (worldwide / async) always pass.
+ */
+export function jobFitsHours(
+  jobZones: readonly string[] | null | undefined,
+  userZone: string,
+  from: number,
+  to: number,
+  minMinutes: number = 4 * 60,
+  at: Date = new Date(),
+): boolean {
+  const userOffset = zoneOffsetMinutes(userZone, at);
+  if (userOffset === null || !jobZones?.length) return true;
+  const need = Math.min(minMinutes, to - from);
+  let known = false;
+  for (const zone of jobZones) {
+    const jobOffset = zoneOffsetMinutes(zone, at);
+    if (jobOffset === null) continue;
+    known = true;
+    const diff = userOffset - jobOffset;
+    if (overlapWith(WORKDAY_START + diff, WORKDAY_END + diff, from, to).minutes >= need) return true;
+  }
+  return !known;
+}

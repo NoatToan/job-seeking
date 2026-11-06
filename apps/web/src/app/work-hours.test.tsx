@@ -68,7 +68,9 @@ describe("work hours", () => {
     );
     const badge = () => document.querySelector("[title]")?.textContent ?? "";
     expect(badge()).toBe("09:00–17:00 VNT · Same time zone");
-    fireEvent.change(screen.getByLabelText("Your time zone"), { target: { value: "America/New_York" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Your time zone" }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search your time zone" }), { target: { value: "new york" } });
+    fireEvent.click(screen.getByRole("option", { name: /America\/New York/ }));
     expect(window.localStorage.getItem("ujc:timezone")).toBe("America/New_York");
     expect(badge()).toMatch(/^\d\d:00–\d\d:00 E[SD]T · Night shift$/);
   });
