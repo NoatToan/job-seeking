@@ -12,6 +12,7 @@ import {
   cx,
   employmentLabel,
   ExternalLinkIcon,
+  LevelBadge,
   LocationText,
   MapPinIcon,
   matchBand,
@@ -28,6 +29,7 @@ import { useWorkHoursPhase, WorkHoursCard } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { Highlighted, matchedTerms } from "@/lib/highlight";
 import { useTranslation } from "react-i18next";
+import { hasRecognisedSections, JdSections } from "./jd-sections";
 
 export interface JobDetailProps {
   /** The list row is enough for the header; `description` arrives with `GET /api/jobs/{id}`. */
@@ -54,6 +56,8 @@ export function JobDetail({
   pageHref,
 }: JobDetailProps) {
   const description = "description" in job ? job.description : null;
+  // Canonical sections when the parser recognised some; otherwise the plain description.
+  const sections = "sections" in job && hasRecognisedSections(job.sections) ? job.sections : null;
   const matches = highlight.length ? matchedTerms(`${job.title}\n${description ?? ""}`, highlight) : [];
   const applyHref = job.applyUrl ?? job.url;
   const source = sourceMeta(job.source).label;
@@ -89,6 +93,7 @@ export function JobDetail({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <SourceBadge source={job.source} />
+        <LevelBadge level={job.level} source={job.levelSource} />
         {job.remote ? (
           <Badge tone="neutral" className="max-w-full">
             <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} />
@@ -185,10 +190,14 @@ export function JobDetail({
       ) : null}
 
       <div className="hairline-t pt-4">
-        <h2 className="text-title3 text-label">About the role</h2>
+        <h2 className="text-title3 text-label">{sections ? t("sections.heading") : "About the role"}</h2>
         {loadingDescription ? (
           <div aria-busy="true" aria-label={t("loadingDescriptionAria")}>
             <DescriptionSkeleton />
+          </div>
+        ) : sections ? (
+          <div className="mt-3">
+            <JdSections sections={sections} highlight={highlight} />
           </div>
         ) : description ? (
           <p className="mt-2 max-w-2xl whitespace-pre-line text-body leading-relaxed text-label">

@@ -283,6 +283,60 @@ def test_get_job_works_without_a_session(client: TestClient, migrated_database_u
     assert resp.json()["title"] == "Anon Engineer"
 
 
+def test_job_detail_and_list_carry_parsed_sections_and_level(
+    client: TestClient, migrated_database_url: str
+):
+    """The crawler's upsert parses the description (job_crawler.sections / level); the API
+    serves the result additively next to `description`."""
+    from job_crawler import db as crawler_db
+    from job_crawler.models import JobRecord
+
+    description = "\n".join(
+        [
+            "Acme builds rockets.",
+            "What you'll do",
+            "- Build engines",
+            "Requirements",
+            "- 5+ years of Python",
+            "Benefits",
+            "- Gym",
+        ]
+    )
+    record = JobRecord(
+        source="greenhouse",
+        external_id="sections-api-1",
+        url="https://example.test/sections-api-1",
+        title="Senior Rocket Engineer",
+        company="Acme",
+        description=description,
+    )
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        crawler_db.upsert_jobs(conn, [record])
+        job_id = conn.execute(
+            "SELECT id FROM jobs WHERE external_id = 'sections-api-1'"
+        ).fetchone()[0]
+
+    body = client.get(f"/api/jobs/{job_id}").json()
+    assert body["description"] == description
+    assert [(s["key"], s["heading"]) for s in body["sections"]] == [
+        ("intro", None),
+        ("responsibilities", "What you'll do"),
+        ("requirements", "Requirements"),
+        ("benefits", "Benefits"),
+    ]
+    assert body["sections"][2] == {
+        "key": "requirements",
+        "heading": "Requirements",
+        "body": "- 5+ years of Python",
+        "summary": "5+ years of Python",
+    }
+    assert (body["level"], body["levelSource"]) == ("senior", "title")
+
+    items = client.get("/api/jobs", params={"q": "Rocket"}).json()["items"]
+    assert [(i["title"], i["level"]) for i in items] == [("Senior Rocket Engineer", "senior")]
+    assert "sections" not in items[0]
+
+
 def test_get_job_rejects_a_non_numeric_id(client: TestClient):
     resp = client.get("/api/jobs/not-a-number")
     assert resp.status_code in (400, 404, 422)

@@ -9,11 +9,16 @@ jobs (backfill after a rule change: `python -m job_crawler --recompute-derived`)
 - `countries`       ISO codes of the countries the job is in / open to, for the country filter
 - `tech_stack`      technologies the job asks for (techstack.py), for icons and the tech filter
 - `salary_*`        structured salary (salary.py) from the source's salary text, else the posting
+
+`PARSED_COLUMNS` (description sections and seniority level) are written on every upsert too, but
+re-applied by a version-gated backfill instead (`sections.VERSION`, `db.backfill_sections`).
 """
 
 from typing import Any
 
-from job_crawler import eligibility, salary, techstack, timezones
+from psycopg.types.json import Jsonb
+
+from job_crawler import eligibility, level, salary, sections, techstack, timezones
 
 DERIVED_COLUMNS = (
     "open_to",
@@ -27,6 +32,9 @@ DERIVED_COLUMNS = (
     "salary_period",
     "salary_source",
 )
+
+# Written by `parse_posting`; `sections_version` says which rules wrote the other three.
+PARSED_COLUMNS = ("sections", "sections_version", "level", "level_source")
 
 _ISO = set(eligibility.COUNTRIES.values()) | set(eligibility.EXTRA_COUNTRIES.values())
 
@@ -90,4 +98,22 @@ def job_salary(
         "salary_currency": found.currency,
         "salary_period": found.period,
         "salary_source": source,
+    }
+
+
+def parse_posting(
+    *, title: str | None, description: str | None, raw: dict[str, Any] | None
+) -> dict[str, Any]:
+    """`PARSED_COLUMNS` for one job: description sections (sections.py) and seniority level
+    (level.py), stamped with the rules version. Sections are stored only when at least one
+    heading was recognised; otherwise the app falls back to the plain description."""
+    found = sections.parse_sections(description)
+    if not sections.recognised(found):
+        found = None
+    job_level, level_source = level.job_level(title, description, raw)
+    return {
+        "sections": Jsonb(found) if found is not None else None,
+        "sections_version": sections.VERSION,
+        "level": job_level,
+        "level_source": level_source,
     }

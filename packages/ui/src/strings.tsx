@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
+import type { JobLevel } from "@ujc/core";
 
 /**
  * Words the shared components print themselves (default labels, relative dates, fit bands).
@@ -40,6 +41,14 @@ export interface UiStrings {
   today: string;
   daysAgo: (days: number) => string;
   fit: { great: string; good: string; worth: string; long: string };
+  /** Seniority badge (`LevelBadge`). */
+  levels: {
+    names: Record<JobLevel, string>;
+    /** Accessible name, e.g. "Level: Senior". */
+    aria: (level: string) => string;
+    /** Tooltip: where the level came from (`Job.levelSource`). */
+    from: { source: string; title: string; description: string };
+  };
 }
 
 export const EN_UI_STRINGS: UiStrings = {
@@ -84,6 +93,23 @@ export const EN_UI_STRINGS: UiStrings = {
   today: "today",
   daysAgo: (days) => (days === 1 ? "1 day ago" : `${days} days ago`),
   fit: { great: "Great fit", good: "Good fit", worth: "Worth a look", long: "Long shot" },
+  levels: {
+    names: {
+      intern: "Intern",
+      junior: "Junior",
+      mid: "Mid-level",
+      senior: "Senior",
+      lead: "Lead",
+      manager: "Manager",
+      director: "Director",
+    },
+    aria: (level) => `Level: ${level}`,
+    from: {
+      source: "from the job board",
+      title: "from the job title",
+      description: "guessed from the description",
+    },
+  },
 };
 
 const UiStringsContext = createContext<UiStrings>(EN_UI_STRINGS);

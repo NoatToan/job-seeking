@@ -39,7 +39,9 @@ jobs:
 
       # Re-apply derived columns (remote region, countries, time zones, tech, salary) to jobs that
       # were not re-crawled today, so rule changes reach old rows too. Only changed rows are written.
-      - name: Recompute derived columns
+      # It then re-parses description sections + level on rows written by older rules
+      # (jobs.sections_version < job_crawler.sections.VERSION), in committed batches.
+      - name: Recompute derived columns, backfill sections and level
         if: ${{ !cancelled() }}
         run: uv run python -m job_crawler --recompute-derived
         env:

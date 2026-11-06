@@ -12,6 +12,28 @@
     "foundInDescription": "Found in the job description",
     "fromDescription": "from description"
   },
+  "sections": {
+    "heading": "Job description",
+    "aria": "Job description by section",
+    "titles": {
+      "intro": "Overview",
+      "about_company": "About the company",
+      "about_role": "About the role",
+      "responsibilities": "What you'll do",
+      "requirements": "Requirements",
+      "nice_to_have": "Nice to have",
+      "tech_stack": "Tech and tools",
+      "compensation": "Salary and pay",
+      "benefits": "Benefits and perks",
+      "location_remote": "Location and hours",
+      "hiring_process": "Hiring process",
+      "other": "More details",
+      "equal_opportunity": "Equal opportunity"
+    },
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "postingHeading": "In the posting: {{heading}}"
+  },
   "view": {
     "title": "Job details",
     "missingIdTitle": "Missing job id",

@@ -81,6 +81,19 @@ changed rows):
 uv run python -m job_crawler --recompute-derived
 ```
 
+### Description sections and seniority level (versioned)
+
+`sections.py` splits each description into canonical sections (about_company, responsibilities,
+requirements, benefits, … ; see `SECTION_KEYS`) and `level.py` finds the seniority (intern …
+director). Both are written on every upsert into `jobs.sections`, `jobs.level`, `jobs.level_source`,
+stamped with `jobs.sections_version = sections.VERSION`. After changing either rule set, bump
+`sections.VERSION`; the nightly `--recompute-derived` then re-parses every older row (it calls the
+backfill too). To run it by hand (batched, each batch committed, safe to stop and re-run):
+
+```bash
+uv run python -m job_crawler --backfill-sections --batch 500
+```
+
 ## CV matching (Claude)
 
 ```bash

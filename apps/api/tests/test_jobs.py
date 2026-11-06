@@ -80,6 +80,34 @@ def test_get_job_works_without_a_session_too():
     assert body["id"] == "1"
 
 
+def test_get_job_carries_sections_and_level():
+    sections = [
+        {"key": "about_company", "heading": "About us", "body": "Acme.", "summary": "Acme."},
+        {"key": "requirements", "heading": "Requirements", "body": "- Go", "summary": "Go"},
+    ]
+    conn = FakeJobsConn(
+        jobs=[
+            _job(sections=sections, level="senior", level_source="title"),
+            _job(id=2, sections=None, level=None),
+        ]
+    )
+    body = get_job(1, user=USER, conn=conn)
+    assert body["sections"] == sections
+    assert body["description"] == "Full job description."  # still there for the fallback
+    assert (body["level"], body["levelSource"]) == ("senior", "title")
+    plain = get_job(2, user=USER, conn=conn)
+    assert plain["sections"] is None
+    assert (plain["level"], plain["levelSource"]) == (None, None)
+
+
+def test_list_jobs_carries_level_but_not_sections():
+    conn = FakeJobsConn(jobs=[_job(level="intern", level_source="source", sections=[{}])])
+    (item,) = list_jobs(user=None, conn=conn)["items"]
+    assert (item["level"], item["levelSource"]) == ("intern", "source")
+    assert "sections" not in item
+    assert "description" not in item
+
+
 def test_get_job_missing_raises_404():
     conn = FakeJobsConn(jobs=[])
     with pytest.raises(HTTPException) as exc_info:

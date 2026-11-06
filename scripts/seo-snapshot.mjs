@@ -78,18 +78,27 @@ try {
   // Public catalogue fields only: the columns of GET /api/jobs/{id} (apps/api dto.py
   // JOB_DETAIL_COLUMNS) plus `last_seen_at` (sitemap lastmod, validThrough, "still listed on")
   // and `countries` (listings). Review any column added here: it is published in static HTML.
-  const rows = await sql.begin("read only", (tx) => tx`
+  // `sections` / `level` (migration 025) only when the database has them: a preview build reads
+  // the production database before its migrations are applied (scripts/migrate.mjs).
+  const rows = await sql.begin("read only", async (tx) => {
+    const [{ parsed }] = await tx`
+      SELECT count(*) = 3 AS parsed FROM information_schema.columns
+      WHERE table_name = 'jobs' AND table_schema = current_schema()
+        AND column_name IN ('sections', 'level', 'level_source')`;
+    const parsedColumns = parsed ? tx`, sections, level, level_source` : tx``;
+    return tx`
     SELECT id, source, url, apply_url, title, company, location, remote, employment_type,
            salary_text, tags, open_to, posted_at, first_seen_at, last_seen_at, timezones,
            timezone_source, tech_stack, countries, salary_min, salary_max, salary_currency,
-           salary_period, salary_source, description
+           salary_period, salary_source, description ${parsedColumns}
     FROM jobs
     WHERE source <> 'upwork'
       AND last_seen_at > now() - make_interval(days => ${ACTIVE_DAYS})
       AND length(coalesce(description, '')) >= ${MIN_DESCRIPTION}
     ORDER BY coalesce(posted_at, first_seen_at) DESC, id DESC
     LIMIT ${MAX_JOBS}
-  `);
+  `;
+  });
   const jobs = rows.filter((r) => webUrl(r.url)).map((r) => {
     const min = num(r.salary_min);
     const max = num(r.salary_max);
@@ -117,7 +126,10 @@ try {
       techStack: r.tech_stack ?? [],
       countries: r.countries ?? [],
       salary,
+      level: r.level ?? null,
+      levelSource: r.level ? (r.level_source ?? null) : null,
       description: r.description,
+      sections: Array.isArray(r.sections) && r.sections.length ? r.sections : null,
     };
   });
   await writeFile(outFile, JSON.stringify({ generatedAt: new Date().toISOString(), activeDays: ACTIVE_DAYS, jobs }));

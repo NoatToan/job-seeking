@@ -9,6 +9,7 @@ import { EN_UI_STRINGS, useUiStrings } from "../strings";
 import type { UiStrings } from "../strings";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
+import { LevelBadge } from "./level-badge";
 import { Avatar } from "./feedback";
 import { RemoteAccessBadge } from "./remote-access";
 import { LocationText } from "./location-text";
@@ -262,6 +263,7 @@ export function JobListItem({
           ) : null}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote">
+          <LevelBadge level={job.level} source={job.levelSource} size="sm" />
           {job.salaryText ? <span className="truncate font-semibold text-success-ink">{job.salaryText}</span> : null}
           {job.remote ? <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} /> : null}
         </div>

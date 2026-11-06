@@ -59,6 +59,11 @@ function UiStringsBridge({ children }: { children: ReactNode }) {
       today: t("ui.today"),
       daysAgo: (count) => t("ui.daysAgo", { count }),
       fit: { great: t("ui.fit.great"), good: t("ui.fit.good"), worth: t("ui.fit.worth"), long: t("ui.fit.long") },
+      levels: {
+        names: t("ui.levels.names", { returnObjects: true }) as UiStrings["levels"]["names"],
+        aria: (level) => t("ui.levels.aria", { level }),
+        from: t("ui.levels.from", { returnObjects: true }) as UiStrings["levels"]["from"],
+      },
     }),
     // `language` changes `t`'s output without changing `t`'s identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps

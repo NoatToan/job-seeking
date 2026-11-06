@@ -137,3 +137,61 @@ Status: accepted. Code: `apps/web/src/app/roadmap/`, `apps/api/src/ujc_api/route
   `/contribute/` links to it.
 - **Feedback panel** sizes to its content (no inner scrollbar at 1440x900 or 390x844, signed in or
   out); it only scrolls when the viewport is too short.
+
+## Job description sections and seniority level (2026-11-07)
+
+Request: show every job description with the same sections, headings and look, whatever the
+board's layout; and show each job's level with a recognisable badge. Code:
+`apps/crawler/src/job_crawler/sections.py`, `level.py`, `derived.parse_posting`,
+`db.backfill_sections`, `db/migrations/025_job_sections.sql`, `apps/web/src/app/jobs/jd-sections.tsx`,
+`packages/ui/src/components/level-badge.tsx`.
+
+- **Regex, no LLM.** Descriptions are stored as normalised plain text (`text.html_to_text`), so a
+  heading is a short line: ALL CAPS, `## …`, `**…**`, "…:" or Title Case followed by a list, or a
+  known phrase. A synonym table (English first, plus common de/fr/es/pt/vi headings) maps it to one
+  of 13 keys: `intro` (text before the first heading), `about_company`, `about_role`,
+  `responsibilities`, `requirements`, `nice_to_have`, `tech_stack`, `compensation`, `benefits`,
+  `location_remote`, `hiring_process`, `other`, `equal_opportunity`. Order matters in the table
+  ("Annual base salary range (excluding bonus)" is pay, not a bonus; "You'll thrive in this role if
+  you have" is requirements, not responsibilities). Unknown headings: inside a recognised section a
+  Title Case / "…:" line stays as a sub-heading of that section; after the intro, or when ALL CAPS /
+  markdown, it starts an `other` section with its heading kept. One-line "Salary: …" /
+  "Location: …" become their own sections. No text is ever dropped (a test checks every line).
+- **Stored, not computed per request:** `jobs.sections` JSONB `[{key, heading, body, summary}]`
+  (body = the section's text, already sanitised by the crawler like `description`; summary = the
+  first three list items or two sentences, ≤ 280 chars). Stored only when at least one non-intro
+  heading was recognised; otherwise NULL and the app shows the plain description as before.
+- **Level:** `jobs.level` (intern, junior, mid, senior, lead, manager, director) +
+  `jobs.level_source`: the board's own field first ("source": Himalayas `seniority`, Arc
+  `experienceLevel(s)`; several values → the lowest), then the title ("Senior", "Sr.", "Staff",
+  "Intern", "Werkstudent", "Engineer II", "Head of"; IC "Product/Account Manager" titles are not
+  managers; "Assistant to the CEO" is not a director), then the description (an explicit phrase,
+  else the smallest "N+ years of experience": ≤1 junior, 2–4 mid, ≥5 senior). The source is shown
+  as the badge tooltip so a guessed level reads as a guess.
+- **Versioning:** `jobs.sections_version` = `sections.VERSION` (1) of the rules that wrote
+  `sections` + `level`; 0 = not parsed. The upsert writes the current version. A rule change bumps
+  `VERSION`; `python -m job_crawler --backfill-sections [--batch N]` re-parses rows below it in
+  committed batches (`FOR UPDATE SKIP LOCKED`), so it is idempotent, resumable and never downgrades
+  rows written by newer code. **Production:** `--recompute-derived` (the "Recompute derived
+  columns" step of `daily-crawl.yml`, and anything else that calls it on a schedule) now runs the
+  backfill after the derived columns, so the first nightly run after migration 025 is applied
+  fills every existing row. One-off now: `cd apps/crawler && DATABASE_URL=… uv run python -m
+  job_crawler --backfill-sections`. Migration 025 is applied by the production Vercel build; the
+  crawl must not run against production before that deploy (same constraint as 018/019).
+  `scripts/seo-snapshot.mjs` reads `sections`/`level` only when the columns exist, so a preview
+  build against the un-migrated production database still works.
+- **Coverage** on 318 jobs sampled from the public API (all sources): 79% have ≥ 2 recognised
+  sections overall, **97.7% of the 256 full descriptions (≥ 800 chars)**; by source: Greenhouse
+  96%, Himalayas 97%, Lever 100%, Ashby 100%, Remotive 92%, We Work Remotely 80% (its RSS gives a
+  400-char summary for some jobs), SEEK 0% (teaser only), Arc / LinkedIn 0% (no description
+  stored). Unmapped headings left: 2 of ~1,490. Level found for 72% (Greenhouse 94%, Himalayas
+  100%, WWR 74%, Lever 58%, LinkedIn 60%, Arc 56% from titles only, Ashby 52%, Remotive 46%,
+  SEEK 20%); 36% from titles, 19% from the board, 17% from descriptions. Arc rows will rise once
+  the backfill reads their stored `experienceLevel`.
+- **UI:** fixed order (`JD_SECTION_KEYS`), one icon and one translated title (en + vi) per key,
+  the posting's own heading as a small subtitle; Requirements / Nice to have as checklists; short
+  benefits (3–16 items ≤ 60 chars) as chips; sections over 900 chars fold with "Show more" (open
+  when they contain a searched word); EEO always starts folded. Level badge: early career green,
+  IC ladder teal with a 1–4 bar meter, management amber with its own glyph; "Level: Senior" for
+  screen readers. Theme tokens only. The list API carries `level`; a level filter was left out (the
+  filter bar belongs to the sort/filter work).
