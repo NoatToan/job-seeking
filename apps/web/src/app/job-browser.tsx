@@ -183,7 +183,8 @@ export function JobBrowser({
 
   // lg: the two columns take exactly the room left under the filters, so the list (not the
   // window) scrolls and its last row is never below the fold. Re-measured whenever the page
-  // above changes height (filters wrap, the source strip loads) or the window resizes.
+  // above changes height (filters wrap, the source strip loads, the hero folds) or the window
+  // resizes.
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
@@ -200,6 +201,8 @@ export function JobBrowser({
     window.addEventListener("resize", fit);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
     observer?.observe(document.body);
+    // The home hero's headline folds while the body keeps its min-height, so watch it directly.
+    document.querySelectorAll("[data-hero-headline]").forEach((el) => observer?.observe(el));
     return () => {
       window.removeEventListener("resize", fit);
       observer?.disconnect();
@@ -401,6 +404,7 @@ export function JobBrowser({
       <div
         ref={scrollRef}
         data-testid="job-list-scroll"
+        data-collapses-hero
         className="lg:-mx-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-y-contain lg:px-1 lg:py-1"
       >
         <div ref={listRef} role="list" aria-label={t("list.jobsAriaLabel")} className="flex flex-col gap-2.5">

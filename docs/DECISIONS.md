@@ -59,3 +59,13 @@ One request per feed per day, plus one `robots.txt` per host; 1.5 s between feed
 ### B7. Sitemap
 
 The blog has its own `/sitemap-blog.xml` (blog index, topic hubs, roundups). It must be listed in the site's sitemap index / `robots.txt` (owned by the per-job SEO pages work), not merged into `sitemap.ts`, to keep the two features independent.
+
+## Home hero folds while browsing (2026-11-06)
+
+Tony asked for the "Find a tech job you'll love" block to collapse, either with a toggle or by hiding while the user browses jobs and coming back on hover. Both are in, with the search and filters always visible; only the headline (title, tagline, sources, sign-in CTA) folds.
+
+- **Auto:** scrolling the job list down past 160px folds it; back at the top it unfolds. 160px is more than the headline's own height, so folding it can never scroll a window-scrolled page back to 0 and flicker.
+- **Hover peek:** resting the mouse on the hero for 300ms opens it, leaving folds it after 350ms. The delay stops it opening every time the pointer crosses on its way to the filters. Touch never peeks. It stays open while a popover from the headline (the sources list) is open, because that popover is portaled outside the hero.
+- **Toggle:** a chevron at the end of the filter row. Folding with it pins the choice (localStorage `ujc:hero-collapsed`), which wins over hover; pressing it again unpins.
+- **Phones:** unchanged. Their hero is already compact (brand row and filters, tagline hidden).
+- The two-column browser's height is measured in JS; it now also observes the headline, because the shell's `min-h-dvh` keeps `body` the same size while the hero folds.

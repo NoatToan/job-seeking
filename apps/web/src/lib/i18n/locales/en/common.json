@@ -78,5 +78,9 @@
     "title": "Page not found",
     "message": "This link doesn't go anywhere. It may have moved, or the address has a typo.",
     "backToJobs": "Back to jobs"
+  },
+  "hero": {
+    "collapse": "Hide the headline",
+    "expand": "Show the headline"
   }
 }
