@@ -144,3 +144,43 @@ function Night() {
     </>
   );
 }
+
+/**
+ * Small filled weather glyph for the working-hours labels, coloured like a weather app's icons:
+ * a yellow sun by day, a half sun on a horizon line at dawn/dusk, a silver crescent with a star at
+ * night. Decorative; the label next to it says the same.
+ */
+export function WeatherIcon({ phase, size = 14, className }: { phase: DayPhase; size?: number; className?: string }) {
+  const maskId = useId();
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden className={cx("shrink-0", className)}>
+      {phase === "day" ? (
+        <>
+          <g stroke="var(--ujc-weather-sun-ray)" strokeWidth="1.4" strokeLinecap="round">
+            <path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M3.05 12.95l1.13-1.13M11.82 4.18l1.13-1.13" />
+          </g>
+          <circle cx="8" cy="8" r="3.6" fill="var(--ujc-weather-sun)" />
+        </>
+      ) : phase === "night" ? (
+        <>
+          <defs>
+            <mask id={maskId}>
+              <rect width="16" height="16" fill="white" />
+              <circle cx="10.6" cy="5.6" r="5" fill="black" />
+            </mask>
+          </defs>
+          <circle cx="7.2" cy="8.6" r="5.6" fill="var(--ujc-weather-moon)" mask={`url(#${maskId})`} />
+          <path d="M12.6 1.4l.45 1.15 1.15.45-1.15.45-.45 1.15-.45-1.15-1.15-.45 1.15-.45z" fill="var(--ujc-weather-star)" />
+        </>
+      ) : (
+        <>
+          <path d="M3 11a5 5 0 0 1 10 0z" fill={phase === "dawn" ? "var(--ujc-weather-dawn)" : "var(--ujc-weather-dusk)"} />
+          <g stroke="var(--ujc-weather-sun-ray)" strokeWidth="1.4" strokeLinecap="round">
+            <path d="M8 2.2v1.4M3.2 5.2l1 1M12.8 5.2l-1 1" />
+          </g>
+          <path d="M1.5 13h13" stroke="var(--ujc-weather-horizon)" strokeWidth="1.4" strokeLinecap="round" />
+        </>
+      )}
+    </svg>
+  );
+}

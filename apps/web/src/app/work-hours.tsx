@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { WeatherIcon } from "@/app/sky-scene";
 import type { Job } from "@ujc/core";
-import { Badge, Card, ClockIcon, FuzzySelect, MoonIcon, SunIcon } from "@ujc/ui";
+import { Badge, Card, ClockIcon, FuzzySelect } from "@ujc/ui";
 import type { SelectOption } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
@@ -21,16 +22,6 @@ import {
   zoneLabel,
   zoneOffsetMinutes,
 } from "@/lib/work-hours";
-
-/** Icon that reads at a glance next to the fit label: sun = daytime for you, clock = part of
- * your day, moon = evening / night shift. Text stays next to it (icons support, never replace). */
-const FIT_ICONS: Record<FitLevel, typeof SunIcon> = {
-  same: SunIcon,
-  good: SunIcon,
-  partial: ClockIcon,
-  evening: MoonIcon,
-  night: MoonIcon,
-};
 
 /** Translated labels for `FitLevel` (lib/work-hours.ts `FIT_LABELS` stays English-only so it is
  * directly testable without an i18n instance). */
@@ -103,12 +94,10 @@ export function WorkHoursBadge({ job }: { job: Job }) {
   if (!fit) return null;
   const abbr = shortZoneName(zone);
   return (
+    // Neutral pill + a weather-coloured sun/moon: the time of day reads from the icon, the fit
+    // from the words, and the row's sky scene isn't fighting a red or green badge.
     <Badge
-      tone={FIT_TONES[fit.level]}
-      icon={(() => {
-        const Icon = FIT_ICONS[fit.level];
-        return <Icon size={11} strokeWidth={2.25} aria-hidden />;
-      })()}
+      icon={<WeatherIcon phase={dayPhase(fit)} size={13} />}
       title={t("workHours.badgeTitle", {
         fit: fitLabels[fit.level],
         zone: zoneLabel(fit.zone),
@@ -199,7 +188,6 @@ export function WorkHoursCard({ job }: { job: Job }) {
   const hours = Math.round((fit.overlapMinutes / 60) * 10) / 10;
   const diffHours = fit.diffMinutes / 60;
   const abbr = shortZoneName(zone);
-  const FitIcon = FIT_ICONS[fit.level];
   const ahead =
     fit.diffMinutes === 0
       ? t("workHours.sameClock")
@@ -212,7 +200,7 @@ export function WorkHoursCard({ job }: { job: Job }) {
         <p className="flex items-center gap-2 text-headline text-label">
           <ClockIcon size={18} aria-hidden /> {t("workHours.cardTitle")}
         </p>
-        <Badge tone={FIT_TONES[fit.level]} icon={<FitIcon size={12} strokeWidth={2.25} aria-hidden />}>
+        <Badge tone={FIT_TONES[fit.level]} icon={<WeatherIcon phase={dayPhase(fit)} size={14} />}>
           {fitLabels[fit.level]}
         </Badge>
       </div>

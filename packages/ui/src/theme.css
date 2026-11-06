@@ -49,6 +49,14 @@
   /* Gradient for text (bg-clip-text): darker stops so the word keeps >= 3:1 on the page. */
   --ujc-brand-text-gradient: linear-gradient(90deg, #ea580c, #e11d48 55%, #9333ea);
   --ujc-sky-scrim: rgb(0 0 0 / 0.06);
+  /* Weather glyphs next to working-hours labels (apps/web WeatherIcon) */
+  --ujc-weather-sun: #fbbf24;
+  --ujc-weather-sun-ray: #f59e0b;
+  --ujc-weather-dawn: #fb923c;
+  --ujc-weather-dusk: #f97316;
+  --ujc-weather-horizon: #a8a29e;
+  --ujc-weather-moon: #94a3b8;
+  --ujc-weather-star: #818cf8;
 
   /* Backgrounds (systemBackground family, warmed 2-3% toward the tint) */
   --ujc-background: #ffffff;
@@ -178,6 +186,8 @@
     color-scheme: dark;
     --ujc-brand-text-gradient: linear-gradient(90deg, #fb923c, #fb7185 55%, #c084fc);
     --ujc-sky-scrim: rgb(0 0 0 / 0.22);
+    --ujc-weather-moon: #cbd5e1;
+    --ujc-weather-horizon: #78716c;
     --ujc-sky-day-top: rgb(56 189 248 / 0.32);
     --ujc-sky-day-bottom: rgb(14 165 233 / 0.1);
     --ujc-sky-night-top: rgb(67 56 202 / 0.45);
