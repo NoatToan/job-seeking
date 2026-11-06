@@ -16,6 +16,7 @@ from ujc_api.auth.session import clear_auth_cookies
 from ujc_api.db import get_conn
 from ujc_api.deps import app_settings
 from ujc_api.dto import CV_COLUMNS, cv_dto
+from ujc_api.routers.profile import read_profile
 from ujc_api.settings import Settings
 from ujc_api.validation import MAX_KEYWORD_LEN, MAX_KEYWORDS
 
@@ -74,16 +75,28 @@ def _onboarded_at(conn: psycopg.Connection, user_id: int) -> datetime | None:
     return row[0] if row else None
 
 
+def _display_identity(conn: psycopg.Connection, user_id: int) -> tuple[str | None, str | None]:
+    """`(display_name, headline)` from the editable profile (`/api/me/profile`)."""
+    row = conn.execute(
+        "SELECT display_name, headline FROM users WHERE id = %s", (user_id,)
+    ).fetchone()
+    return (row[0], row[1]) if row else (None, None)
+
+
 @router.get("")
 def get_me(
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
     settings: Settings = Depends(app_settings),
 ) -> dict:
+    display_name, headline = _display_identity(conn, user.id)
     return {
         "user": {
             "id": str(user.id),
             "email": user.email,
+            # Set on the "Edit profile" screen; the SPA falls back to the email when null.
+            "displayName": display_name,
+            "headline": headline,
             # Drives which screens the SPA shows; every admin route re-checks server-side.
             "role": user_role(conn, settings, user),
             "aiConsentAt": _iso(_ai_consent_at(conn, user.id)),
@@ -257,6 +270,7 @@ def get_export(
             "lastLoginAt": _iso(last_login_at),
             "aiConsentAt": _iso(ai_consent_at),
         },
+        "profile": read_profile(conn, user.id),
         "preferences": _preferences(conn, user.id),
         "cvs": [cv_dto(r) for r in cv_rows],
         "applications": [_export_application(r) for r in application_rows],

@@ -27,11 +27,17 @@ import { JobBrowserSkeleton } from "@/app/skeletons";
 import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
-/** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
+/** "linh@example.com" -> "Linh" (the fallback when no display name is set). */
 export function firstName(email: string): string {
   const local = email.split("@")[0] ?? email;
   const word = local.split(/[._+-]/)[0] ?? local;
   return word ? word[0].toUpperCase() + word.slice(1) : email;
+}
+
+/** Who the greeting addresses: the profile's display name as written (no "first word" guess —
+ * "Nguyễn Văn Linh" puts the given name last), else a name derived from the email. */
+export function greetingName(user: { email: string; displayName?: string | null }): string {
+  return user.displayName?.trim() || firstName(user.email);
 }
 
 export function greeting(): string {
@@ -89,7 +95,7 @@ function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
     }
   }
 
-  const title = me ? `${greeting()}, ${firstName(me.user.email)}` : "Feed";
+  const title = me ? `${greeting()}, ${greetingName(me.user)}` : "Feed";
 
   return (
     <>

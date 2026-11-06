@@ -13,7 +13,7 @@ import { useScrollRestoration } from "@/lib/view-cache";
 import { HomeHero, SourcesSummary } from "@/app/home-hero";
 import { SaveJobButton } from "@/app/save-job-button";
 import { useSession } from "@/lib/session";
-import { firstName, greeting } from "@/app/feed";
+import { greeting, greetingName } from "@/app/feed";
 import { JobBrowser } from "@/app/job-browser";
 import { JobBrowserSkeleton, SourcesPillSkeleton } from "@/app/skeletons";
 import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
@@ -61,7 +61,7 @@ export function PublicJobs({
         collapsedSummary={<JobFilterSummary filters={filters} />}
         title={
           me && signedIn ? (
-            `${greeting()}, ${firstName(me.user.email)}`
+            `${greeting()}, ${greetingName(me.user)}`
           ) : (
             <>
               Find a tech job you&apos;ll{" "}

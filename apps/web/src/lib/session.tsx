@@ -16,6 +16,9 @@ export interface SessionValue {
   /** Re-fetches `GET /api/me` and returns the fresh value (or `null` on failure). */
   refresh: () => Promise<MeResponse | null>;
   signOut: () => Promise<void>;
+  /** Optimistic local edit of the signed-in user (e.g. a new display name before the PATCH
+   * returns). No-op while signed out. Callers revert by mutating back on failure. */
+  mutate: (update: (me: MeResponse) => MeResponse) => void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -92,8 +95,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
+  const mutate = useCallback((update: (me: MeResponse) => MeResponse) => {
+    setMe((current) => (current ? update(current) : current));
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ me, loading, error, refresh, signOut }}>
+    <SessionContext.Provider value={{ me, loading, error, refresh, signOut, mutate }}>
       {children}
     </SessionContext.Provider>
   );

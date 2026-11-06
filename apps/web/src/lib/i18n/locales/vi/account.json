@@ -42,8 +42,14 @@
     "title": "Personal access token",
     "description": "Cho phép Claude của riêng bạn (qua <code>apps/mcp</code>) đọc bảng tin và quản lý đơn ứng tuyển của bạn. Chỉ chọn những quyền bạn cần.",
     "scopes": {
-      "jobsRead": { "label": "Đọc việc làm", "hint": "Bảng tin, chi tiết việc làm và tìm kiếm trực tiếp." },
-      "applicationsWrite": { "label": "Đọc & ghi đơn ứng tuyển", "hint": "Liệt kê, lưu và cập nhật đơn ứng tuyển đang theo dõi." }
+      "jobsRead": {
+        "label": "Đọc việc làm",
+        "hint": "Bảng tin, chi tiết việc làm và tìm kiếm trực tiếp."
+      },
+      "applicationsWrite": {
+        "label": "Đọc & ghi đơn ứng tuyển",
+        "hint": "Liệt kê, lưu và cập nhật đơn ứng tuyển đang theo dõi."
+      }
     },
     "neverExpiry": "Không bao giờ",
     "copyNowWarning": "Sao chép token của bạn ngay bây giờ — token sẽ không hiển thị lại nữa.",
@@ -62,7 +68,9 @@
     "createButton": "Tạo token",
     "loadingAria": "Đang tải token của bạn",
     "loadingSpinnerLabel": "Đang tải",
-    "loadError": { "title": "Không thể tải token của bạn" },
+    "loadError": {
+      "title": "Không thể tải token của bạn"
+    },
     "empty": "Chưa có token nào.",
     "errors": {
       "nameRequired": "Đặt tên cho token, ví dụ \"Laptop của tôi\".",
@@ -70,5 +78,51 @@
       "expiryRange": "Thời hạn phải từ 1 đến 365 ngày.",
       "createFailed": "Không thể tạo token."
     }
+  },
+  "profile": {
+    "title": "Sửa hồ sơ",
+    "intro": "Cách bạn hiển thị trong ứng dụng, nơi bạn sống và công việc bạn đang tìm.",
+    "avatarHint": "Ảnh đại diện được tạo từ chữ cái đầu tên bạn. Chưa hỗ trợ tải ảnh lên.",
+    "about": {
+      "header": "Về bạn",
+      "displayName": "Tên hiển thị",
+      "displayNameHint": "Hiển thị trong menu và lời chào thay cho email. Tối đa 60 ký tự.",
+      "headline": "Giới thiệu ngắn",
+      "headlinePlaceholder": "VD: Lập trình viên React cấp cao",
+      "headlineHint": "Một dòng, tối đa 120 ký tự."
+    },
+    "location": {
+      "header": "Nơi ở & giờ",
+      "basedIn": "Đang sống ở",
+      "selectCountry": "Chưa chọn",
+      "basedInHint": "Dùng để biết việc remote nào nhận bạn.",
+      "timeZone": "Múi giờ",
+      "timeZoneHint": "Giờ làm việc trên tin tuyển dụng và bản tin hằng ngày dùng múi giờ này."
+    },
+    "links": {
+      "header": "Liên kết",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "website": "Portfolio hoặc website",
+      "hint": "Địa chỉ đầy đủ bắt đầu bằng https://.",
+      "invalid": "Nhập địa chỉ đầy đủ bắt đầu bằng https://.",
+      "wrongHost": "Địa chỉ này phải thuộc {{host}}."
+    },
+    "prefs": {
+      "header": "Tuỳ chọn tìm việc",
+      "keywords": "Từ khoá",
+      "keywordsPlaceholder": "Thêm từ khoá rồi nhấn Enter",
+      "keywordsHint": "Bảng tin của bạn khớp việc theo các từ khoá này. Tối đa 30.",
+      "remoteOnly": "Chỉ việc remote",
+      "removeKeyword": "Xoá {{keyword}}",
+      "tooMany": "Tối đa 30 từ khoá."
+    },
+    "save": "Lưu hồ sơ",
+    "savedToast": "Đã lưu hồ sơ",
+    "saveFailedTitle": "Không lưu được hồ sơ",
+    "reverted": "Thông tin cũ của bạn đã được khôi phục.",
+    "loadError": "Không tải được hồ sơ.",
+    "nothingChanged": "Không có thay đổi để lưu",
+    "fixErrors": "Hãy sửa các ô được đánh dấu trước."
   }
 }

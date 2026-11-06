@@ -76,7 +76,15 @@
     "accountPrivacy": "Account & privacy",
     "signOut": "Sign out",
     "roadmap": "Roadmap",
-    "releaseNotes": "What's new"
+    "releaseNotes": "What's new",
+    "profile": "Profile",
+    "forYou": "For you",
+    "editProfile": "Edit profile",
+    "profileMenu": "Profile menu",
+    "openProfileMenu": "Profile menu for {{name}}",
+    "menuJobSearch": "Your job search",
+    "menuCommunity": "Community",
+    "menuAccount": "Account"
   },
   "loading": "Loading…",
   "tryAgain": "Try again",

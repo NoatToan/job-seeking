@@ -131,10 +131,33 @@ export interface MeResponse {
     onboardedAt: string | null;
     /** Only decides what the SPA shows; every admin endpoint re-checks it server-side. */
     role: UserRole;
+    /** Name chosen on "Edit profile" (`/api/me/profile`); `null` until set — show the email then.
+     * Optional so older fixtures and an API without migration 025 still type-check. */
+    displayName?: string | null;
+    /** One-line headline, e.g. "Senior React developer". */
+    headline?: string | null;
   };
   preferences: Preferences;
   latestCv: Cv | null;
 }
+
+/** `GET/PATCH /api/me/profile`: the editable profile. Location and time zone are the same values
+ * as `Preferences.candidateCountry` / `Preferences.digestTz` (one source of truth). */
+export interface UserProfile {
+  displayName: string | null;
+  headline: string | null;
+  /** Absolute https URLs; LinkedIn/GitHub must be on linkedin.com / github.com. */
+  links: { linkedin: string | null; github: string | null; website: string | null };
+  candidateCountry: string | null;
+  timeZone: string;
+  keywords: string[];
+  remoteOnly: boolean;
+}
+
+/** `PATCH /api/me/profile` body: only the keys sent change; `null` (or "") clears a text field. */
+export type UserProfilePatch = Partial<Omit<UserProfile, "links">> & {
+  links?: Partial<UserProfile["links"]>;
+};
 
 /** `GET /api/feed`: the user's personalised, keyset-paginated feed. */
 export interface FeedPage {

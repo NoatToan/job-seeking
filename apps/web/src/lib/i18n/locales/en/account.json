@@ -42,8 +42,14 @@
     "title": "Personal access tokens",
     "description": "Let your own Claude (via <code>apps/mcp</code>) read your feed and manage your applications. Pick only the scopes you need.",
     "scopes": {
-      "jobsRead": { "label": "Read jobs", "hint": "Feed, job detail and live search." },
-      "applicationsWrite": { "label": "Read & write applications", "hint": "List, save and update tracked applications." }
+      "jobsRead": {
+        "label": "Read jobs",
+        "hint": "Feed, job detail and live search."
+      },
+      "applicationsWrite": {
+        "label": "Read & write applications",
+        "hint": "List, save and update tracked applications."
+      }
     },
     "neverExpiry": "Never",
     "copyNowWarning": "Copy your token now — it won't be shown again.",
@@ -62,7 +68,9 @@
     "createButton": "Create token",
     "loadingAria": "Loading your tokens",
     "loadingSpinnerLabel": "Loading",
-    "loadError": { "title": "We couldn't load your tokens" },
+    "loadError": {
+      "title": "We couldn't load your tokens"
+    },
     "empty": "No tokens yet.",
     "errors": {
       "nameRequired": "Give the token a name, e.g. \"My laptop\".",
@@ -70,5 +78,51 @@
       "expiryRange": "Expiry must be between 1 and 365 days.",
       "createFailed": "Could not create the token."
     }
+  },
+  "profile": {
+    "title": "Edit profile",
+    "intro": "How you appear in the app, where you are, and what you are looking for.",
+    "avatarHint": "Your avatar is made from your initials. Photo upload isn't available yet.",
+    "about": {
+      "header": "About you",
+      "displayName": "Display name",
+      "displayNameHint": "Shown in the menu and greetings instead of your email. Up to 60 characters.",
+      "headline": "Headline",
+      "headlinePlaceholder": "e.g. Senior React developer",
+      "headlineHint": "One line, up to 120 characters."
+    },
+    "location": {
+      "header": "Location & time",
+      "basedIn": "Based in",
+      "selectCountry": "Not set",
+      "basedInHint": "Used to tell which remote jobs accept you.",
+      "timeZone": "Time zone",
+      "timeZoneHint": "Working hours on job posts and your daily digest use this zone."
+    },
+    "links": {
+      "header": "Links",
+      "linkedin": "LinkedIn",
+      "github": "GitHub",
+      "website": "Portfolio or website",
+      "hint": "Full https:// addresses.",
+      "invalid": "Enter a full https:// address.",
+      "wrongHost": "This should be a {{host}} address."
+    },
+    "prefs": {
+      "header": "Job preferences",
+      "keywords": "Keywords",
+      "keywordsPlaceholder": "Add a keyword and press Enter",
+      "keywordsHint": "Your feed matches jobs on these. Up to 30.",
+      "remoteOnly": "Remote only",
+      "removeKeyword": "Remove {{keyword}}",
+      "tooMany": "Up to 30 keywords."
+    },
+    "save": "Save profile",
+    "savedToast": "Profile saved",
+    "saveFailedTitle": "Couldn't save your profile",
+    "reverted": "Your previous details are back.",
+    "loadError": "Couldn't load your profile.",
+    "nothingChanged": "No changes to save",
+    "fixErrors": "Fix the highlighted fields first."
   }
 }

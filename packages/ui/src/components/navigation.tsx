@@ -96,6 +96,11 @@ export interface NavItem {
   icon: ReactNode;
   /** Small count (e.g. new matches). */
   badge?: number;
+  /** TabBar only: render a button that calls this instead of a link (e.g. a "Profile" tab that
+   * opens the account sheet). `href` is then unused. */
+  onSelect?: () => void;
+  /** TabBar only, with `onSelect`: what the button opens (`aria-haspopup`). */
+  popup?: "dialog" | "menu";
 }
 
 export interface BrandMarkProps {
@@ -278,26 +283,42 @@ export function TabBar({ items, activeKey, linkAs: LinkAs = "a", label, fixed = 
       <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
         {items.map((item) => {
           const active = item.key === activeKey;
+          const className = cx(
+            "relative flex h-[52px] w-full flex-col items-center justify-center gap-0.5 text-caption font-medium focus-ring focus-visible:-outline-offset-4",
+            active ? "text-tint" : "text-label-tertiary hover:text-label-secondary",
+          );
+          const content = (
+            <>
+              <span aria-hidden className="relative">
+                {item.icon}
+                {item.badge ? (
+                  <span className="absolute -top-1 -right-2.5 min-w-4 rounded-full bg-danger px-1 text-center text-micro text-background tabular-nums">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </span>
+              <span>{item.label}</span>
+            </>
+          );
           return (
             <li key={item.key}>
-              <LinkAs
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cx(
-                  "relative flex h-[52px] flex-col items-center justify-center gap-0.5 text-caption font-medium focus-ring focus-visible:-outline-offset-4",
-                  active ? "text-tint" : "text-label-tertiary hover:text-label-secondary",
-                )}
-              >
-                <span aria-hidden className="relative">
-                  {item.icon}
-                  {item.badge ? (
-                    <span className="absolute -top-1 -right-2.5 min-w-4 rounded-full bg-danger px-1 text-center text-micro text-background tabular-nums">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </span>
-                <span>{item.label}</span>
-              </LinkAs>
+              {item.onSelect ? (
+                // A tab that opens something (the profile sheet) rather than navigating. `active`
+                // means "the page on screen is one of the places it lists", so it stays tinted.
+                <button
+                  type="button"
+                  onClick={item.onSelect}
+                  aria-haspopup={item.popup ?? "dialog"}
+                  data-active={active || undefined}
+                  className={className}
+                >
+                  {content}
+                </button>
+              ) : (
+                <LinkAs href={item.href} aria-current={active ? "page" : undefined} className={className}>
+                  {content}
+                </LinkAs>
+              )}
             </li>
           );
         })}

@@ -22,6 +22,8 @@ import type {
   SourceInfo,
   TokenScope,
   UpworkSearchPage,
+  UserProfile,
+  UserProfilePatch,
 } from "@ujc/core";
 
 /**
@@ -250,6 +252,17 @@ export function updatePreferences(input: Preferences): Promise<{ preferences: Pr
     method: "PUT",
     body: input,
   });
+}
+
+/** `GET /api/me/profile` — the editable profile (name, headline, links, location, time zone, job
+ * preferences). */
+export function getProfile(): Promise<{ profile: UserProfile }> {
+  return apiFetch<{ profile: UserProfile }>("/api/me/profile");
+}
+
+/** `PATCH /api/me/profile` — only the keys sent change; returns the saved profile. */
+export function updateProfile(patch: UserProfilePatch): Promise<{ profile: UserProfile }> {
+  return apiFetch<{ profile: UserProfile }>("/api/me/profile", { method: "PATCH", body: patch });
 }
 
 /** `POST /api/me/consent` — agree to send CV text to the LLM provider (Claude) for extraction.

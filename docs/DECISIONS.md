@@ -245,3 +245,42 @@ Setup: [`DEVELOPMENT.md`](DEVELOPMENT.md) "Release notes".
   commits on GitHub, and an Atom feed (`feed.xml`, built at export time). Linked from a "What's new
   · <date>" chip in the public home hero and from the account sheet; the TopNav was left alone
   (other work touches it, and the chip already reaches signed-out visitors on every screen size).
+
+## Navigation: public tabs + profile menu; editable profile (2026-11-07)
+
+Status: accepted. Code: `apps/web/src/app/nav.tsx`, `apps/web/src/app/profile-menu.tsx`,
+`apps/web/src/app/profile/`, `apps/api/src/ujc_api/routers/profile.py`,
+`db/migrations/026_user_profile.sql`.
+
+- **Why.** Signed in, the desktop top bar had seven text tabs (Jobs, Live search, Tracker, My CV,
+  Connections, Blog, Roadmap) and read as cluttered. Public places and personal tools were mixed.
+- **Desktop top bar = public places only**: Jobs, Roadmap (`usePublicNavItems`; Release notes is
+  appended there when it lands; the blog stays hidden). Right side: GitHub, theme, language, then
+  "Sign in" (signed out) or the avatar (signed in).
+- **Profile menu (avatar)**: header with display name, headline and email; then "Your job search"
+  (For you, Live search, Tracker, My CV, Connections), "Community" (Contribute, Review feedback
+  for admins), "Account" (Edit profile, Account & privacy), Sign out. Live search counts as
+  personal: it needs a session and uses the user's own rate limit. ARIA menu-button pattern
+  (Enter/Space/ArrowDown open on the first item, ArrowUp on the last, arrows wrap, Home/End, Esc
+  and Tab close and return focus to the avatar, outside click closes). When the page on screen is
+  in the menu the avatar shows a tint ring and the item is `aria-current="page"`.
+- **Phones (< md)**: the tab bar keeps the most used places — Jobs, Tracker, CV — plus a Profile tab
+  that opens the same menu as a sheet (For you, Live search, Connections, Contribute, Roadmap, Edit
+  profile, Account & privacy, theme, Sign out). The Profile tab is tinted while one of those pages
+  is open. Live search and Connections lost their tabs: they are used far less than the
+  tracker and the CV, and four tabs leave each one a wider target. Signed out: Jobs, Roadmap,
+  Sign in. The per-page phone header avatar (`AccountMenu`) now renders only "Sign in" for
+  visitors and nothing once signed in, so there is one way into the account, not two.
+- **Edit profile (`/profile/`, `GET/PATCH /api/me/profile`)**: display name (1-60, single line, no
+  control/bidi characters), headline (1-120), LinkedIn / GitHub / website (https only, no
+  credentials, LinkedIn and GitHub must be on their own domains, max 300), plus the existing
+  based-in country, time zone and keywords / remote only. Country and time zone are *not*
+  duplicated: they stay `user_preferences.candidate_country` / `digest_tz`, which the feed and the
+  digest already read. `PATCH` is partial (only keys sent change, `null` clears), CSRF-protected,
+  and rejects unknown keys. The form saves optimistically (menu name and greeting update at once)
+  and rolls back with an error toast if the API refuses.
+- **Avatar: generated, no upload.** Initials + a colour derived from the name (`Avatar`). Upload is
+  skipped: it needs object storage, image re-encoding to strip metadata/polyglots, size limits and
+  moderation — not "simple and safe" for this release.
+- **Display name** replaces the email in the menu and the home greeting ("Good morning, Linh
+  Nguyen"); it is used as written, because Vietnamese names put the given name last.

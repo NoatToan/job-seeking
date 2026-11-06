@@ -75,7 +75,15 @@
     "accountPrivacy": "Tài khoản & quyền riêng tư",
     "signOut": "Đăng xuất",
     "roadmap": "Lộ trình",
-    "releaseNotes": "Có gì mới"
+    "releaseNotes": "Có gì mới",
+    "profile": "Hồ sơ",
+    "forYou": "Dành cho bạn",
+    "editProfile": "Sửa hồ sơ",
+    "profileMenu": "Menu hồ sơ",
+    "openProfileMenu": "Menu hồ sơ của {{name}}",
+    "menuJobSearch": "Tìm việc của bạn",
+    "menuCommunity": "Cộng đồng",
+    "menuAccount": "Tài khoản"
   },
   "loading": "Đang tải…",
   "tryAgain": "Thử lại",
