@@ -26,6 +26,7 @@ import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
 import { TimezonePicker } from "@/app/work-hours";
+import { CountryFilter } from "@/app/country-filter";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -49,6 +50,7 @@ function FeedInner() {
   const [q, setQ] = useViewState("feed:q", "");
   const [source, setSource] = useViewState("feed:source", "");
   const [bestMatches, setBestMatches] = useViewState("feed:best", false);
+  const [country, setCountry] = useViewState("feed:country", "");
   const [feedKeywords, setFeedKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -65,16 +67,17 @@ function FeedInner() {
         q: q || undefined,
         source: source || undefined,
         sort: bestMatches ? "score" : undefined,
+        country: country || undefined,
       }),
-    [q, source, bestMatches],
+    [q, source, bestMatches, country],
   );
   const onPage = useCallback((page: FeedPage) => setFeedKeywords(page.keywords), []);
 
-  const listKey = `feed:${JSON.stringify([q, source, bestMatches])}`;
+  const listKey = `feed:${JSON.stringify([q, source, bestMatches, country])}`;
   const { items, nextCursor, loading, error, initialized, loadMore, retry, restored } = useInfiniteList<
     Job,
     FeedPage
-  >(fetchPage, [q, source, bestMatches], { onPage, cacheKey: listKey });
+  >(fetchPage, [q, source, bestMatches, country], { onPage, cacheKey: listKey });
   useScrollRestoration(listKey, restored);
 
   async function handleRefreshScores() {
@@ -133,6 +136,7 @@ function FeedInner() {
             {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
             Refresh scores
           </button>
+          <CountryFilter value={country} onChange={setCountry} />
           <TimezonePicker />
         </div>
         <SearchField value={draftQ} onChange={setDraftQ} label="Filter your feed" placeholder="Filter your feed" />

@@ -136,6 +136,11 @@ export interface FeedPage {
 /** `GET /api/jobs`: the public job catalogue, newest first, keyset-paginated. No sign-in
  * required (the home page shows this to a signed-out visitor instead of the personalised
  * `FeedPage`). `total` is an approximate/cheap count when present, and may be omitted. */
+/** `GET /api/jobs/facets`: filter options with how many jobs each one has. */
+export interface JobFacets {
+  countries: { code: string; count: number }[];
+}
+
 export interface PublicJobsPage {
   items: Job[];
   nextCursor: string | null;

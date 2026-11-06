@@ -472,3 +472,23 @@ def test_put_preferences_updates_and_validates(client: TestClient):
     }
     too_many = client.put("/api/me/preferences", json=too_many_body, headers={"X-CSRF-Token": csrf})
     assert too_many.status_code == 400
+
+
+def test_public_jobs_country_filter_and_facets(client: TestClient, migrated_database_url: str):
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        for ext, countries in (("de-1", ["DE"]), ("de-fr", ["DE", "FR"]), ("vn", ["VN"])):
+            conn.execute(
+                "INSERT INTO jobs (source, external_id, url, title, company, remote, countries)"
+                " VALUES ('country-test', %s, %s, %s, 'Acme', false, %s)",
+                (ext, f"https://example.test/{ext}", f"Country {ext}", countries),
+            )
+
+    resp = client.get("/api/jobs", params={"source": "country-test", "country": "de"})
+    assert resp.status_code == 200, resp.text
+    assert sorted(i["title"] for i in resp.json()["items"]) == ["Country de-1", "Country de-fr"]
+
+    facets = client.get("/api/jobs/facets")
+    assert facets.status_code == 200, facets.text
+    counts = {f["code"]: f["count"] for f in facets.json()["countries"]}
+    assert counts["DE"] >= 2
+    assert counts["VN"] >= 1

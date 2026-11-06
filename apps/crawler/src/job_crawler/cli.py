@@ -34,9 +34,12 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="re-derive who may apply (open_to) for all stored jobs, then exit",
     )
     parser.add_argument(
+        "--recompute-derived",
         "--recompute-timezones",
+        dest="recompute_derived",
         action="store_true",
-        help="re-derive the working time zones of all stored jobs, then exit",
+        help="re-derive open_to, time zones, countries, … (job_crawler.derived) for all stored"
+        " jobs, then exit",
     )
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
@@ -62,8 +65,8 @@ def main(argv: list[str] | None = None) -> int:
             log.info("open_to updated on %d jobs", db.recompute_open_to(conn))
             conn.close()
             return 0
-        if args.recompute_timezones:
-            log.info("timezones updated on %d jobs", db.recompute_timezones(conn))
+        if args.recompute_derived:
+            log.info("derived columns updated on %d jobs", db.recompute_derived(conn))
             conn.close()
             return 0
 

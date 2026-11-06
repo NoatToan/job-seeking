@@ -26,6 +26,7 @@ from ujc_api.dto import (
     job_sort_key,
     source_dto,
 )
+from ujc_api.feed_query import COUNTRY_CLAUSE
 
 router = APIRouter(tags=["jobs"])
 
@@ -76,6 +77,7 @@ def list_jobs(
     q: str | None = None,
     source: str | None = None,
     remote: bool | None = None,
+    country: str | None = None,
     user: AuthedUser | None = Depends(optional_user),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -108,6 +110,10 @@ def list_jobs(
     if remote:
         clauses.append("remote = true")
 
+    if country:
+        clauses.append(COUNTRY_CLAUSE)
+        params.append(country.upper())
+
     if cursor_state:
         cursor_t, cursor_i = cursor_state
         clauses.append("(coalesce(posted_at, first_seen_at), id) < (%s, %s)")
@@ -128,6 +134,19 @@ def list_jobs(
         next_cursor = encode_feed_cursor(*job_sort_key(page[-1]))
 
     return {"items": [job_dto(r) for r in page], "nextCursor": next_cursor}
+
+
+# Declared before `/api/jobs/{job_id}` so "facets" isn't parsed as a job id.
+@router.get("/api/jobs/facets")
+def get_job_facets(conn: psycopg.Connection = Depends(get_conn)) -> dict:
+    """Filter options with job counts, most common first: `countries` (ISO codes from
+    `jobs.countries`). Public, like the catalogue itself."""
+    rows = conn.execute(
+        "SELECT c, count(*) FROM jobs, unnest(countries) AS c"
+        " WHERE source != %s GROUP BY c ORDER BY count(*) DESC, c",
+        (_EXCLUDED_SOURCES,),
+    ).fetchall()
+    return {"countries": [{"code": code, "count": count} for code, count in rows]}
 
 
 @router.get("/api/jobs/{job_id}")
