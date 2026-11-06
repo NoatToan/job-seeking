@@ -57,9 +57,34 @@ export function offsetLabel(minutes: number): string {
   return `UTC${sign}${h}${m ? `:${String(m).padStart(2, "0")}` : ""}`;
 }
 
-/** Short name for the user's zone on job rows: "GMT+7", "EST", "CET" (Intl's own abbreviation;
- * falls back to "UTC+7"). */
+/** Familiar abbreviations for zones where Intl only says "GMT+7" (en-US knows few outside the
+ * Americas / Europe). Vietnam is "VNT", as the team calls it. */
+const ZONE_ABBREVIATIONS: Record<string, string> = {
+  "Asia/Ho_Chi_Minh": "VNT",
+  "Asia/Bangkok": "ICT",
+  "Asia/Phnom_Penh": "ICT",
+  "Asia/Vientiane": "ICT",
+  "Asia/Singapore": "SGT",
+  "Asia/Kuala_Lumpur": "MYT",
+  "Asia/Manila": "PHT",
+  "Asia/Jakarta": "WIB",
+  "Asia/Hong_Kong": "HKT",
+  "Asia/Shanghai": "CST",
+  "Asia/Taipei": "CST",
+  "Asia/Tokyo": "JST",
+  "Asia/Seoul": "KST",
+  "Asia/Kolkata": "IST",
+  "Asia/Karachi": "PKT",
+  "Asia/Dhaka": "BST",
+  "Asia/Dubai": "GST",
+  "Australia/Perth": "AWST",
+};
+
+/** Short name for the user's zone on job rows: "VNT", "EST", "CET" (our list, then Intl's own
+ * abbreviation; falls back to "UTC+7"). */
 export function shortZoneName(zone: string, at: Date = new Date()): string {
+  const known = ZONE_ABBREVIATIONS[canonicalZone(zone)];
+  if (known) return known;
   const fixed = FIXED_OFFSET.exec(zone);
   if (!fixed) {
     try {

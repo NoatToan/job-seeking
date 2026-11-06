@@ -26,8 +26,10 @@ describe("zoneOffsetMinutes", () => {
 });
 
 describe("shortZoneName", () => {
-  it("uses Intl's abbreviation, or the offset for fixed zones", () => {
-    expect(shortZoneName("Asia/Ho_Chi_Minh", WINTER)).toBe("GMT+7");
+  it("uses our abbreviation (VNT…), then Intl's, then the offset for fixed zones", () => {
+    expect(shortZoneName("Asia/Ho_Chi_Minh", WINTER)).toBe("VNT");
+    expect(shortZoneName("Asia/Saigon", WINTER)).toBe("VNT");
+    expect(shortZoneName("Asia/Singapore", WINTER)).toBe("SGT");
     expect(shortZoneName("America/New_York", WINTER)).toBe("EST");
     expect(shortZoneName("UTC+05:30")).toBe("UTC+5:30");
   });
