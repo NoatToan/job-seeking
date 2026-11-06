@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import { Home } from "./home";
+import { HomeSkeleton } from "./skeletons";
 
 // Canonical only here and on /privacy/: job pages (`/jobs/view/?id=…`) set their own in the
 // browser, and must not inherit "/" from the layout.
@@ -49,7 +50,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }}
       />
       {/* `Home` reads the filters from the URL (nuqs), so it renders in the browser. */}
-      <Suspense fallback={<p className="px-4 py-8 text-body text-label-secondary">Loading…</p>}>
+      <Suspense fallback={<HomeSkeleton />}>
         <Home />
       </Suspense>
     </>

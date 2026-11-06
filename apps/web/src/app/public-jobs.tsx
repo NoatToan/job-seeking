@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Job, PublicJobsPage } from "@ujc/core";
-import { buttonClasses, EmptyState, JobCardSkeleton, RefreshIcon, SparklesIcon, Spinner } from "@ujc/ui";
+import { buttonClasses, EmptyState, RefreshIcon, SparklesIcon, Spinner } from "@ujc/ui";
 import { getPublicJobs, getSources } from "@/lib/api";
 import { LoadMoreSentinel } from "@/lib/load-more-sentinel";
 import { useApi } from "@/lib/use-api";
@@ -15,6 +15,7 @@ import { SaveJobButton } from "@/app/save-job-button";
 import { useSession } from "@/lib/session";
 import { firstName, greeting } from "@/app/feed";
 import { JobBrowser } from "@/app/job-browser";
+import { JobBrowserSkeleton, SourcesPillSkeleton } from "@/app/skeletons";
 import { JobFilterBar, JobFilterSummary, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
@@ -35,7 +36,7 @@ export function PublicJobs({
 } = {}) {
   const { me } = useSession();
   const filters = useJobFilters("public");
-  const { data: sources } = useApi(getSources, [], { cacheKey: "sources" });
+  const { data: sources, error: sourcesError } = useApi(getSources, [], { cacheKey: "sources" });
 
   const { params: filterParams } = filters;
   const fetchPage = useCallback(
@@ -88,7 +89,8 @@ export function PublicJobs({
         aside={
           <>
             {modeSwitch}
-            <SourcesSummary sources={sources ?? []} />
+            {/* Hold the pill's place while sources load, so the hero doesn't grow under the reader. */}
+            {sources || sourcesError ? <SourcesSummary sources={sources ?? []} /> : <SourcesPillSkeleton />}
             <span className={signedIn ? "hidden" : "hidden lg:inline-flex"}>
               <Link href="/login/" className={buttonClasses({ size: "sm", className: "rounded-full px-4" })}>
                 <SparklesIcon size={16} />
@@ -103,11 +105,7 @@ export function PublicJobs({
 
       <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-4 sm:px-6">
         {loading && items.length === 0 ? (
-          <div aria-busy="true" aria-label="Loading jobs" className="flex flex-col gap-3">
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-            <JobCardSkeleton />
-          </div>
+          <JobBrowserSkeleton label="Loading jobs" actions={signedIn} />
         ) : error ? (
           <EmptyState
             tone="error"

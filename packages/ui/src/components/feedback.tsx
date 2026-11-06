@@ -7,26 +7,175 @@ import { CheckIcon } from "../icons";
 
 /** Placeholder block. Decorative: put aria-busy + an accessible label on the container. */
 export function Skeleton({ className }: { className?: string }) {
-  return <span aria-hidden className={cx("block animate-shimmer rounded-control-sm bg-fill-secondary", className)} />;
+  return (
+    <span
+      aria-hidden
+      className={cx("block animate-shimmer rounded-control-sm bg-fill-secondary motion-reduce:animate-none", className)}
+    />
+  );
 }
 
-/** Same footprint as JobCard, so the list does not jump when data arrives. */
-export function JobCardSkeleton() {
+/**
+ * One line of text as a placeholder: the box is exactly one line tall in the given text style
+ * (`h-[1lh]`), with a bar about the height of the glyphs inside, so stacked lines keep the real
+ * text's rhythm (including the desktop type scale) and nothing shifts when the text arrives.
+ */
+export function SkeletonText({ text, className }: { /** Text style, e.g. "text-body leading-relaxed". */ text: string; /** Bar width. */ className?: string }) {
   return (
-    <div aria-hidden className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
+    <span aria-hidden className={cx("flex h-[1lh] items-center", text)}>
+      <Skeleton className={cx("h-[0.7em]", className)} />
+    </span>
+  );
+}
+
+/** Same footprint as `JobCard`, block for block (header, badges, meta line, action row), so the
+ * list does not jump when data arrives. `actions`: the card has a bottom action row. */
+export function JobCardSkeleton({ actions = false }: { actions?: boolean }) {
+  return (
+    <div aria-hidden data-skeleton="job-card" className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
       <div className="flex items-start gap-3">
         <Skeleton className="size-10 shrink-0 rounded-control" />
-        <div className="flex flex-1 flex-col gap-2">
-          <Skeleton className="h-4 w-3/5" />
-          <Skeleton className="h-3 w-2/5" />
+        <div className="min-w-0 flex-1">
+          <SkeletonText text="text-headline" className="w-3/5" />
+          <SkeletonText text="mt-0.5 text-subheadline" className="w-2/5" />
         </div>
-        <Skeleton className="size-10 shrink-0 rounded-full" />
       </div>
-      <Skeleton className="h-3 w-4/5" />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Skeleton className="h-6 w-24 rounded-full" />
-        <Skeleton className="h-6 w-16 rounded-full" />
+        <Skeleton className="h-6 w-28 rounded-full" />
       </div>
+      <div className="flex items-center gap-x-3">
+        <SkeletonText text="text-footnote" className="w-24" />
+        <SkeletonText text="text-footnote" className="w-16" />
+        <SkeletonText text="text-footnote" className="w-14" />
+      </div>
+      {actions ? (
+        <div className="-mx-1 flex items-center justify-end gap-2 hairline-t pt-2">
+          <Skeleton className="h-8 w-20 rounded-control-sm" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Same footprint as `JobListItem` (40px avatar, two-line title, company · place, salary / remote,
+ * working-hours pill, source · age footer), so the home list does not jump when rows arrive. */
+export function JobListItemSkeleton({ actions = false }: { /** Row has a Save button in the footer. */ actions?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      data-skeleton="job-list-item"
+      className="flex gap-3 rounded-[18px] border border-separator bg-background p-3.5"
+    >
+      <Skeleton className="size-10 shrink-0 rounded-xl" />
+      <div className="min-w-0 flex-1">
+        <SkeletonText text="text-subheadline leading-snug" className="w-full" />
+        <SkeletonText text="text-subheadline leading-snug" className="w-2/3" />
+        <SkeletonText text="mt-0.5 text-footnote" className="w-1/2" />
+        {/* Salary and remote region: in the 20–25rem list column they wrap onto two lines. */}
+        <div className="mt-1.5 flex flex-col gap-y-1">
+          <SkeletonText text="text-footnote" className="w-40" />
+          <SkeletonText text="text-footnote" className="w-24" />
+        </div>
+        <div className="mt-2 flex items-center gap-1.5">
+          <Skeleton className="h-6 w-44 rounded-full" />
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <SkeletonText text="text-caption" className="w-28" />
+          {actions ? <Skeleton className="ml-auto h-8 w-[4.5rem] rounded-control-sm" /> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder for a plain 16px-padded card (`Card` with `shadow-none`): a headline + badge row, then
+ * the given body. Used for the detail's "Who can apply" and "Working hours" cards. */
+function DetailCardSkeleton({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-card bg-grouped-secondary p-4">
+      <div className="flex items-center justify-between gap-2">
+        <SkeletonText text="text-headline" className="w-36" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Same blocks as the job detail (web app `JobDetail`): 56px avatar + company / title / place header,
+ * badge row, Apply / Track buttons, the "Who can apply" and "Working hours" cards and the start of
+ * "About the role". `variant` matches `JobDetail`: "panel" (home page right pane, smaller title,
+ * Apply + Track + Open page) or "page" (`/jobs/view`, Track only).
+ */
+export function JobDetailSkeleton({ variant = "panel" }: { variant?: "page" | "panel" }) {
+  const panel = variant === "panel";
+  return (
+    <div aria-hidden data-skeleton="job-detail" className="flex flex-col gap-4">
+      <div className="flex items-start gap-4">
+        <Skeleton className="size-14 shrink-0 rounded-2xl" />
+        <div className="min-w-0 flex-1">
+          <SkeletonText text="text-subheadline" className="w-28" />
+          {/* The page's bigger title in its narrower column usually wraps onto a second line. */}
+          <div className="mt-0.5">
+            <SkeletonText text={panel ? "text-title2" : "text-title1"} className={panel ? "w-3/4" : "w-full"} />
+            {panel ? null : <SkeletonText text="text-title1" className="w-1/3" />}
+          </div>
+          {/* The real place line is an inline-flex <p> (pin icon), so it sits in a body-height line box. */}
+          <div className="mt-1 flex h-[1.375rem] items-center text-subheadline">
+            <Skeleton className="h-[0.7em] w-40" />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Skeleton className="h-6 w-24 rounded-full" />
+        <Skeleton className="h-6 w-28 rounded-full" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {panel ? <Skeleton className="h-11 w-44 rounded-full" /> : null}
+        <Skeleton className="h-11 w-40 rounded-control" />
+        {panel ? <Skeleton className="h-11 w-36 rounded-full" /> : null}
+      </div>
+      <DetailCardSkeleton>
+        <SkeletonText text="mt-1.5 text-body" className="w-full" />
+        <SkeletonText text="text-body" className="w-1/3" />
+        <SkeletonText text="mt-1 text-footnote" className="w-1/2" />
+        <div className="mt-2 flex items-center gap-2">
+          <SkeletonText text="text-subheadline" className="w-16" />
+          <Skeleton className="h-8 w-48 rounded-control-sm" />
+        </div>
+      </DetailCardSkeleton>
+      <DetailCardSkeleton>
+        <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1.5">
+          <SkeletonText text="text-subheadline" className="w-16" />
+          <SkeletonText text="text-title3" className="w-44" />
+          <SkeletonText text="text-subheadline" className="w-16" />
+          <SkeletonText text="text-body" className="w-52" />
+        </div>
+        <Skeleton className="mt-2 h-3 w-full rounded-full" />
+        <SkeletonText text="mt-1 text-caption" className="w-full" />
+        <div className="mt-2">
+          <SkeletonText text="text-footnote" className={panel ? "w-3/4" : "w-full"} />
+          {panel ? null : <SkeletonText text="text-footnote" className="w-1/4" />}
+        </div>
+      </DetailCardSkeleton>
+      <div className="hairline-t pt-4">
+        <SkeletonText text="text-title3" className="w-36" />
+        <DescriptionSkeleton />
+      </div>
+    </div>
+  );
+}
+
+/** Lines of a job description (`text-body leading-relaxed`, as `JobDetail` renders it). */
+export function DescriptionSkeleton({ lines = 6, className }: { lines?: number; className?: string }) {
+  return (
+    <div aria-hidden className={cx("mt-2 max-w-2xl", className)}>
+      {Array.from({ length: lines }, (_, i) => (
+        <SkeletonText key={i} text="text-body leading-relaxed" className={i === lines - 1 ? "w-2/3" : "w-full"} />
+      ))}
     </div>
   );
 }

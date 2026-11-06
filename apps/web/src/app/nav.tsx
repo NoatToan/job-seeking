@@ -18,6 +18,7 @@ import {
   ListRow,
   SearchIcon,
   Sheet,
+  Skeleton,
   TabBar,
   TopNav,
 } from "@ujc/ui";
@@ -189,6 +190,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
   const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
+  // While the session check runs (and in the prerendered HTML) show the TopNav's frame — brand +
+  // a placeholder account pill — so the page under it doesn't drop 56px when the check finishes.
+  // Public routes always end up with the TopNav; private ones do for the signed-in visitor who
+  // stays (a signed-out one is redirected to the bare /login anyway).
+  const chromePending = loading && !bareRoute;
   // Signed out: the public pages only (jobs, blog).
   const navItems = me ? allItems : allItems.filter((item) => item.key === "feed" || item.key === "blog");
   // The phone tab bar keeps its five signed-in tabs; the blog stays reachable from the TopNav
@@ -206,7 +212,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ContributorRoot>
     {/* `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop. */}
-    <div className={cx("flex min-h-dvh flex-col", showChrome && "md:[--ujc-shell-top:3.5rem]")}>
+    <div className={cx("flex min-h-dvh flex-col", (showChrome || chromePending) && "md:[--ujc-shell-top:3.5rem]")}>
+      {chromePending ? (
+        <TopNav
+          items={[]}
+          activeKey=""
+          brand={<BrandMark name={BRAND_NAME} />}
+          trailing={
+            <div aria-busy="true" className="flex items-center gap-2">
+              <Skeleton className="h-8 w-[5.25rem] rounded-full" />
+              <Skeleton className="h-8 w-[4.75rem] rounded-full" />
+            </div>
+          }
+        />
+      ) : null}
       {showChrome ? (
         <TopNav
           items={navItems}
