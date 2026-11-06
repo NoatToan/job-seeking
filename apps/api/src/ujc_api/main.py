@@ -26,6 +26,7 @@ from ujc_api.routers import connections as connections_router
 from ujc_api.routers import cvs as cvs_router
 from ujc_api.routers import digest as digest_router
 from ujc_api.routers import feed as feed_router
+from ujc_api.routers import feedback as feedback_router
 from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
@@ -193,6 +194,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(connections_router.router)
     app.include_router(upwork_router.router)
     app.include_router(digest_router.router)
+    app.include_router(feedback_router.router)
 
     @app.get("/api/health")
     def health() -> dict:

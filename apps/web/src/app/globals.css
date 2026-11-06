@@ -2,3 +2,5 @@
 /* Design tokens (colours, type scale, radii, materials, motion): docs/design/DESIGN_SYSTEM.md */
 @import "../../../../packages/ui/src/theme.css";
 @source "../../../../packages/ui/src";
+/* Contributor widget, board and admin UI (vendored from NoatToan/contributor-box). */
+@source "../../../../packages/contributor-box/src";

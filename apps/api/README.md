@@ -39,6 +39,7 @@ database and that every migration has been applied. OpenAPI docs (`/api/docs`,
 | `RESEND_API_KEY` | no | [Resend](https://resend.com) API key. When set, OTP and daily-digest emails are sent for real via Resend's HTTP API (takes priority over review mode, except for allowlisted addresses — see above). Without it, `ujc_api.digest` logs "would send" and never actually emails |
 | `UJC_MAIL_FROM` | no (default `Job Seeking <onboarding@resend.dev>`) | `From` address for OTP and digest emails sent via Resend |
 | `UJC_PUBLIC_URL` | no (default `http://localhost:3000`) | Absolute origin used in digest email links (see more / change settings / unsubscribe), since those are read outside a browser tab. No trailing slash |
+| `UJC_ADMIN_EMAILS` | no (default empty) | Comma-separated emails (case-insensitive) that are Contributor admins in addition to `users.role = 'admin'`. Checked on every request; removing an email revokes it |
 | `UJC_CLAUDE_MODEL`, `UJC_CLAUDE_BIN`, `UJC_CLAUDE_TIMEOUT_S` | no | Read directly by `job_crawler.matching.claude` (the host worker's `claude -p` wrapper); see that module for defaults |
 
 ## API endpoints
@@ -58,11 +59,30 @@ All responses are JSON; errors are `{error:{code,message,fields?}}`. See
 | `DELETE /api/cvs/{id}` | session + CSRF | Owner-scoped |
 | `GET /api/feed` | session | Keyset-paginated jobs matching the user's keywords (or newest, if none), filtered by remote-only/eligibility |
 | `GET /api/search/live` | session | Live query across seek/himalayas/remotive/wwr/arc, merged, de-duplicated, upserted into `jobs` |
+| `GET /api/me` → `user.role` | session | `"user"` or `"admin"` (drives the SPA only; admin routes re-check) |
+| `POST /api/feedback` | session + CSRF | Contributor feedback/idea with optional page context and screenshot (≤ 1.5 MB, body ≤ 2.2 MB); 10/hour per author |
+| `GET /api/feedback?scope=board\|mine\|all` | session (`all`: admin) | Board = approved/planned/done; `mine`; `all` for admins. `kind`, `status`, `q`, `sort=new\|top`, `limit`, `offset` |
+| `GET /api/feedback/meta`, `GET /api/feedback/{id}`, `GET /api/feedback/{id}/screenshot` | session | Private items 404 except to author/admin; screenshot author/admin only |
+| `PUT`/`DELETE /api/feedback/{id}/vote` | session + CSRF | Public items only |
+| `PATCH /api/feedback/{id}`, `POST /api/feedback/{id}/notes`, `DELETE /api/feedback/{id}/notes/{noteId}` | admin + CSRF | Edit, set status (history recorded), public reply, internal/public notes |
+| `DELETE /api/feedback/{id}` | session + CSRF | Admin, or the author while `new` |
 | `GET /api/digest/unsubscribe?u=&t=` | – (stateless token) | One-click digest unsubscribe; `400 invalid_token` if `t` doesn't verify |
 
 CSRF: double-submit — send header `X-CSRF-Token` equal to the readable `ujc_csrf` cookie on
 every `POST`/`PUT`/`PATCH`/`DELETE` to a session-authenticated route (the SPA's API client does
 this automatically). `/api/auth/otp` and `/api/auth/verify` are exempt (no session yet).
+
+## Admins (Contributor feature)
+
+```bash
+uv run python -m ujc_api.admin grant person@example.com   # the account must have signed in once
+uv run python -m ujc_api.admin revoke person@example.com
+uv run python -m ujc_api.admin list                       # role column + UJC_ADMIN_EMAILS
+```
+
+`/api/feedback` itself is the vendored `contributor_box` package (do not edit here; see the root
+README "Contributor"); `routers/feedback.py` wires in this API's session, CSRF, admin check and
+connection pool.
 
 ## Migrate
 

@@ -22,6 +22,8 @@ import en_search from "./locales/en/search.json";
 import vi_search from "./locales/vi/search.json";
 import en_privacy from "./locales/en/privacy.json";
 import vi_privacy from "./locales/vi/privacy.json";
+import en_contributor from "./locales/en/contributor.json";
+import vi_contributor from "./locales/vi/contributor.json";
 
 /** Languages the UI ships in. Add one = add `locales/<code>/<namespace>.json` (same keys as en) + a row here. */
 export const LANGUAGES = [
@@ -35,11 +37,11 @@ export type Language = (typeof LANGUAGES)[number]["code"];
 export const LANGUAGE_COOKIE = "ujc_locale";
 
 /** One namespace per area, as in `useTranslation(["cv"])`. Every key exists in en; vi falls back to en. */
-export const NAMESPACES = ["common", "home", "job", "auth", "cv", "tracker", "account", "connections", "onboarding", "search", "privacy"] as const;
+export const NAMESPACES = ["common", "home", "job", "auth", "cv", "tracker", "account", "connections", "onboarding", "search", "privacy", "contributor"] as const;
 
 export const resources = {
-  en: { common: en_common, home: en_home, job: en_job, auth: en_auth, cv: en_cv, tracker: en_tracker, account: en_account, connections: en_connections, onboarding: en_onboarding, search: en_search, privacy: en_privacy },
-  vi: { common: vi_common, home: vi_home, job: vi_job, auth: vi_auth, cv: vi_cv, tracker: vi_tracker, account: vi_account, connections: vi_connections, onboarding: vi_onboarding, search: vi_search, privacy: vi_privacy },
+  en: { common: en_common, home: en_home, job: en_job, auth: en_auth, cv: en_cv, tracker: en_tracker, account: en_account, connections: en_connections, onboarding: en_onboarding, search: en_search, privacy: en_privacy, contributor: en_contributor },
+  vi: { common: vi_common, home: vi_home, job: vi_job, auth: vi_auth, cv: vi_cv, tracker: vi_tracker, account: vi_account, connections: vi_connections, onboarding: vi_onboarding, search: vi_search, privacy: vi_privacy, contributor: vi_contributor },
 };
 
 if (!i18n.isInitialized) {

@@ -29,7 +29,7 @@ import type {
  * `/api/...` (production, proxied by Caddy). In dev it is `http://localhost:8000`.
  * See docs/product/ARCHITECTURE.md §3.
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

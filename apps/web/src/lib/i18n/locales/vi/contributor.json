@@ -1,0 +1,12 @@
+{
+  "nav": {
+    "contribute": "Đóng góp",
+    "reviewFeedback": "Duyệt góp ý"
+  },
+  "page": {
+    "title": "Đóng góp",
+    "subtitle": "Bình chọn ý tưởng, đề xuất tính năng và theo dõi những gì bạn đã gửi.",
+    "adminTitle": "Duyệt góp ý",
+    "adminSubtitle": "Duyệt, lên kế hoạch và trả lời những gì người dùng gửi."
+  }
+}

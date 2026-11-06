@@ -8,7 +8,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "db:migrate": "node scripts/migrate.mjs",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "contributor:sync": "node scripts/sync-contributor.mjs"
   },
   "devDependencies": {
     "postgres": "^3.4.7"

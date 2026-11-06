@@ -1,0 +1,32 @@
+{
+  "name": "@contributor-box/react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "In-context feedback widget, contributor board and admin review UI (React 19, Tailwind 4 tokens)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.13"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^27.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "^5",
+    "vitest": "^3.2.7"
+  }
+}

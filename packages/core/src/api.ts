@@ -120,8 +120,18 @@ export interface Preferences {
  * provider (`POST /api/me/consent`); `POST /api/cvs` 409s `consent_required` until then.
  * `onboardedAt` is set once the onboarding wizard (`POST /api/me/onboarded`) finishes; a
  * signed-in user with `onboardedAt: null` is sent to `/onboarding/`. */
+/** `users.role` (or `UJC_ADMIN_EMAILS`): admins review Contributor feedback (`/admin/feedback/`). */
+export type UserRole = "user" | "admin";
+
 export interface MeResponse {
-  user: { id: string; email: string; aiConsentAt: string | null; onboardedAt: string | null };
+  user: {
+    id: string;
+    email: string;
+    aiConsentAt: string | null;
+    onboardedAt: string | null;
+    /** Only decides what the SPA shows; every admin endpoint re-checks it server-side. */
+    role: UserRole;
+  };
   preferences: Preferences;
   latestCv: Cv | null;
 }

@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@contributor-box/react": "workspace:*",
     "@next/third-parties": "16.4.3",
     "@ujc/core": "workspace:*",
     "@ujc/ui": "workspace:*",

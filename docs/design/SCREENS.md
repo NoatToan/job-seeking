@@ -271,7 +271,29 @@ Empty / error states follow the same patterns. Toggle changes save immediately a
 - Empty: EmptyState tracker "Nothing tracked yet" · "Save a job from your feed and it'll show up here." · Button tinted "Browse your feed".
 - Error on move: the card snaps back with `ease-spring`, and a toast (error) "Couldn't move that card" with a Retry action.
 
-## 11. Settings (later)
+## 11. Contributor: feedback widget, `/contribute/`, `/admin/feedback/` (D12)
+
+UI comes from the vendored `@contributor-box/react` (Sunrise tokens), strings in en/vi.
+
+- **Feedback widget** (every page with app chrome): 48px tint FAB bottom-right, lifted above the
+  phone tab bar (`68px + safe area`) and the job page's Apply bar. Opens a non-modal panel
+  (rounded-sheet card, max 24rem wide, scrolls inside, max 80dvh) so the page stays usable: type
+  pills (Bug / Feedback / Feature idea), title, details, "Point at the page" (click = element,
+  drag = area, keyboard: Tab / Arrow Up / Enter / Esc; the panel hides while picking), "Attach a
+  screenshot" (preview with the picked area outlined in tint), Send. Signed out: a "Sign in"
+  prompt. After sending: thank-you + "See all ideas".
+- **`/contribute/`** (signed in, `max-w-2xl`): segmented "Ideas board" / "My feedback", "Suggest an
+  idea" (inline form), sort (Most votes / Newest) and type filter on the board. Cards: vote
+  button (44px, tinted when voted), title, two-line body, type + status badges. Detail: team reply
+  (tint-soft box), status history, own screenshot, delete while still New. Admins also get a
+  "Review feedback" button.
+- **`/admin/feedback/`** (admins; others see "This page is for admins."): `max-w-5xl`, queue +
+  editor side by side at `lg`, a pushed editor with Back below `lg`. Filters: status (default New),
+  type, text search. Editor: title, details, type, status, public reply, Save; context list
+  (page link, selector, element text, area, viewport, browser) and screenshot; notes (internal or
+  public) and status history; Delete.
+
+## 12. Settings (later)
 
 iOS Settings layout: GroupedLists Account (email, based in, timezone, language), Notifications (Daily digest
 Toggle + time row), Privacy (Download my data, Withdraw AI consent, Delete account: destructive row → alert

@@ -1,17 +1,24 @@
-"""Caps request body size (docs/product/SECURITY.md): 1 MB by default, 5 MB for the CV upload
-route (`POST /api/cvs`, which already re-checks its own 5 MB limit in
-`cv_upload.validate_cv` — this middleware is a cheap first line of defence that avoids reading
-an oversized body into memory at all when `Content-Length` is present, and aborts a chunked
-request mid-stream otherwise).
+"""Caps request body size (docs/product/SECURITY.md): 1 MB by default, 2.2 MB for
+`POST /api/feedback` (inline screenshot, re-checked by `contributor_box.screenshot`), 5 MB for the
+CV upload route (`POST /api/cvs`, which already re-checks its own 5 MB limit in
+`cv_upload.validate_cv` — this middleware is a cheap first line of defence that avoids reading an
+oversized body into memory at all when `Content-Length` is present, and aborts a chunked request
+mid-stream otherwise).
 """
 
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from contributor_box.constants import CREATE_MAX_BODY_BYTES
+
 DEFAULT_MAX_BYTES = 1 * 1024 * 1024
 CV_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
 _CV_UPLOAD_PATH = "/api/cvs"
+# Contributor feedback with an inline screenshot (JPEG data URL, <= 1.5 MB decoded); the
+# contributor_box schema re-checks the screenshot's own size and format.
+FEEDBACK_CREATE_MAX_BYTES = CREATE_MAX_BODY_BYTES
+_FEEDBACK_CREATE_PATH = "/api/feedback"
 
 
 class _BodyTooLarge(Exception):
@@ -21,6 +28,8 @@ class _BodyTooLarge(Exception):
 def _max_bytes_for(method: str, path: str) -> int:
     if method == "POST" and path == _CV_UPLOAD_PATH:
         return CV_UPLOAD_MAX_BYTES
+    if method == "POST" and path == _FEEDBACK_CREATE_PATH:
+        return FEEDBACK_CREATE_MAX_BYTES
     return DEFAULT_MAX_BYTES
 
 

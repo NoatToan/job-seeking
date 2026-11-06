@@ -87,6 +87,14 @@ class Settings(BaseSettings):
     # outside a browser tab and so can't rely on a relative URL. No trailing slash.
     ujc_public_url: str = "http://localhost:3000"
 
+    # Comma-separated emails (case-insensitive) that are admins of the Contributor feature in
+    # addition to accounts with `users.role = 'admin'` (ujc_api.auth.admin). Bootstraps the first
+    # admin without a database write; empty = only the `role` column counts.
+    ujc_admin_emails: str = ""
+
+    def admin_emails(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in self.ujc_admin_emails.split(",") if e.strip())
+
     def otp_review_allowlist(self) -> frozenset[str]:
         return frozenset(
             e.strip().lower() for e in self.ujc_otp_review_allowlist.split(",") if e.strip()
