@@ -20,6 +20,12 @@ const outFile = process.env.BLOG_SNAPSHOT_PATH || path.join(webRoot, ".blog", "s
 const localEnv = path.join(repoRoot, ".env.local");
 if (!process.env.DATABASE_URL && existsSync(localEnv)) process.loadEnvFile(localEnv);
 
+// Explicit columns: a column added later must be exported on purpose, never by accident.
+const ARTICLE_COLUMNS = [
+  "id", "source", "source_name", "source_url", "url", "title", "author", "excerpt", "published_at",
+  "first_seen_at", "topics", "republish_mode", "slug", "licence_name", "licence_url", "body", "pixel_url",
+];
+
 const MAX_POSTS = 1000;
 const MAX_FULL_ARTICLES = 1000;
 
@@ -70,12 +76,12 @@ try {
       SELECT id, slug, title, description, intro, sections, related_jobs, topics, published_at, updated_at
       FROM blog_posts ORDER BY published_at DESC LIMIT ${MAX_POSTS}`;
     const cited = await tx`
-      SELECT pa.post_id, pa.topic, pa.position, a.*
+      SELECT pa.post_id, pa.topic, pa.position, ${tx(ARTICLE_COLUMNS.map((c) => `a.${c}`))}
       FROM blog_post_articles pa JOIN blog_articles a ON a.id = pa.article_id
       WHERE pa.post_id IN ${tx(posts.map((p) => p.id).concat([-1]))}
       ORDER BY pa.post_id, pa.position`;
     const full = await tx`
-      SELECT * FROM blog_articles WHERE republish_mode = 'full'
+      SELECT ${tx(ARTICLE_COLUMNS)} FROM blog_articles WHERE republish_mode = 'full'
       ORDER BY coalesce(published_at, first_seen_at) DESC LIMIT ${MAX_FULL_ARTICLES}`;
 
     const articles = new Map();

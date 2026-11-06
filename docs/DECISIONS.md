@@ -30,7 +30,7 @@ Removal requests: delete the rows (`DELETE FROM blog_articles WHERE source = '<k
 
 ### B2. Canonical of republished copies points to the original
 
-`/blog/articles/<slug>/` sets `<link rel="canonical">` to the **original article URL**. The page is a licensed copy, so the publisher's page should get the ranking credit, and we avoid a duplicate-content penalty for hosting the same text. The copy stays `index, follow` (the canonical does the consolidation) and is left out of `/sitemap-blog.xml`, because a sitemap should only list canonical URLs. The pages meant to rank for us are the roundups and topic hubs, which are self-canonical. If a licensor ever asks for something else (e.g. no canonical, or noindex), set it per source.
+`/blog/articles/<slug>/` sets `<link rel="canonical">` to the **original article URL**. The page is a licensed copy, so the publisher's page should get the ranking credit, and we avoid a duplicate-content penalty for hosting the same text. The copy stays `index, follow` and relies on the canonical alone: Google advises against combining `noindex` with `rel=canonical` (mixed signals; a noindexed page may also stop passing its canonical), so we don't add `noindex`. It is left out of `/sitemap-blog.xml`, because a sitemap should only list canonical URLs. Republished bodies are text only (images and their captions are dropped; their rights are usually separate from the text licence). The pages meant to rank for us are the roundups and topic hubs, which are self-canonical. If a licensor ever asks for something else (e.g. no canonical, or noindex), set it per source.
 
 ### B3. Outbound links: citations followed, links inside republished bodies `nofollow`
 
@@ -38,7 +38,7 @@ Our own "Read the original on X" links and article titles are editorial citation
 
 ### B4. No LLM
 
-The site owner decided against any AI-written text (no Anthropic API key, no summaries). Roundup intros and per-topic lines are factual templates built from the article list (counts, publishers, themes, the newest headline). The value a roundup adds is curation: grouping by topic, the excerpt and credit for each article, links to full openly licensed copies, and related jobs from our catalogue.
+The site owner decided against any AI-written text (no Anthropic API key, no summaries). Roundup intros and per-topic lines are factual templates built from the article list (counts, publishers, themes, the newest headline, how many related jobs we matched), with the opening sentence rotated between three variants, and a post needs at least 8 articles, to keep templated text a small share of each page. The value a roundup adds is curation: grouping by topic, the excerpt and credit for each article, links to full openly licensed copies, and related jobs from our catalogue.
 
 ### B5. Rendering and freshness: build-time snapshot, deploy hook
 
@@ -54,7 +54,7 @@ We considered committing the snapshot to the repo from the workflow (bot commits
 
 ### B6. Sources, politeness and dedupe
 
-One request per feed per day, plus one `robots.txt` per host; 1.5 s between feeds; our usual User-Agent; retries only on 429/5xx with backoff. `robots.txt` is honoured; a missing one (404/410) allows, any other failure (403, 5xx, network) disallows. Article links must be on the source's own hosts. Dedupe: tracking parameters (`utm_*`, `fbclid`, …) and fragments are stripped, then the URL is unique in the table, as is `(source, external_id)`; an article is cited by at most one roundup. A roundup needs at least 5 uncited articles from the last 7 days (fewer roll over to the next day) and takes at most 24, with a per-source cap. Items older than 30 days are ignored (60 for monthly BLS releases, 120 for full-text sources so the blog starts with some reading).
+One request per feed per day, plus one `robots.txt` per host; 1.5 s between feeds; our usual User-Agent; retries only on 429/5xx with backoff. `robots.txt` is honoured; a missing one (404/410) allows, any other failure (403, 5xx, network) disallows. Article links must be on the source's own hosts. Dedupe: tracking parameters (`utm_*`, `fbclid`, …) and fragments are stripped, then the URL is unique in the table, as is `(source, external_id)`; an article is cited by at most one roundup. A roundup needs at least 8 uncited articles from the last 7 days (fewer roll over to the next day) and takes at most 24, with a per-source cap. Items older than 30 days are ignored (60 for monthly BLS releases, 120 for full-text sources so the blog starts with some reading).
 
 ### B7. Sitemap
 

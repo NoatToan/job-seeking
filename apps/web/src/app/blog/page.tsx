@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@ujc/ui";
 import { loadSnapshot } from "@/lib/blog/data";
-import { BLOG_DESCRIPTION, BLOG_TITLE, blogJsonLd, fullArticles, topicPath } from "@/lib/blog/model";
+import { BLOG_OG_IMAGES, BLOG_DESCRIPTION, BLOG_TITLE, blogJsonLd, fullArticles, topicPath } from "@/lib/blog/model";
 import { BLOG_TOPICS } from "@/lib/blog/topics";
 import { OPEN_GRAPH } from "@/lib/site";
 import { ArticleCard, BlogShell, Breadcrumbs, JsonLd, PostCard } from "./blog-ui";
@@ -11,16 +11,18 @@ export const metadata: Metadata = {
   title: BLOG_TITLE,
   description: BLOG_DESCRIPTION,
   alternates: { canonical: "/blog/" },
-  openGraph: { ...OPEN_GRAPH, type: "website", url: "/blog/", title: BLOG_TITLE, description: BLOG_DESCRIPTION },
-  twitter: { card: "summary_large_image", title: BLOG_TITLE, description: BLOG_DESCRIPTION },
+  openGraph: { ...OPEN_GRAPH, images: BLOG_OG_IMAGES, type: "website", url: "/blog/", title: BLOG_TITLE, description: BLOG_DESCRIPTION },
+  twitter: { card: "summary_large_image", images: BLOG_OG_IMAGES, title: BLOG_TITLE, description: BLOG_DESCRIPTION },
 };
 
 const LATEST = 12;
+// Older roundups stay reachable through topic pages, prev/next links and /sitemap-blog.xml.
+const ARCHIVE = 50;
 
 export default function BlogIndexPage() {
   const snapshot = loadSnapshot();
   const latest = snapshot.posts.slice(0, LATEST);
-  const archive = snapshot.posts.slice(LATEST);
+  const archive = snapshot.posts.slice(LATEST, LATEST + ARCHIVE);
   const republished = fullArticles(snapshot).slice(0, 6);
 
   return (

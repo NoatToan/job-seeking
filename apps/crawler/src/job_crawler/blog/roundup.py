@@ -15,7 +15,7 @@ from job_crawler.blog.feeds import Article
 from job_crawler.blog.sources import SOURCES_BY_KEY
 from job_crawler.blog.topics import TOPICS, TOPICS_BY_SLUG
 
-DESCRIPTION_MAX = 160
+DESCRIPTION_MAX = 155
 
 
 @dataclass
@@ -56,8 +56,11 @@ def clip(text: str, limit: int) -> str:
     return (cut[: cut.rfind(" ")] if " " in cut else cut).rstrip(",;:.—–- ") + "…"
 
 
+MIN_ITEMS = 8
+
+
 def select_articles(
-    candidates: list[Article], *, min_items: int = 5, max_items: int = 24
+    candidates: list[Article], *, min_items: int = MIN_ITEMS, max_items: int = 24
 ) -> list[Article]:
     """Newest first, at most `per_roundup_cap` per source and `max_items` overall. Returns [] when
     fewer than `min_items` qualify (a thin post isn't worth publishing; they roll over)."""
@@ -125,22 +128,28 @@ def build(articles: list[Article], *, now: datetime) -> Roundup:
     themes = [TOPICS_BY_SLUG[s.topic].name.lower() for s in ranked]
     full = sum(a.republish_mode == "full" for a in articles)
     lead = max(articles, key=_when)
+    openers = (
+        f"This roundup collects {len(articles)} recent articles on hiring, the job market and"
+        f" tech careers from {len(sources)} publishers: {join(sources)}.",
+        f"{len(sources)} publishers ({join(sources)}) supply today's {len(articles)} picks on"
+        " hiring, the job market and tech careers.",
+        f"Today's reading list brings together {len(articles)} articles from {join(sources)},"
+        " covering hiring, the labour market and tech careers.",
+    )
     intro = (
-        f"This roundup collects {len(articles)} recent articles on hiring, the job market and tech"
-        f" careers from {len(sources)} publishers: {join(sources)}. The biggest theme this time"
-        f" is {themes[0]}"
+        openers[now.toordinal() % len(openers)]
+        + f" The biggest theme is {themes[0]}"
         + (f", followed by {join(themes[1:])}." if len(themes) > 1 else ".")
         + f' The most recent is "{lead.title}" from {lead.source_name}.'
         + "\n\n"
         + (
             f"{full} of the articles are published under open licences and can be read in full"
             " here, with credit to their authors; for the rest we show the publisher's own short"
-            " summary and link to the original. "
+            " summary and link to the original."
             if full
             else "For each article we show the publisher's own short summary and link to the"
-            " original. "
+            " original."
         )
-        + "Below the list you'll find open roles from our job catalogue related to these topics."
     )
     description = f"{len(articles)} articles on {join(themes[:2])}, from {join(sources[:2])}" + (
         " and others" if len(sources) > 2 else ""
@@ -156,3 +165,16 @@ def build(articles: list[Article], *, now: datetime) -> Roundup:
         sections=sections,
         published_at=now,
     )
+
+
+def add_jobs_note(post: Roundup) -> None:
+    """Close the intro with what the post links to in our catalogue (call after related_jobs)."""
+    n = len(post.related_jobs)
+    if n:
+        roles = "role" if n == 1 else "roles"
+        post.intro += (
+            f" At the end you'll find {n} open {roles} from our job catalogue matched to these"
+            " topics, and searches for more."
+        )
+    else:
+        post.intro += " At the end you'll find job searches matched to these topics."

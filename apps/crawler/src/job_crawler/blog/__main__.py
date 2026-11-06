@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 
 from job_crawler.blog import db as blog_db
 from job_crawler.blog.feeds import Article, Robots, fetch
-from job_crawler.blog.roundup import build, select_articles
+from job_crawler.blog.roundup import MIN_ITEMS, add_jobs_note, build, select_articles
 from job_crawler.blog.sources import SOURCES, SOURCES_BY_KEY
 from job_crawler.http import HttpClient
 
@@ -41,7 +41,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--dry-run", action="store_true", help="fetch and count, no DB writes")
     parser.add_argument("--no-roundup", action="store_true", help="store articles only")
-    parser.add_argument("--min-items", type=int, default=5, help="min articles for a roundup")
+    parser.add_argument(
+        "--min-items", type=int, default=MIN_ITEMS, help="min articles for a roundup"
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -143,6 +145,7 @@ def publish_roundup(conn, now: datetime, min_items: int) -> None:
         post.slug = f"{base}-{suffix}"
         suffix += 1
     post.related_jobs = blog_db.related_jobs(conn, post.topics, now - RELATED_JOBS_WINDOW)
+    add_jobs_note(post)
     post_id = blog_db.insert_post(conn, post, ids)
     log.info("published post %d %s (%d articles)", post_id, post.slug, len(picked))
     set_output(published="true", slug=post.slug)

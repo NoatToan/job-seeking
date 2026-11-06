@@ -1,5 +1,6 @@
 """Postgres access for the blog (tables from db/migrations/021_blog.sql)."""
 
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -9,6 +10,8 @@ from psycopg.types.json import Jsonb
 from job_crawler.blog.feeds import Article
 from job_crawler.blog.roundup import Roundup
 from job_crawler.blog.topics import TOPICS_BY_SLUG
+
+log = logging.getLogger(__name__)
 
 _COLUMNS = (
     "source, source_name, source_url, external_id, url, title, author, excerpt, published_at,"
@@ -57,17 +60,17 @@ def article_params(article: Article) -> dict[str, Any]:
 
 def insert_articles(conn: psycopg.Connection, articles: list[Article]) -> int:
     """Insert new articles; ones already stored (same url, slug or source+id) are left as they
-    are. Returns how many were new."""
-    if not articles:
-        return 0
+    are. Each row gets its own savepoint, so one row the DB rejects (a CHECK it fails) is logged
+    and skipped instead of losing the whole day's batch. Returns how many were new."""
     new = 0
-    with conn.transaction(), conn.cursor() as cur:
-        cur.executemany(INSERT_ARTICLE_SQL, [article_params(a) for a in articles], returning=True)
-        while True:
-            if cur.fetchone():
-                new += 1
-            if not cur.nextset():
-                break
+    with conn.transaction():
+        for article in articles:
+            try:
+                with conn.transaction():
+                    if conn.execute(INSERT_ARTICLE_SQL, article_params(article)).fetchone():
+                        new += 1
+            except psycopg.errors.IntegrityError as exc:
+                log.warning("skipped article %s: %s", article.url, exc.diag.message_primary)
     return new
 
 

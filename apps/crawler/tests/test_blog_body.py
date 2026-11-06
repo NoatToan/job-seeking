@@ -105,3 +105,14 @@ def test_empty_and_oversized_bodies_raise():
 def test_body_text():
     out = blocks("<h2>H</h2><p>para</p><ul><li>i</li></ul><pre>p</pre>")
     assert body_text(out) == "H\npara\ni\np"
+
+
+def test_unterminated_pre_is_kept():
+    assert blocks("<p>a</p><pre>code") == [
+        {"type": "p", "inline": [{"text": "a"}]},
+        {"type": "pre", "text": "code"},
+    ]
+
+
+def test_credentials_with_empty_username_are_dropped():
+    assert safe_href("http://:pw@evil.test/", BASE) is None

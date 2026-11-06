@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadSnapshot } from "@/lib/blog/data";
-import { absolute, articlesForTopic, breadcrumbJsonLd, postsForTopic, topicPath } from "@/lib/blog/model";
+import { BLOG_OG_IMAGES, absolute, articlesForTopic, breadcrumbJsonLd, postsForTopic, topicPath } from "@/lib/blog/model";
 import { BLOG_TOPICS, topicBySlug } from "@/lib/blog/topics";
 import { OPEN_GRAPH } from "@/lib/site";
 import { ArticleCard, BlogShell, Breadcrumbs, JsonLd, PostCard, RelatedJobs } from "../../blog-ui";
@@ -21,8 +21,8 @@ export async function generateMetadata({ params }: PageProps<"/blog/topics/[topi
     title,
     description: topic.description,
     alternates: { canonical: topicPath(topic.slug) },
-    openGraph: { ...OPEN_GRAPH, url: topicPath(topic.slug), title, description: topic.description },
-    twitter: { card: "summary_large_image", title, description: topic.description },
+    openGraph: { ...OPEN_GRAPH, images: BLOG_OG_IMAGES, url: topicPath(topic.slug), title, description: topic.description },
+    twitter: { card: "summary_large_image", images: BLOG_OG_IMAGES, title, description: topic.description },
   };
 }
 

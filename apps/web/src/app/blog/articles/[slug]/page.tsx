@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadSnapshot } from "@/lib/blog/data";
-import { articleJsonLd, articlePath, findArticle, fullArticles, postCiting, postPath, topicPath } from "@/lib/blog/model";
+import { BLOG_OG_IMAGES, articleJsonLd, articlePath, findArticle, fullArticles, postCiting, postPath, topicPath } from "@/lib/blog/model";
 import { topicName } from "@/lib/blog/topics";
 import { OPEN_GRAPH } from "@/lib/site";
 import { ArticleBody, Attribution, BlogShell, Breadcrumbs, JsonLd, RelatedJobs, TopicChips } from "../../blog-ui";
-import { PLACEHOLDER_SLUG, staticSlugs } from "../../static-params";
+import { staticSlugs } from "../../static-params";
 
 export const dynamicParams = false;
 
@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: PageProps<"/blog/articles/[sl
     alternates: { canonical: article.url },
     openGraph: {
       ...OPEN_GRAPH,
+      images: BLOG_OG_IMAGES,
       type: "article",
       url: articlePath(article.slug!),
       title: article.title,
@@ -39,14 +40,14 @@ export async function generateMetadata({ params }: PageProps<"/blog/articles/[sl
       publishedTime: article.publishedAt ?? undefined,
       authors: article.author ? [article.author] : undefined,
     },
-    twitter: { card: "summary", title: article.title, description },
+    twitter: { card: "summary_large_image", images: BLOG_OG_IMAGES, title: article.title, description },
   };
 }
 
 export default async function RepublishedArticlePage({ params }: PageProps<"/blog/articles/[slug]">) {
   const { slug } = await params;
   const snapshot = loadSnapshot();
-  const article = slug === PLACEHOLDER_SLUG ? undefined : findArticle(snapshot, slug);
+  const article = findArticle(snapshot, slug);
   if (!article || !article.body) notFound();
   const roundup = postCiting(snapshot, article.id);
 

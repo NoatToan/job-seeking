@@ -31,6 +31,9 @@ from job_crawler.text import html_to_text
 log = logging.getLogger(__name__)
 
 EXCERPT_MAX_WORDS = 50
+EXCERPT_MAX_CHARS = 600  # matches the DB CHECK; guards excerpts made of very long "words"
+FEED_MAX_BYTES = 5_000_000
+ROBOTS_MAX_BYTES = 500_000
 TITLE_MAX_CHARS = 300
 AUTHOR_MAX_CHARS = 120
 
@@ -83,9 +86,10 @@ def excerpt(value: str | None, max_words: int = EXCERPT_MAX_WORDS) -> str | None
     words = text.split()
     if not words:
         return None
-    if len(words) <= max_words:
-        return " ".join(words)
-    return " ".join(words[:max_words]).rstrip(",;:—–-") + "…"
+    text = " ".join(words[:max_words])
+    if len(words) > max_words or len(text) > EXCERPT_MAX_CHARS:
+        text = text[: EXCERPT_MAX_CHARS - 1].rstrip(",;:—–- ") + "…"
+    return text
 
 
 def normalize_url(url: str) -> str:
@@ -214,7 +218,8 @@ def parse(feed_text: str, source: FeedSource, *, now: datetime | None = None) ->
                 **(full or {}),
             )
         )
-    out.sort(key=lambda a: a.published_at or now, reverse=True)
+    # Newest first; undated items last, so they never crowd out dated news.
+    out.sort(key=lambda a: a.published_at.timestamp() if a.published_at else 0.0, reverse=True)
     return out[: source.max_items_per_run]
 
 
@@ -237,7 +242,7 @@ class Robots:
     def _load(self, origin: str) -> RobotFileParser | None:
         parser = RobotFileParser()
         try:
-            response = self._http.get(f"{origin}/robots.txt")
+            response = self._http.get(f"{origin}/robots.txt", max_bytes=ROBOTS_MAX_BYTES)
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code in (404, 410):
                 parser.parse([])
@@ -264,7 +269,7 @@ def fetch(http: HttpClient, robots: Robots, source: FeedSource) -> FeedResult:
     if not robots.allowed(source.feed_url):
         return FeedResult(source=source.key, error="disallowed by robots.txt")
     try:
-        response = http.get(source.feed_url)
+        response = http.get(source.feed_url, max_bytes=FEED_MAX_BYTES)
         return FeedResult(source=source.key, articles=parse(response.text, source))
     except Exception as exc:  # noqa: BLE001 - one bad feed must not stop the others
         return FeedResult(source=source.key, error=f"{type(exc).__name__}: {exc}")

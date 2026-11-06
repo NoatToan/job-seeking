@@ -33,8 +33,8 @@ export const BLOG_TOPICS: readonly BlogTopic[] = [
     name: "Careers & skills",
     description:
       "Career moves, skills, salaries and job searching: reading for anyone planning their next role.",
-    jobsHref: "/?posted=7",
-    jobsLabel: "See jobs posted this week",
+    jobsHref: "/?q=senior%20OR%20lead%20OR%20manager",
+    jobsLabel: "Browse senior, lead and manager roles",
   },
   {
     slug: "remote-work",

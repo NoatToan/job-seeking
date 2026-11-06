@@ -91,7 +91,7 @@ A PR must pass all three jobs before merging.
 
 `/blog/` publishes a daily **Hiring & career trends roundup** plus openly licensed articles in full, to bring search traffic that converts into job views. Decisions (copyright model, canonical, nofollow, freshness): [`docs/DECISIONS.md`](docs/DECISIONS.md) "Blog".
 
-- `python -m job_crawler.blog` (`apps/crawler/src/job_crawler/blog/`) fetches the feeds below (robots.txt checked, one request per feed per day), stores articles in `blog_articles` and, when at least 5 new articles are uncited, writes a templated roundup to `blog_posts` with related jobs from our catalogue. No LLM. `--dry-run` fetches and counts without a database.
+- `python -m job_crawler.blog` (`apps/crawler/src/job_crawler/blog/`) fetches the feeds below (robots.txt checked, one request per feed per day), stores articles in `blog_articles` and, when at least 8 new articles are uncited, writes a templated roundup to `blog_posts` with related jobs from our catalogue. No LLM. `--dry-run` fetches and counts without a database.
 - The web build runs `apps/web/scripts/export-blog.mjs` first (reads the tables into `apps/web/.blog/snapshot.json`); the static pages are `/blog/`, `/blog/<roundup>/`, `/blog/articles/<slug>/` (full-text copies, canonical = the original), `/blog/topics/<topic>/`, `/blog/rss.xml` and `/sitemap-blog.xml`.
 - Copyright: by default only title, author, date, link and an excerpt of at most 50 words from the feed. Full text only for sources whose licence allows it, shown with author, publisher, original date, licence link and the original link.
 

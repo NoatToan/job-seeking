@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadSnapshot } from "@/lib/blog/data";
-import { adjacentPosts, articleById, findPost, formatDate, paragraphs, postJsonLd, postPath, topicPath } from "@/lib/blog/model";
+import { BLOG_OG_IMAGES, adjacentPosts, articleById, findPost, formatDate, paragraphs, postJsonLd, postPath, topicPath } from "@/lib/blog/model";
 import { topicName } from "@/lib/blog/topics";
 import type { BlogArticle } from "@/lib/blog/types";
 import { OPEN_GRAPH } from "@/lib/site";
 import { ArticleCard, BlogShell, Breadcrumbs, JsonLd, RelatedJobs, TopicChips } from "../blog-ui";
-import { PLACEHOLDER_SLUG, staticSlugs } from "../static-params";
+import { staticSlugs } from "../static-params";
 
 // Static export: one page per roundup in the build-time snapshot, nothing else.
 export const dynamicParams = false;
@@ -24,9 +24,11 @@ export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): P
   return {
     title: post.title,
     description: post.description,
+    keywords: post.topics.map(topicName),
     alternates: { canonical: url },
     openGraph: {
       ...OPEN_GRAPH,
+      images: BLOG_OG_IMAGES,
       type: "article",
       url,
       title: post.title,
@@ -35,14 +37,14 @@ export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): P
       modifiedTime: post.updatedAt,
       tags: post.topics.map(topicName),
     },
-    twitter: { card: "summary_large_image", title: post.title, description: post.description },
+    twitter: { card: "summary_large_image", images: BLOG_OG_IMAGES, title: post.title, description: post.description },
   };
 }
 
 export default async function BlogPostPage({ params }: PageProps<"/blog/[slug]">) {
   const { slug } = await params;
   const snapshot = loadSnapshot();
-  const post = slug === PLACEHOLDER_SLUG ? undefined : findPost(snapshot, slug);
+  const post = findPost(snapshot, slug);
   if (!post) notFound();
 
   const byId = articleById(snapshot);

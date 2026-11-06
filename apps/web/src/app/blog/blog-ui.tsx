@@ -208,6 +208,10 @@ function Inline({ spans }: { spans: Span[] }) {
 
 /** Renders a sanitised republished body. No HTML from the source reaches the page. */
 export function ArticleBody({ blocks }: { blocks: Block[] }) {
+  // The page title is the h1; shift the source's headings so the first level used becomes h2
+  // (no skipped levels for screen-reader heading navigation).
+  const levels = blocks.flatMap((b) => (b.type === "h" ? [b.level] : []));
+  const shift = levels.length ? Math.min(...levels) - 2 : 0;
   return (
     <div className="flex flex-col gap-4 text-body leading-relaxed text-label">
       {blocks.map((block, i) => {
@@ -225,9 +229,10 @@ export function ArticleBody({ blocks }: { blocks: Block[] }) {
               </blockquote>
             );
           case "h": {
-            const Tag = block.level === 2 ? "h2" : block.level === 3 ? "h3" : "h4";
+            const level = Math.max(2, block.level - shift);
+            const Tag = level === 2 ? "h2" : level === 3 ? "h3" : "h4";
             return (
-              <Tag key={i} className={block.level === 2 ? "pt-2 text-title3" : "pt-1 text-headline"}>
+              <Tag key={i} className={level === 2 ? "pt-2 text-title3" : "pt-1 text-headline"}>
                 <Inline spans={block.inline} />
               </Tag>
             );

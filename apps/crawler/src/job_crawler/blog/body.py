@@ -43,7 +43,9 @@ def safe_href(href: str | None, base: str) -> str | None:
         return None
     url = urljoin(base, href.strip())
     parts = urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.hostname or parts.username:
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return None
+    if parts.username or parts.password:
         return None
     return url if len(url) <= MAX_HREF else None
 
@@ -176,6 +178,8 @@ class _BodyParser(HTMLParser):
 
     def close(self) -> None:
         super().close()
+        if self.pre is not None:  # unterminated <pre>
+            self.handle_endtag("pre")
         self._flush()
         while self.lists:
             block = self.lists.pop()

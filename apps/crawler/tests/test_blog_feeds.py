@@ -250,3 +250,47 @@ def test_fetch_parses_allowed_feed_and_reports_errors():
         )
     assert result.error is None and result.articles
     assert broken.error and "404" in broken.error
+
+
+def test_excerpt_is_capped_in_characters_too():
+    out = excerpt("x" * 5000)
+    assert out is not None and len(out) <= 600 and out.endswith("…")
+
+
+def test_parse_puts_undated_items_last():
+    feed = """<rss version="2.0"><channel>
+      <item><title>Undated hiring note</title><link>https://research.example.com/u</link></item>
+      <item><title>Dated hiring news</title><link>https://research.example.com/d</link>
+        <pubDate>Thu, 05 Nov 2026 15:38:57 +0000</pubDate></item>
+    </channel></rss>"""
+    assert [a.title for a in parse(feed, EXCERPT_SOURCE, now=NOW)] == [
+        "Dated hiring news",
+        "Undated hiring note",
+    ]
+
+
+def test_fetch_rejects_oversized_feed(monkeypatch):
+    monkeypatch.setattr("job_crawler.blog.feeds.FEED_MAX_BYTES", 1000)
+    seen: list[str] = []
+    routes = {
+        "https://research.example.com/robots.txt": httpx.Response(200, text="User-agent: *\n"),
+        "https://research.example.com/feed/": httpx.Response(200, text="x" * 5000),
+    }
+    with _client(routes, seen) as http:
+        result = fetch(http, Robots(http), EXCERPT_SOURCE)
+    assert result.error and "ResponseTooLarge" in result.error
+
+
+def test_capped_get_handles_gzip_bodies():
+    import gzip
+
+    body = gzip.compress(b"User-agent: *\nDisallow: /private/\n")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=body, headers={"Content-Encoding": "gzip"})
+
+    with HttpClient(transport=httpx.MockTransport(handler), retries=0, board_delay=0) as http:
+        response = http.get("https://a.test/robots.txt", max_bytes=1000)
+        assert "Disallow: /private/" in response.text
+        assert Robots(http).allowed("https://a.test/feed") is True
+        assert Robots(http).allowed("https://a.test/private/x") is False

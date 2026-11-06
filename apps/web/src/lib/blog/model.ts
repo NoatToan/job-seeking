@@ -10,6 +10,13 @@ export const BLOG_TITLE = "Hiring & career trends blog";
 export const BLOG_DESCRIPTION =
   "Daily roundups of hiring, labour-market and tech-career news from trusted publishers, openly licensed articles republished in full with credit, and the jobs that go with them.";
 
+/**
+ * Link-preview image for blog pages: the site's build-time /opengraph-image (vercel.json serves
+ * it as image/png). Set explicitly because a page's own `openGraph` object replaces the
+ * inherited one, image included.
+ */
+export const BLOG_OG_IMAGES = [{ url: "/opengraph-image", width: 1200, height: 630, alt: `${SITE_NAME}: hiring and career trends` }];
+
 export const EMPTY_SNAPSHOT: BlogSnapshot = { generatedAt: null, posts: [], articles: [] };
 
 // ---------------------------------------------------------------------------------------------
@@ -31,6 +38,11 @@ export function safeUrl(value: unknown): string | null {
 
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** An ISO date string that actually parses, else null. */
+function isoDate(value: unknown): string | null {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : null;
 }
 
 function strArray(value: unknown): string[] {
@@ -98,7 +110,9 @@ function cleanArticle(raw: unknown): BlogArticle | null {
   const r = raw as Record<string, unknown>;
   const url = safeUrl(r.url);
   const title = str(r.title);
-  if (typeof r.id !== "number" || !url || !title) return null;
+  // Every cited article lives on another site; our own URL here would make a republished copy
+  // canonicalise to itself while claiming to be a copy.
+  if (typeof r.id !== "number" || !url || !title || new URL(url).origin === new URL(SITE_URL).origin) return null;
   const slug = typeof r.slug === "string" && SLUG_RE.test(r.slug) ? r.slug : null;
   const licenceUrl = safeUrl(r.licenceUrl);
   const body = cleanBlocks(r.body);
@@ -114,8 +128,8 @@ function cleanArticle(raw: unknown): BlogArticle | null {
     title,
     author: str(r.author),
     excerpt: str(r.excerpt),
-    publishedAt: str(r.publishedAt),
-    firstSeenAt: str(r.firstSeenAt) ?? str(r.publishedAt) ?? new Date(0).toISOString(),
+    publishedAt: isoDate(r.publishedAt),
+    firstSeenAt: isoDate(r.firstSeenAt) ?? isoDate(r.publishedAt) ?? new Date(0).toISOString(),
     topics: strArray(r.topics),
     mode: full ? "full" : "excerpt",
     slug: full ? slug : null,
@@ -145,7 +159,7 @@ function cleanPost(raw: unknown): BlogPost | null {
   const r = raw as Record<string, unknown>;
   const slug = typeof r.slug === "string" && SLUG_RE.test(r.slug) ? r.slug : null;
   const title = str(r.title);
-  const publishedAt = str(r.publishedAt);
+  const publishedAt = isoDate(r.publishedAt);
   if (!slug || !title || !publishedAt) return null;
   const sections = Array.isArray(r.sections)
     ? r.sections.flatMap((s) => {
@@ -164,7 +178,7 @@ function cleanPost(raw: unknown): BlogPost | null {
     relatedJobs: Array.isArray(r.relatedJobs) ? r.relatedJobs.map(cleanJob).filter((j): j is RelatedJob => j !== null) : [],
     topics: strArray(r.topics),
     publishedAt,
-    updatedAt: str(r.updatedAt) ?? publishedAt,
+    updatedAt: isoDate(r.updatedAt) ?? publishedAt,
   };
 }
 

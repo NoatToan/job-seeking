@@ -68,12 +68,18 @@ def test_insert_dedupes_by_url_and_source_id(conn):
 
 
 def test_constraints_reject_body_in_excerpt_mode_and_full_without_licence(conn):
-    with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
-        blog_db.insert_articles(conn, [article(1, body=[{"type": "hr"}])])
-    with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
-        blog_db.insert_articles(conn, [full_article(2).model_copy(update={"licence_url": None})])
-    with pytest.raises(psycopg.errors.CheckViolation), conn.transaction():
-        blog_db.insert_articles(conn, [article(3, excerpt="x" * 601)])
+    rejected = [
+        article(1, body=[{"type": "hr"}]),
+        full_article(2).model_copy(update={"licence_url": None}),
+        article(3, excerpt="x" * 601),
+    ]
+    assert blog_db.insert_articles(conn, rejected) == 0
+    assert conn.execute("SELECT count(*) FROM blog_articles").fetchone()[0] == 0
+
+
+def test_one_bad_row_does_not_lose_the_batch(conn):
+    bad = article(2).model_copy(update={"excerpt": "x" * 601})
+    assert blog_db.insert_articles(conn, [article(1), bad, article(3)]) == 2
 
 
 def test_roundup_round_trip_and_articles_cited_once(conn):

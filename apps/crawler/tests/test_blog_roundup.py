@@ -4,7 +4,14 @@ import re
 from datetime import UTC, datetime, timedelta
 
 from job_crawler.blog.feeds import Article
-from job_crawler.blog.roundup import DESCRIPTION_MAX, build, clip, group, select_articles
+from job_crawler.blog.roundup import (
+    DESCRIPTION_MAX,
+    add_jobs_note,
+    build,
+    clip,
+    group,
+    select_articles,
+)
 from job_crawler.blog.sources import SOURCES, SOURCES_BY_KEY
 from job_crawler.blog.topics import TOPICS, TOPICS_BY_SLUG, classify
 
@@ -59,12 +66,23 @@ def test_build_post_text_names_every_publisher_and_full_text_count():
     assert post.title == "Hiring & career trends roundup — 6 November 2026"
     for name in ("ERE", "U.S. Bureau of Labor Statistics", "TechCrunch"):
         assert name in post.intro
+    assert ".…" not in post.description and ".." not in post.description
     assert "1 of the articles are published under open licences" in post.intro
     assert len(post.description) <= DESCRIPTION_MAX
     assert post.topics == ["hiring", "labour-market", "tech-industry"]
     assert len(post.items()) == 3
     labour = next(s for s in post.sections if s.topic == "labour-market")
     assert "republished in full" in labour.commentary
+
+
+def test_intro_opening_rotates_by_day_and_mentions_jobs():
+    articles = [art(1, "ere", ["hiring"]), art(2, "bls-jolts", ["labour-market"])]
+    intros = {build(articles, now=NOW + timedelta(days=d)).intro.split(".")[0] for d in range(3)}
+    assert len(intros) == 3
+    post = build(articles, now=NOW)
+    post.related_jobs = [{"id": 1}]
+    add_jobs_note(post)
+    assert post.intro.endswith("searches for more.") and "1 open role " in post.intro
 
 
 def test_clip():

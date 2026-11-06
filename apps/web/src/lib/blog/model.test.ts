@@ -196,3 +196,11 @@ describe("misc", () => {
     expect(staticSlugs(["a"])).toEqual([{ slug: "a" }]);
   });
 });
+
+describe("own-domain guard", () => {
+  it("rejects an article whose url is on our own site", async () => {
+    const { SITE_URL } = await import("@/lib/site");
+    const snap = parseSnapshot({ posts: [], articles: [{ ...excerptArticle, url: `${SITE_URL}/blog/x/` }] });
+    expect(snap.articles).toHaveLength(0);
+  });
+});
