@@ -5,55 +5,55 @@
       "date": "2026-11-07",
       "slug": "2026-11-07",
       "title": {
-        "en": "Sort your job lists and see the public roadmap",
-        "vi": "Sắp xếp danh sách việc làm và xem lộ trình công khai"
+        "en": "Report jobs, clearer descriptions and release notes",
+        "vi": "Báo cáo việc làm, mô tả rõ ràng hơn và trang cập nhật"
       },
       "highlights": [
         {
           "category": "new",
-          "en": "Sort jobs by newest, time-zone fit or salary, and your feed by best CV match",
-          "vi": "Sắp xếp việc làm theo mới nhất, độ hợp múi giờ hoặc mức lương, và bảng tin theo độ phù hợp với CV"
+          "en": "Report a job as not worth applying or confirm it is still good, and hide reported jobs with a filter",
+          "vi": "Báo cáo việc làm không đáng ứng tuyển hoặc xác nhận việc còn tốt, và ẩn việc bị báo cáo bằng bộ lọc"
         },
         {
           "category": "new",
-          "en": "The Roadmap page shows community ideas as Under consideration, Planned and Done",
-          "vi": "Trang Lộ trình hiển thị ý tưởng của cộng đồng theo ba cột: Đang cân nhắc, Đã lên kế hoạch và Đã xong"
+          "en": "Job descriptions are split into clear sections, and jobs show a seniority level badge",
+          "vi": "Mô tả công việc được chia thành các mục rõ ràng, và mỗi việc làm có nhãn cấp bậc"
         },
         {
           "category": "new",
-          "en": "Anyone can suggest an idea from the roadmap, and signed-in users can vote for what comes next",
-          "vi": "Ai cũng có thể gợi ý ý tưởng từ trang Lộ trình, người đã đăng nhập có thể bình chọn tính năng tiếp theo"
-        },
-        {
-          "category": "improved",
-          "en": "Jobs that accept candidates from your country get a green 'For you' stamp",
-          "vi": "Việc làm nhận ứng viên ở quốc gia của bạn có tem xanh 'Dành cho bạn'"
-        },
-        {
-          "category": "improved",
-          "en": "Save and Read on job rows are compact icons, and open sheets dim and blur the page behind",
-          "vi": "Nút Lưu và Đã xem trên mỗi việc làm gọn thành biểu tượng, bảng mở ra làm tối và mờ trang phía sau"
-        },
-        {
-          "category": "improved",
-          "en": "Working-hours labels are calmer: a neutral pill with a sun or moon icon for the shift time",
-          "vi": "Nhãn giờ làm gọn gàng hơn: nền trung tính kèm biểu tượng mặt trời hoặc mặt trăng theo ca làm"
+          "en": "Sort jobs by newest, time-zone fit, salary or CV match, and pick from every country, time zone and tech",
+          "vi": "Sắp xếp việc làm theo mới nhất, độ hợp múi giờ, mức lương hoặc độ khớp CV, và chọn đủ mọi quốc gia, múi giờ, công nghệ"
         },
         {
           "category": "new",
-          "en": "A GitHub link in the top bar leads to the site's open source code",
-          "vi": "Liên kết GitHub trên thanh trên cùng dẫn tới mã nguồn mở của trang"
+          "en": "The Roadmap shows community ideas by status; anyone can suggest and comment, signed-in users can vote",
+          "vi": "Trang Lộ trình hiển thị ý tưởng cộng đồng theo trạng thái; ai cũng có thể gợi ý và bình luận, người đã đăng nhập được bình chọn"
+        },
+        {
+          "category": "new",
+          "en": "Sign in without leaving the page, and edit your name, headline and links on the new profile page",
+          "vi": "Đăng nhập ngay tại trang đang xem, và chỉnh tên, giới thiệu ngắn và liên kết trên trang hồ sơ mới"
+        },
+        {
+          "category": "new",
+          "en": "A Release notes page shows what changed each day, and a GitHub link in the top bar leads to the source code",
+          "vi": "Trang Cập nhật cho biết những thay đổi mỗi ngày, và liên kết GitHub trên thanh trên cùng dẫn tới mã nguồn"
+        },
+        {
+          "category": "improved",
+          "en": "Job rows show source logos, a 'For you' ribbon, compact Save and Read icons and calmer working-hours labels",
+          "vi": "Mỗi việc làm hiển thị logo nguồn, dải 'Dành cho bạn', biểu tượng Lưu và Đã xem gọn gàng cùng nhãn giờ làm dịu mắt hơn"
         },
         {
           "category": "under-the-hood",
-          "en": "The site has a new address, job-seeking-remote.vercel.app; the old one redirects there",
-          "vi": "Trang có địa chỉ mới job-seeking-remote.vercel.app, địa chỉ cũ tự chuyển hướng sang"
+          "en": "The site moved to job-seeking-remote.vercel.app and job lists load faster; the old address redirects",
+          "vi": "Trang chuyển sang job-seeking-remote.vercel.app và danh sách việc làm tải nhanh hơn; địa chỉ cũ tự chuyển hướng"
         }
       ],
       "commits": {
         "from": "35e1a9a15ea67dee896371acd0bb5e20b3de647a",
-        "to": "91767ae4acca53913919fba66843c6d04ac69e11",
-        "count": 10
+        "to": "70b0ac2b68b73f8b3f99e5c320f37e694b4ea88b",
+        "count": 26
       }
     },
     {
