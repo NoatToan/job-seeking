@@ -116,6 +116,10 @@ WHERE id = (SELECT id FROM tasks WHERE status='queued' AND run_after<=now()
   - eligibility `(NOT remote OR open_to IS NULL OR open_to && $accepted)`
   - optional `q` (an extra AND term)
   - optional `source`
+  - optional `country` (`countries @> ARRAY[$c]`, GIN `jobs_countries_idx`, migration 017)
+  - optional `tech` (all of them: `tech_stack @> $ids`, GIN `jobs_tech_stack_idx`, migration 018)
+  - optional "posted within": `hours` (past hour; "today" = hours since the visitor's midnight, sent by the SPA) wins over `days` (3/7/30). Both are a range on the same `coalesce(posted_at, first_seen_at)` expression, so they use `jobs_feed_idx`. Boards that only give a date store midnight, so the hour filters fall back to the posting day for those jobs.
+- The public catalogue (`GET /api/jobs`, no sign-in) uses the same cursor and filters, minus the per-user keywords/eligibility.
 
 ### Cursor (live search)
 - The cursor is opaque base64url JSON holding per-source state, e.g. `{"seek":2,"himalayas":2,"remotive":null,"wwr":null,"arc":null}`. `null` means that source is exhausted (single-page sources: Remotive, WWR, Arc).

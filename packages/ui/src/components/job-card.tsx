@@ -5,6 +5,8 @@ import type { ElementType, MouseEvent, ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { openToLabel, sortTech } from "@ujc/core";
 import { cx } from "../cx";
+import { EN_UI_STRINGS, useUiStrings } from "../strings";
+import type { UiStrings } from "../strings";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
@@ -12,13 +14,12 @@ import { LocationText } from "./location-text";
 import { TechStackRow } from "./tech-icon";
 
 /** "2 days ago" style label from an ISO date; null when unknown. */
-export function timeAgo(iso: string | null, now: number = Date.now()): string | null {
+export function timeAgo(iso: string | null, now: number = Date.now(), strings: UiStrings = EN_UI_STRINGS): string | null {
   if (!iso) return null;
   const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  return new Date(iso).toLocaleDateString("en-AU");
+  if (days <= 0) return strings.today;
+  if (days < 30) return strings.daysAgo(days);
+  return new Date(iso).toLocaleDateString(strings.locale);
 }
 
 /** "full_time" -> "Full-time". */
@@ -47,7 +48,8 @@ export interface JobCardProps {
  */
 export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, status, className }: JobCardProps) {
   const [scoreExpanded, setScoreExpanded] = useState(false);
-  const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
+  const strings = useUiStrings();
+  const posted = timeAgo(job.postedAt ?? job.firstSeenAt, Date.now(), strings);
   const openTo = openToLabel(job.openTo);
   const employment = employmentLabel(job.employmentType);
   return (
@@ -68,7 +70,7 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
               className="rounded-control-sm hover:text-tint-ink hover:underline focus-ring"
             >
               {job.title}
-              <span className="sr-only"> (opens original posting in a new tab)</span>
+              <span className="sr-only"> {strings.opensInNewTab}</span>
             </a>
           </h3>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-subheadline text-label-secondary">
@@ -93,7 +95,7 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
         <SourceBadge source={job.source} />
         {job.remote ? (
           <Badge tone="info" icon={<GlobeIcon size={12} strokeWidth={2.25} />}>
-            {openTo ? `Remote · ${openTo}` : "Remote"}
+            {openTo ? strings.remoteOpenTo(openTo) : strings.remote}
           </Badge>
         ) : null}
         {status}
@@ -120,7 +122,7 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
               <p className="text-callout text-label">{job.match.summary}</p>
               {job.match.missingSkills.length ? (
                 <p className="text-footnote text-label-secondary">
-                  <span className="font-medium">Skills to brush up:</span> {job.match.missingSkills.slice(0, 4).join(", ")}
+                  <span className="font-medium">{strings.skillsToBrushUp}</span> {job.match.missingSkills.slice(0, 4).join(", ")}
                 </p>
               ) : null}
             </div>
@@ -151,7 +153,7 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
               href={detailsHref}
               className="inline-flex h-9 items-center gap-0.5 rounded-control px-1 text-subheadline font-semibold text-tint hover:underline focus-ring"
             >
-              View details
+              {strings.viewDetails}
               <ChevronRightIcon size={15} strokeWidth={2.25} aria-hidden />
             </LinkAs>
           ) : (
@@ -199,7 +201,8 @@ export function JobListItem({
   viewed = false,
   className,
 }: JobListItemProps) {
-  const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
+  const strings = useUiStrings();
+  const posted = timeAgo(job.postedAt ?? job.firstSeenAt, Date.now(), strings);
   return (
     <article
       data-job-id={job.id}
@@ -253,7 +256,7 @@ export function JobListItem({
           {job.remote ? (
             <span className="inline-flex items-center gap-1 font-medium text-info-ink">
               <GlobeIcon size={12} strokeWidth={2.25} aria-hidden />
-              Remote
+              {strings.remote}
             </span>
           ) : null}
         </div>
@@ -270,7 +273,7 @@ export function JobListItem({
           {viewed ? (
             <span className="ml-auto inline-flex items-center gap-0.5 font-medium text-label-tertiary">
               <CheckIcon size={12} strokeWidth={2.5} aria-hidden />
-              Read
+              {strings.read}
             </span>
           ) : null}
           {actions ? (

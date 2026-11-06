@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,19 +22,28 @@ import {
   TopNav,
 } from "@ujc/ui";
 import type { NavItem } from "@ujc/ui";
+import { LanguageSwitch } from "@/lib/i18n/provider";
 import { isPublicRoute } from "@/lib/public-routes";
 import { useSession } from "@/lib/session";
 
 /** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
 export const BRAND_NAME = "JobSeeking";
 
-const NAV_ITEMS: NavItem[] = [
-  { key: "feed", label: "Jobs", href: "/", icon: <BriefcaseIcon size={22} /> },
-  { key: "search", label: "Live search", href: "/search/", icon: <SearchIcon size={22} /> },
-  { key: "tracker", label: "Tracker", href: "/tracker/", icon: <KanbanIcon size={22} /> },
-  { key: "cv", label: "My CV", href: "/cv/", icon: <DocumentIcon size={22} /> },
-  { key: "connections", label: "Connections", href: "/connections/", icon: <LinkIcon size={22} /> },
-];
+function useNavItems(): NavItem[] {
+  const { t, i18n } = useTranslation("common");
+  return useMemo(
+    () => [
+      { key: "feed", label: t("nav.jobs"), href: "/", icon: <BriefcaseIcon size={22} /> },
+      { key: "search", label: t("nav.liveSearch"), href: "/search/", icon: <SearchIcon size={22} /> },
+      { key: "tracker", label: t("nav.tracker"), href: "/tracker/", icon: <KanbanIcon size={22} /> },
+      { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
+      { key: "connections", label: t("nav.connections"), href: "/connections/", icon: <LinkIcon size={22} /> },
+    ],
+    // `t` keeps its identity across language changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, i18n.resolvedLanguage],
+  );
+}
 
 function activeKeyFor(pathname: string): string {
   if (pathname.startsWith("/search")) return "search";
@@ -51,12 +61,13 @@ function activeKeyFor(pathname: string): string {
  */
 export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "pill" }) {
   const { me, signOut } = useSession();
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
 
   if (!me && variant === "pill") {
     return (
       <Link href="/login/" className={buttonClasses({ variant: "tinted", size: "sm", className: "rounded-full px-4" })}>
-        Sign in
+        {t("nav.signIn")}
       </Link>
     );
   }
@@ -67,7 +78,7 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
         href="/login/"
         className={buttonClasses({ variant: variant === "row" ? "gray" : "tinted", size: "sm", fullWidth: variant === "row" })}
       >
-        Sign in
+        {t("nav.signIn")}
       </Link>
     );
   }
@@ -78,7 +89,7 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={`Account: ${me.user.email}`}
+          aria-label={t("nav.accountOf", { email: me.user.email })}
           className="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
         >
           <Avatar name={me.user.email} size={30} />
@@ -99,22 +110,22 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={`Account: ${me.user.email}`}
+          aria-label={t("nav.accountOf", { email: me.user.email })}
           className="relative rounded-full focus-ring"
         >
           <Avatar name={me.user.email} size={32} />
         </button>
       )}
-      <Sheet open={open} onClose={() => setOpen(false)} title="Account" description={me.user.email}>
-        <GroupedList label="Account options">
+      <Sheet open={open} onClose={() => setOpen(false)} title={t("nav.account")} description={me.user.email}>
+        <GroupedList label={t("nav.accountOptions")}>
           <ListRow
-            title="Account & privacy"
+            title={t("nav.accountPrivacy")}
             href="/account/"
             linkAs={Link}
             onClick={() => setOpen(false)}
           />
           <ListRow
-            title="Sign out"
+            title={t("nav.signOut")}
             destructive
             onClick={() => {
               setOpen(false);
@@ -139,11 +150,13 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const { me, loading } = useSession();
+  const { t } = useTranslation("common");
+  const allItems = useNavItems();
   const pathname = usePathname() ?? "/";
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
   const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
-  const navItems = me ? NAV_ITEMS : NAV_ITEMS.filter((item) => item.key === "feed");
+  const navItems = me ? allItems : allItems.filter((item) => item.key === "feed");
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
@@ -161,11 +174,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           activeKey={activeKey}
           linkAs={Link}
           brand={
-            <Link href="/" aria-label={`${BRAND_NAME} home`} className="rounded-control focus-ring">
+            <Link href="/" aria-label={t("brand.homeAriaLabel", { name: BRAND_NAME })} className="rounded-control focus-ring">
               <BrandMark name={BRAND_NAME} />
             </Link>
           }
-          trailing={<AccountMenu variant="pill" />}
+          trailing={
+            <div className="flex items-center gap-2">
+              <LanguageSwitch />
+              <AccountMenu variant="pill" />
+            </div>
+          }
         />
       ) : null}
       {/* Phones: the fixed bottom bar (tab bar, or the job page's Apply bar) must never cover the

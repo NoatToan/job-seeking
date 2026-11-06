@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import type { Job } from "@ujc/core";
 import { Badge, Card, ClockIcon, FuzzySelect } from "@ujc/ui";
 import type { SelectOption } from "@ujc/ui";
+import { useTranslation } from "react-i18next";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
 import {
   clockLabel,
-  FIT_LABELS,
   FIT_TONES,
+  type FitLevel,
   jobZonesLabel,
   offsetLabel,
   shortZoneName,
@@ -19,9 +20,23 @@ import {
   zoneOffsetMinutes,
 } from "@/lib/work-hours";
 
+/** Translated labels for `FitLevel` (lib/work-hours.ts `FIT_LABELS` stays English-only so it is
+ * directly testable without an i18n instance). */
+function useFitLabels(): Record<FitLevel, string> {
+  const { t } = useTranslation("home");
+  return {
+    same: t("workHours.fit.same"),
+    good: t("workHours.fit.good"),
+    partial: t("workHours.fit.partial"),
+    evening: t("workHours.fit.evening"),
+    night: t("workHours.fit.night"),
+  };
+}
+
 /** "Your time zone" picker (fuzzy search over every zone, all in the browser). Changing it
  * re-labels every job's hours at once. */
 export function TimezonePicker({ className }: { className?: string }) {
+  const { t } = useTranslation("home");
   const { zone, setZone } = useUserTimezone();
   const [saving, setSaving] = useState(false);
   const offset = zoneOffsetMinutes(zone);
@@ -41,13 +56,13 @@ export function TimezonePicker({ className }: { className?: string }) {
   return (
     <span className={`flex items-center gap-2 text-subheadline text-label-secondary ${className ?? ""}`}>
       <ClockIcon size={15} aria-hidden />
-      <span>Your time zone</span>
+      <span>{t("workHours.yourTimeZone")}</span>
       <FuzzySelect
-        label="Your time zone"
+        label={t("workHours.yourTimeZone")}
         value={zone}
         disabled={saving}
         options={options}
-        searchPlaceholder="City, region or VNT/EST…"
+        searchPlaceholder={t("workHours.searchPlaceholder")}
         onChange={(next) => {
           setSaving(true);
           void setZone(next).finally(() => setSaving(false));
@@ -69,6 +84,8 @@ function userRange(start: number, end: number): string {
  * on the user's clock first, then how well it fits — e.g. "🕘 21:00–05:00 VNT · Night shift".
  */
 export function WorkHoursBadge({ job }: { job: Job }) {
+  const { t } = useTranslation("home");
+  const fitLabels = useFitLabels();
   const { zone } = useUserTimezone();
   const fit = workHoursFit(job.timezones, zone);
   if (!fit) return null;
@@ -77,13 +94,18 @@ export function WorkHoursBadge({ job }: { job: Job }) {
     <Badge
       tone={FIT_TONES[fit.level]}
       icon={<ClockIcon size={11} strokeWidth={2.25} />}
-      title={`${FIT_LABELS[fit.level]}: the job's 9–5 in ${zoneLabel(fit.zone)} is ${userRange(fit.userStart, fit.userEnd)} ${abbr}`}
+      title={t("workHours.badgeTitle", {
+        fit: fitLabels[fit.level],
+        zone: zoneLabel(fit.zone),
+        range: userRange(fit.userStart, fit.userEnd),
+        abbr,
+      })}
     >
       <span className="font-semibold tabular-nums">
         {clockLabel(fit.userStart)}–{clockLabel(fit.userEnd)} {abbr}
       </span>
       <span aria-hidden> · </span>
-      {FIT_LABELS[fit.level]}
+      {fitLabels[fit.level]}
     </Badge>
   );
 }
@@ -134,17 +156,17 @@ function DayTimeline({ start, end, tone }: { start: number; end: number; tone: s
 /** Detail panel (Slack: "the time zone in the detail is hard to read"): the job's hours and the
  * same hours on the user's clock side by side, plus a 24-hour timeline of the user's day. */
 export function WorkHoursCard({ job }: { job: Job }) {
+  const { t } = useTranslation("home");
+  const fitLabels = useFitLabels();
   const { zone } = useUserTimezone();
   const fit = workHoursFit(job.timezones, zone);
   if (!job.timezones?.length) {
     return (
       <Card className="shadow-none">
         <p className="flex items-center gap-2 text-headline text-label">
-          <ClockIcon size={18} aria-hidden /> Working hours
+          <ClockIcon size={18} aria-hidden /> {t("workHours.cardTitle")}
         </p>
-        <p className="mt-1 text-subheadline text-label-secondary">
-          No time zone stated — likely flexible or worldwide. Check the posting before applying.
-        </p>
+        <p className="mt-1 text-subheadline text-label-secondary">{t("workHours.noZone")}</p>
       </Card>
     );
   }
@@ -154,22 +176,24 @@ export function WorkHoursCard({ job }: { job: Job }) {
   const abbr = shortZoneName(zone);
   const ahead =
     fit.diffMinutes === 0
-      ? "Same clock as you"
-      : `You are ${Math.abs(diffHours)}h ${diffHours > 0 ? "ahead" : "behind"}`;
+      ? t("workHours.sameClock")
+      : diffHours > 0
+        ? t("workHours.ahead", { hours: Math.abs(diffHours) })
+        : t("workHours.behind", { hours: Math.abs(diffHours) });
   return (
     <Card className="shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-headline text-label">
-          <ClockIcon size={18} aria-hidden /> Working hours
+          <ClockIcon size={18} aria-hidden /> {t("workHours.cardTitle")}
         </p>
-        <Badge tone={FIT_TONES[fit.level]}>{FIT_LABELS[fit.level]}</Badge>
+        <Badge tone={FIT_TONES[fit.level]}>{fitLabels[fit.level]}</Badge>
       </div>
       <dl className="mt-3 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-        <dt className="text-subheadline text-label-secondary">Your time</dt>
+        <dt className="text-subheadline text-label-secondary">{t("workHours.yourTime")}</dt>
         <dd className="text-title3 font-semibold tabular-nums text-label">
           {userRange(fit.userStart, fit.userEnd)} <span className="text-headline text-label-secondary">{abbr}</span>
         </dd>
-        <dt className="text-subheadline text-label-secondary">Job&apos;s time</dt>
+        <dt className="text-subheadline text-label-secondary">{t("workHours.jobsTime")}</dt>
         <dd className="text-body tabular-nums text-label">
           {clockLabel(WORKDAY_START)}–{clockLabel(WORKDAY_END)}{" "}
           <span className="text-label-secondary">{zoneLabel(fit.zone)}</span>
@@ -177,9 +201,11 @@ export function WorkHoursCard({ job }: { job: Job }) {
       </dl>
       <DayTimeline start={fit.userStart} end={fit.userEnd} tone={FIT_TONES[fit.level]} />
       <p className="mt-2 text-footnote text-label-secondary">
-        {hours > 0 ? `${hours}h overlap with your 9–5 (outlined)` : "No overlap with your 9–5 (outlined)"} · {ahead}
-        {job.timezones.length > 1 ? ` · accepts ${jobZonesLabel(job.timezones)}` : ""}
-        {job.timezoneSource === "location" ? " · inferred from the job's location" : " · stated in the posting"}
+        {hours > 0 ? t("workHours.overlap", { hours }) : t("workHours.noOverlap")} · {ahead}
+        {job.timezones.length > 1
+          ? ` · ${t("workHours.acceptsMore", { zones: jobZonesLabel(job.timezones, t("workHours.moreWord")) })}`
+          : ""}
+        {job.timezoneSource === "location" ? ` · ${t("workHours.inferredLocation")}` : ` · ${t("workHours.statedPosting")}`}
       </p>
     </Card>
   );

@@ -1,0 +1,51 @@
+{
+  "ui": {
+    "search": "Tìm kiếm",
+    "clearSearch": "Xoá tìm kiếm",
+    "select": "Chọn…",
+    "searchEllipsis": "Tìm…",
+    "noMatches": "Không có kết quả",
+    "remove": "Bỏ",
+    "close": "Đóng",
+    "dismiss": "Đóng",
+    "progress": "Tiến độ",
+    "mainNav": "Điều hướng chính",
+    "remote": "Remote",
+    "remoteOpenTo": "Remote · {{openTo}}",
+    "read": "Đã đọc",
+    "viewDetails": "Xem chi tiết",
+    "opensInNewTab": "(mở bài đăng gốc trong tab mới)",
+    "skillsToBrushUp": "Kỹ năng nên bổ sung:",
+    "via": "từ {{source}}",
+    "today": "hôm nay",
+    "daysAgo_other": "{{count}} ngày trước",
+    "fit": { "great": "Rất phù hợp", "good": "Phù hợp", "worth": "Đáng xem", "long": "Ít phù hợp" }
+  },
+  "language": { "label": "Ngôn ngữ" },
+  "brand": { "homeAriaLabel": "Trang chủ {{name}}" },
+  "nav": {
+    "jobs": "Việc làm",
+    "liveSearch": "Tìm trực tiếp",
+    "tracker": "Theo dõi",
+    "myCv": "CV của tôi",
+    "connections": "Kết nối",
+    "signIn": "Đăng nhập",
+    "account": "Tài khoản",
+    "accountOf": "Tài khoản: {{email}}",
+    "accountOptions": "Tuỳ chọn tài khoản",
+    "accountPrivacy": "Tài khoản & quyền riêng tư",
+    "signOut": "Đăng xuất"
+  },
+  "loading": "Đang tải…",
+  "tryAgain": "Thử lại",
+  "error": {
+    "title": "Đã có lỗi xảy ra",
+    "message": "Trang này gặp lỗi không mong muốn. Hãy thử lại, hoặc quay về danh sách việc làm.",
+    "backToJobs": "Về danh sách việc làm"
+  },
+  "notFound": {
+    "title": "Không tìm thấy trang",
+    "message": "Đường dẫn này không tồn tại. Có thể trang đã được chuyển đi, hoặc địa chỉ bị gõ sai.",
+    "backToJobs": "Về danh sách việc làm"
+  }
+}

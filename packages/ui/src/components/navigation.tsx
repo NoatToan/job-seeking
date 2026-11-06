@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
 
 /* ------------------------------------------------------------------ NavBar */
 
@@ -139,7 +140,8 @@ export interface TopNavProps {
  * a few text tabs, account on the right. Translucent and sticky; its height (56px) is what pages
  * offset their own sticky bars by (`--ujc-shell-top`). Phones use the TabBar instead.
  */
-export function TopNav({ items, activeKey, brand, trailing, linkAs: LinkAs = "a", label = "Main", className }: TopNavProps) {
+export function TopNav({ items, activeKey, brand, trailing, linkAs: LinkAs = "a", label, className }: TopNavProps) {
+  label ??= useUiStrings().mainNav;
   return (
     <header className={cx("sticky top-0 z-40 hidden h-14 material-bar hairline-b md:block", className)}>
       <div className="flex h-full items-center gap-6 px-4 sm:px-6">
@@ -201,10 +203,11 @@ export function Sidebar({
   header,
   footer,
   linkAs: LinkAs = "a",
-  label = "Main",
+  label,
   fixed = true,
   className,
 }: SidebarProps) {
+  label ??= useUiStrings().mainNav;
   return (
     <aside
       className={cx(
@@ -261,7 +264,8 @@ export interface TabBarProps {
 }
 
 /** Mobile tab bar (< md): translucent, hairline top, icon over label, safe-area aware. Max 5 items. */
-export function TabBar({ items, activeKey, linkAs: LinkAs = "a", label = "Main", fixed = true, className }: TabBarProps) {
+export function TabBar({ items, activeKey, linkAs: LinkAs = "a", label, fixed = true, className }: TabBarProps) {
+  label ??= useUiStrings().mainNav;
   return (
     <nav
       aria-label={label}

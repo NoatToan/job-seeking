@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "title": "Connections"
+  },
+  "loadingAria": "Loading your connections",
+  "loadError": {
+    "title": "We couldn't load your connections",
+    "message": "It's on our side, not yours. Check your connection and try again."
+  },
+  "badges": {
+    "connected": "Connected"
+  },
+  "actions": {
+    "disconnect": "Disconnect"
+  },
+  "builtIn": {
+    "header": "Built in",
+    "ariaLabel": "Built-in sources",
+    "footer": "Always on. No connection needed.",
+    "statusError": "Last crawl had an error",
+    "statusRunning": "Crawling now",
+    "statusAlwaysOn": "Always on"
+  },
+  "adzuna": {
+    "heading": "Adzuna",
+    "description": "Add your own <link>Adzuna</link> app id/key for more countries and a higher rate limit.",
+    "connectedLabel": "Connected",
+    "appIdLabel": "App id: {{appId}}",
+    "appIdFieldLabel": "App id",
+    "appKeyFieldLabel": "App key",
+    "connectButton": "Connect",
+    "errors": {
+      "invalidCredentials": "Adzuna rejected this app id/key. Double-check them and try again.",
+      "connectFailed": "Could not connect Adzuna. Please try again.",
+      "disconnectFailed": "Could not disconnect Adzuna."
+    },
+    "connectedToast": "Adzuna connected",
+    "disconnectedToast": "Adzuna disconnected"
+  },
+  "upwork": {
+    "heading": "Upwork",
+    "mcpTitle": "Use Upwork in Claude",
+    "mcpDescription": "Add the official Upwork MCP server to Claude Desktop/Code to search, save and message directly from your own Claude:",
+    "searchLink": "Search on Upwork",
+    "notAvailable": "In-app search isn't enabled yet. Use the options above for now.",
+    "connectedForSearch": "Connected for in-app search.",
+    "connectForSearch": "Connect for in-app search",
+    "errors": {
+      "disconnectFailed": "Could not disconnect Upwork."
+    }
+  },
+  "runner": {
+    "heading": "Local runner",
+    "pairedBadge": "Paired",
+    "description": "{{platforms}} need a companion runner on your own machine, logged in with your own account.",
+    "manage": "Manage your runner",
+    "setUp": "Set up a local runner"
+  },
+  "toast": {
+    "upworkConnected": "Upwork connected",
+    "upworkCancelled": "Upwork connection cancelled",
+    "upworkConnectFailed": "Could not connect Upwork. Please try again."
+  }
+}

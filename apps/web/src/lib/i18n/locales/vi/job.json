@@ -1,0 +1,23 @@
+{
+  "detail": {
+    "applyOn": "Ứng tuyển tại {{source}}",
+    "track": "Theo dõi",
+    "tracked": "Đã theo dõi ✓",
+    "matchesSearchAria": "Khớp với tìm kiếm của bạn",
+    "matchesSearchLabel": "Khớp với tìm kiếm của bạn:",
+    "techStack": "Công nghệ sử dụng",
+    "aboutRole": "Về công việc này",
+    "loadingDescription": "Đang tải mô tả",
+    "noDescription": "Chưa có mô tả.",
+    "foundInDescription": "Tìm thấy trong mô tả công việc",
+    "fromDescription": "từ mô tả"
+  },
+  "view": {
+    "title": "Chi tiết việc làm",
+    "missingIdTitle": "Thiếu mã việc làm",
+    "missingIdMessage": "Chúng tôi không biết việc làm nào để hiển thị.",
+    "backToFeed": "Về nguồn việc làm của bạn",
+    "loadingJob": "Đang tải việc làm",
+    "errorTitle": "Không thể tải việc làm này"
+  }
+}

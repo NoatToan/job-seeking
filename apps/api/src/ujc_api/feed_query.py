@@ -16,6 +16,22 @@ TECH_CLAUSE = "tech_stack @> %s::text[]"
 # "Posted within N days": the date the board gave, else when we first saw the job.
 POSTED_WITHIN_CLAUSE = "coalesce(posted_at, first_seen_at) >= now() - make_interval(days => %s)"
 MAX_POSTED_WITHIN_DAYS = 365
+# "Posted within N hours" ("1 hour ago", "today" = hours since the visitor's local midnight).
+# Takes precedence over `days`. Boards that only give a date store midnight, so for those jobs
+# the hour filters effectively fall back to the day they were posted / first seen.
+POSTED_WITHIN_HOURS_CLAUSE = (
+    "coalesce(posted_at, first_seen_at) >= now() - make_interval(hours => %s)"
+)
+MAX_POSTED_WITHIN_HOURS = 24 * 7
+
+
+def posted_within_clause(days: int | None, hours: int | None) -> tuple[str, int] | None:
+    """The "posted within" filter for `hours` (wins) or `days`, clamped; None when neither."""
+    if hours:
+        return POSTED_WITHIN_HOURS_CLAUSE, max(1, min(hours, MAX_POSTED_WITHIN_HOURS))
+    if days:
+        return POSTED_WITHIN_CLAUSE, max(1, min(days, MAX_POSTED_WITHIN_DAYS))
+    return None
 
 
 def parse_tech(tech: str | None) -> list[str]:

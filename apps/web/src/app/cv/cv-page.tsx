@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import type { Cv } from "@ujc/core";
 import { CANDIDATE_COUNTRIES } from "@ujc/core";
 import {
@@ -21,28 +22,30 @@ import {
   UploadIcon,
   useToast,
 } from "@ujc/ui";
+import type { TFunction } from "i18next";
 import { ApiError, deleteCv, listCvs, updatePreferences, uploadCv } from "@/lib/api";
 import { RequireAuth } from "@/lib/require-auth";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
+import { useLanguage } from "@/lib/i18n/provider";
 import { AccountMenu } from "@/app/nav";
 import { ACCEPT_ATTR, CvUploadCard, validateFile } from "./cv-upload-card";
 
 /** Status chip for a row in the CV list (docs/product issue M4-04 flow-v2 adaptation). */
-function cvStatusBadge(status: Cv["status"]) {
+function cvStatusBadge(status: Cv["status"], t: TFunction<"cv">) {
   switch (status) {
     case "done":
-      return <Badge tone="success">Ready</Badge>;
+      return <Badge tone="success">{t("status.ready")}</Badge>;
     case "error":
-      return <Badge tone="danger">Failed</Badge>;
+      return <Badge tone="danger">{t("status.failed")}</Badge>;
     case "processing":
       return (
         <Badge tone="tint" icon={<Spinner size={12} />}>
-          Scanning
+          {t("status.scanning")}
         </Badge>
       );
     default:
-      return <Badge>In queue</Badge>;
+      return <Badge>{t("status.queued")}</Badge>;
   }
 }
 
@@ -52,11 +55,12 @@ const DIGEST_HOURS = Array.from({ length: 24 }, (_, hour) => ({
   label: new Date(2026, 0, 1, hour).toLocaleTimeString([], { hour: "numeric" }),
 }));
 
-const ONBOARDING_STEPS = ["Sign in", "Your CV", "Keywords"];
-
 function CvPageInner() {
+  const { t } = useTranslation("cv");
+  const { dateLocale } = useLanguage();
   const { me, refresh } = useSession();
   const toast = useToast();
+  const ONBOARDING_STEPS = [t("steps.signIn"), t("steps.yourCv"), t("steps.keywords")];
   const [cv, setCv] = useState<Cv | null>(me?.latestCv ?? null);
 
   const [keywords, setKeywords] = useState<string[]>(me?.preferences.keywords ?? []);
@@ -118,12 +122,12 @@ function CvPageInner() {
       await deleteCv(id);
       setCvItems((prev) => prev.filter((c) => c.id !== id));
       if (cv?.id === id) setCv(null);
-      toast.show({ tone: "success", title: "CV deleted", message: "Removed from your account." });
+      toast.show({ tone: "success", title: t("toast.cvDeletedTitle"), message: t("toast.cvDeletedMessage") });
     } catch (err) {
       toast.show({
         tone: "error",
-        title: "Couldn't delete this CV",
-        message: err instanceof ApiError ? err.message : "Please try again.",
+        title: t("toast.deleteFailedTitle"),
+        message: err instanceof ApiError ? err.message : t("errors.pleaseTryAgain"),
       });
     } finally {
       setDeletingId(null);
@@ -136,7 +140,7 @@ function CvPageInner() {
   async function handleUploadAnother(file: File) {
     const validationError = validateFile(file);
     if (validationError) {
-      toast.show({ tone: "error", title: "Couldn't upload", message: validationError });
+      toast.show({ tone: "error", title: t("toast.uploadRejectedTitle"), message: validationError });
       return;
     }
     try {
@@ -145,8 +149,8 @@ function CvPageInner() {
     } catch (err) {
       toast.show({
         tone: "error",
-        title: "Couldn't upload your CV",
-        message: err instanceof ApiError ? err.message : "Please try again.",
+        title: t("toast.uploadAnotherFailedTitle"),
+        message: err instanceof ApiError ? err.message : t("errors.pleaseTryAgain"),
       });
     }
   }
@@ -158,11 +162,11 @@ function CvPageInner() {
       return;
     }
     if (value.length > 40) {
-      setKeywordError("Keywords can be up to 40 characters.");
+      setKeywordError(t("keywordError.tooLong"));
       return;
     }
     if (keywords.length >= 30) {
-      setKeywordError("You can add up to 30 keywords.");
+      setKeywordError(t("keywordError.tooMany"));
       return;
     }
     setKeywordError(null);
@@ -192,11 +196,9 @@ function CvPageInner() {
       });
       await refresh();
       setKeywordsEverSaved(true);
-      toast.show({ tone: "success", title: "Saved", message: "Saved. Here are your jobs." });
+      toast.show({ tone: "success", title: t("toast.savedTitle"), message: t("toast.savedMessage") });
     } catch (err) {
-      setSaveError(
-        err instanceof ApiError ? err.message : "Could not save your preferences. Please try again.",
-      );
+      setSaveError(err instanceof ApiError ? err.message : t("saveError.fallback"));
     } finally {
       setSaving(false);
     }
@@ -206,15 +208,13 @@ function CvPageInner() {
 
   return (
     <>
-      <NavBar title="My CV" trailing={<div className="md:hidden"><AccountMenu /></div>} />
+      <NavBar title={t("nav.title")} trailing={<div className="md:hidden"><AccountMenu /></div>} />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-16 sm:px-6">
         {showProgressSteps ? (
-          <ProgressSteps label="Setup progress" steps={ONBOARDING_STEPS} current={cv?.status === "done" ? 2 : 1} />
+          <ProgressSteps label={t("progress.setupLabel")} steps={ONBOARDING_STEPS} current={cv?.status === "done" ? 2 : 1} />
         ) : null}
 
-        <p className="text-body text-label-secondary">
-          Upload your CV once — we scan it for skills and keywords, and match you to jobs automatically.
-        </p>
+        <p className="text-body text-label-secondary">{t("intro")}</p>
 
         <CvUploadCard
           cv={cv}
@@ -226,8 +226,8 @@ function CvPageInner() {
         {cv?.status === "done" ? (
           <div className="flex flex-col gap-5 animate-pop-in">
             <div className="flex flex-col gap-2">
-              <h2 className="text-title2 text-label">Here&apos;s what we found</h2>
-              <p className="text-body text-label-secondary">Remove anything that doesn&apos;t fit, or add your own.</p>
+              <h2 className="text-title2 text-label">{t("found.title")}</h2>
+              <p className="text-body text-label-secondary">{t("found.subtitle")}</p>
               {keywords.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {keywords.map((k) => (
@@ -237,11 +237,11 @@ function CvPageInner() {
                   ))}
                 </div>
               ) : (
-                <p className="text-subheadline text-label-secondary">Add at least one keyword below.</p>
+                <p className="text-subheadline text-label-secondary">{t("found.addAtLeastOne")}</p>
               )}
               <TextField
                 id="keyword-input"
-                label="Keywords"
+                label={t("keywordsField.label")}
                 value={keywordInput}
                 onChange={(e) => {
                   setKeywordInput(e.target.value);
@@ -253,29 +253,29 @@ function CvPageInner() {
                     addKeyword();
                   }
                 }}
-                placeholder="Add a keyword and press Enter"
+                placeholder={t("keywordsField.placeholder")}
                 error={keywordError ?? undefined}
               />
             </div>
 
-            <section aria-label="Where you can work" className="flex flex-col gap-1.5">
+            <section aria-label={t("location.ariaLabel")} className="flex flex-col gap-1.5">
               <h3 className="px-1 text-footnote font-normal uppercase tracking-wide text-label-secondary">
-                Where you can work
+                {t("location.ariaLabel")}
               </h3>
               <div className="overflow-hidden rounded-card bg-grouped-secondary shadow-card">
                 <div className="flex min-h-11 items-center gap-3 px-4 py-2">
-                  <span className="flex-1 text-body text-label">Remote only</span>
-                  <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
+                  <span className="flex-1 text-body text-label">{t("location.remoteOnly")}</span>
+                  <Toggle label={t("location.remoteOnly")} checked={remoteOnly} onChange={setRemoteOnly} />
                 </div>
                 <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
-                  <span className="flex-1 text-body text-label">I&apos;m based in</span>
+                  <span className="flex-1 text-body text-label">{t("location.basedIn")}</span>
                   <select
                     id="candidate-country"
                     value={candidateCountry ?? ""}
                     onChange={(e) => setCandidateCountry(e.target.value)}
                     className="appearance-none rounded-control-sm bg-transparent text-right text-body text-label-secondary focus-ring"
                   >
-                    <option value="">Select a country…</option>
+                    <option value="">{t("location.selectCountry")}</option>
                     {CANDIDATE_COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.label}
@@ -285,27 +285,25 @@ function CvPageInner() {
                   <ChevronRightIcon size={16} strokeWidth={2.25} className="shrink-0 text-label-quaternary" />
                 </label>
               </div>
-              <p className="px-4 text-footnote text-label-secondary">
-                We&apos;ll hide remote jobs that aren&apos;t open to where you are.
-              </p>
+              <p className="px-4 text-footnote text-label-secondary">{t("location.hint")}</p>
             </section>
 
-            <section aria-label="Daily digest" className="flex flex-col gap-1.5">
+            <section aria-label={t("digest.ariaLabel")} className="flex flex-col gap-1.5">
               <h3 className="px-1 text-footnote font-normal uppercase tracking-wide text-label-secondary">
-                Daily digest
+                {t("digest.ariaLabel")}
               </h3>
               <div className="overflow-hidden rounded-card bg-grouped-secondary shadow-card">
                 <div className="flex min-h-11 items-center gap-3 px-4 py-2">
-                  <span className="flex-1 text-body text-label">Email me new matches</span>
+                  <span className="flex-1 text-body text-label">{t("digest.emailMe")}</span>
                   <Toggle
-                    label="Email me new matches"
+                    label={t("digest.emailMe")}
                     checked={digestEnabled}
                     onChange={setDigestEnabled}
                   />
                 </div>
                 {digestEnabled ? (
                   <label className="relative flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 hairline-t transition-colors duration-150 hover:bg-fill-tertiary focus-within:bg-fill-tertiary">
-                    <span className="flex-1 text-body text-label">Send around</span>
+                    <span className="flex-1 text-body text-label">{t("digest.sendAround")}</span>
                     <select
                       id="digest-hour"
                       value={digestHour}
@@ -322,10 +320,7 @@ function CvPageInner() {
                   </label>
                 ) : null}
               </div>
-              <p className="px-4 text-footnote text-label-secondary">
-                At most once a day, with up to 10 new matches. Never for Upwork. You can
-                unsubscribe from any digest email.
-              </p>
+              <p className="px-4 text-footnote text-label-secondary">{t("digest.hint")}</p>
             </section>
 
             {saveError ? (
@@ -340,13 +335,13 @@ function CvPageInner() {
                 loading={saving}
                 disabled={keywords.length === 0}
               >
-                Save
+                {t("actions.save")}
               </Button>
               <Link
                 href="/"
                 className="ml-auto inline-flex h-11 items-center gap-1 rounded-control px-1 text-body font-semibold text-tint hover:underline focus-ring"
               >
-                See my jobs
+                {t("actions.seeMyJobs")}
                 <ChevronRightIcon size={16} strokeWidth={2.25} />
               </Link>
             </div>
@@ -354,16 +349,16 @@ function CvPageInner() {
         ) : null}
 
         {cvItems.length > 0 ? (
-          <section aria-label="Your CVs" className="flex flex-col gap-2">
+          <section aria-label={t("yourCvs.ariaLabel")} className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-title3 text-label">Your CVs</h2>
+              <h2 className="text-title3 text-label">{t("yourCvs.ariaLabel")}</h2>
               <button
                 type="button"
                 onClick={() => uploadAnotherInputRef.current?.click()}
                 className={buttonClasses({ variant: "plain", size: "sm" })}
               >
                 <UploadIcon size={16} />
-                Upload another
+                {t("yourCvs.uploadAnother")}
               </button>
               <input
                 ref={uploadAnotherInputRef}
@@ -389,10 +384,12 @@ function CvPageInner() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body font-medium text-label">{item.filename}</p>
                     <p className="text-footnote text-label-secondary">
-                      Uploaded {new Date(item.createdAt).toLocaleDateString("en-AU")}
+                      {t("yourCvs.uploadedOn", {
+                        date: new Date(item.createdAt).toLocaleDateString(dateLocale),
+                      })}
                     </p>
                   </div>
-                  {cvStatusBadge(item.status)}
+                  {cvStatusBadge(item.status, t)}
                   {confirmingDeleteId === item.id ? (
                     <div className="flex items-center gap-1.5">
                       <Button
@@ -401,15 +398,15 @@ function CvPageInner() {
                         loading={deletingId === item.id}
                         onClick={() => void handleDeleteCv(item.id)}
                       >
-                        Confirm
+                        {t("yourCvs.confirm")}
                       </Button>
                       <Button variant="plain" size="sm" onClick={() => setConfirmingDeleteId(null)}>
-                        Cancel
+                        {t("yourCvs.cancel")}
                       </Button>
                     </div>
                   ) : (
                     <IconButton
-                      label={`Delete ${item.filename}`}
+                      label={t("yourCvs.deleteAria", { filename: item.filename })}
                       icon={<TrashIcon size={16} />}
                       variant="plain"
                       size="sm"

@@ -3,13 +3,10 @@
 import type { TechCategory } from "@ujc/core";
 import { techInfo } from "@ujc/core";
 import { Chip, TechIcon } from "@ujc/ui";
+import { useTranslation } from "react-i18next";
 import { getJobFacets } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 
-const GROUPS: { category: TechCategory; label: string }[] = [
-  { category: "frontend", label: "Frontend" },
-  { category: "backend", label: "Backend" },
-];
 /** Chips per group: the most common technologies in the crawled jobs. */
 const PER_GROUP = 10;
 
@@ -18,6 +15,11 @@ const PER_GROUP = 10;
  * most common first, from `GET /api/jobs/facets`. Several selected = jobs mentioning all of them.
  */
 export function TechFilter({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
+  const { t } = useTranslation("home");
+  const GROUPS: { category: TechCategory; label: string }[] = [
+    { category: "frontend", label: t("tech.frontend") },
+    { category: "backend", label: t("tech.backend") },
+  ];
   const { data } = useApi(getJobFacets, [], { cacheKey: "facets" });
   const counts = new Map((data?.tech ?? []).map((t) => [t.id, t.count]));
   const toggle = (id: string) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);

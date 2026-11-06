@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
 import { CheckIcon } from "../icons";
 
 /* ------------------------------------------------------------------ Skeleton */
@@ -159,8 +160,8 @@ const avatarTones = [
   "bg-info-soft text-info-ink",
   "bg-success-soft text-success-ink",
   "bg-warning-soft text-warning-ink",
-  "bg-[color-mix(in_srgb,#a855f7_14%,transparent)] text-[#7e22ce] dark:text-[#d8b4fe]",
-  "bg-[color-mix(in_srgb,#f43f5e_12%,transparent)] text-[#be123c] dark:text-[#fda4af]",
+  "bg-violet-soft text-violet-ink",
+  "bg-rose-soft text-rose-ink",
 ] as const;
 
 function initials(name: string): string {
@@ -214,7 +215,8 @@ export interface ProgressStepsProps {
 }
 
 /** Onboarding stepper: done = filled tint with check, current = tint ring, upcoming = grey. */
-export function ProgressSteps({ steps, current, label = "Progress", className }: ProgressStepsProps) {
+export function ProgressSteps({ steps, current, label, className }: ProgressStepsProps) {
+  label ??= useUiStrings().progress;
   return (
     <ol aria-label={label} className={cx("flex w-full items-start", className)}>
       {steps.map((step, i) => {

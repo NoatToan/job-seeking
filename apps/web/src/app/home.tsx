@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQueryState } from "nuqs";
 import { SegmentedControl } from "@ujc/ui";
+import { useTranslation } from "react-i18next";
 import { Feed } from "./feed";
 import { PublicJobs } from "./public-jobs";
 import { useSession } from "@/lib/session";
@@ -23,15 +24,16 @@ function readMode(): HomeMode | null {
 
 /** "All jobs | For you" switch shown in the home hero when signed in. */
 export function HomeModeSwitch({ value, onChange }: { value: HomeMode; onChange: (m: HomeMode) => void }) {
+  const { t } = useTranslation("home");
   return (
     <SegmentedControl
-      label="Which jobs"
+      label={t("modeSwitch.label")}
       size="sm"
       value={value}
       onChange={onChange}
       options={[
-        { value: "all", label: "All jobs" },
-        { value: "matches", label: "For you" },
+        { value: "all", label: t("modeSwitch.all") },
+        { value: "matches", label: t("modeSwitch.forYou") },
       ]}
     />
   );
@@ -49,12 +51,13 @@ export function HomeModeSwitch({ value, onChange }: { value: HomeMode; onChange:
  * never flashes the public list first.
  */
 export function Home() {
+  const { t } = useTranslation("common");
   const { me, loading } = useSession();
   const [urlMode, setUrlMode] = useQueryState("view", homeModeParser);
   const [stored, setStored] = useState<HomeMode | null>(() => (typeof window === "undefined" ? null : readMode()));
 
   if (loading) {
-    return <p className="px-4 py-8 text-body text-label-secondary">Loading…</p>;
+    return <p className="px-4 py-8 text-body text-label-secondary">{t("loading")}</p>;
   }
   if (!me) return <PublicJobs />;
 

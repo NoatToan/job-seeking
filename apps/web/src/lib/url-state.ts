@@ -14,8 +14,20 @@ import {
  * the URL (`clearOnDefault`, also the default).
  */
 
-/** "Posted within" values in days; "" = any time. */
-export const POSTED_DAYS = ["3", "7", "30"] as const;
+/** "Posted within" values: "1h" = past hour, "today" = since local midnight, else days; "" = any time. */
+export const POSTED_DAYS = ["1h", "today", "3", "7", "30"] as const;
+
+/** `posted` → the API's `hours` / `days` params. "today" counts hours since the visitor's midnight. */
+export function postedParams(posted: string | null, now: Date = new Date()): { days?: number; hours?: number } {
+  if (!posted) return {};
+  if (posted === "1h") return { hours: 1 };
+  if (posted === "today") {
+    const midnight = new Date(now);
+    midnight.setHours(0, 0, 0, 0);
+    return { hours: Math.max(1, Math.ceil((now.getTime() - midnight.getTime()) / 3_600_000)) };
+  }
+  return { days: Number(posted) };
+}
 
 /** "9-17" ⇄ [9, 17]: whole hours on the user's clock, 0 ≤ from < to ≤ 24. */
 export const parseAsHourRange = createParser<[number, number]>({

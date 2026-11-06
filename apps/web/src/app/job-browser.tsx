@@ -5,12 +5,13 @@ import type { MouseEvent, ReactNode } from "react";
 import Link from "next/link";
 import type { Job, JobDetail as JobDetailType } from "@ujc/core";
 import { Button, EmptyState, JobListItem } from "@ujc/ui";
+import { useTranslation } from "react-i18next";
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
 import { WorkHoursBadge } from "@/app/work-hours";
-import { useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
+import { markViewed, useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
 
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
 const WIDE_QUERY = "(min-width: 64rem)";
@@ -69,6 +70,7 @@ function DetailPanel({
   signedIn: boolean;
   highlight: readonly string[];
 }) {
+  const { t } = useTranslation("home");
   const fetchId = useDebounced(job.id, DETAIL_FETCH_DELAY_MS);
   // Read once it has stayed in the panel a moment (scroll-spy flicks past many rows).
   useMarkViewedAfterDwell(job.id);
@@ -90,11 +92,11 @@ function DetailPanel({
           <EmptyState
             tone="error"
             illustration="error"
-            title="We couldn't load the full description"
+            title={t("detailPanel.errorTitle")}
             message={error.message}
             action={
               <Button variant="gray" onClick={reload}>
-                Try again
+                {t("common:tryAgain")}
               </Button>
             }
           />
@@ -142,6 +144,7 @@ export function JobBrowser({
   highlight = NO_TERMS,
   onNearEnd,
 }: JobBrowserProps) {
+  const { t } = useTranslation("home");
   const [selectedId, setSelectedId] = useViewState<string | null>(`selected:${stateKey}`, null);
   const wide = useIsWide();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -282,6 +285,9 @@ export function JobBrowser({
       event.preventDefault();
       spyPausedUntil.current = Date.now() + SPY_PAUSE_MS;
       setSelectedId(id);
+      // A click is a deliberate open: mark it read now (local store first, API synced behind),
+      // no dwell wait. Scroll-spy selections still need the dwell.
+      markViewed(id);
       event.currentTarget.closest("[data-job-id]")?.scrollIntoView?.({ block: "nearest" });
     },
     [setSelectedId],
@@ -297,7 +303,7 @@ export function JobBrowser({
         data-testid="job-list-scroll"
         className="lg:-mx-1 lg:min-h-0 lg:snap-y lg:snap-proximity lg:overflow-y-auto lg:overscroll-y-contain lg:px-1 lg:py-1"
       >
-        <div role="list" aria-label="Jobs" className="flex flex-col gap-2.5">
+        <div role="list" aria-label={t("list.jobsAriaLabel")} className="flex flex-col gap-2.5">
           {jobs.map((job) => (
             <div role="listitem" key={job.id} className="snap-start scroll-mt-1">
               <JobListItem
@@ -316,11 +322,15 @@ export function JobBrowser({
         {footer}
       </div>
       <aside
-        aria-label="Job details"
+        aria-label={t("list.jobDetailsAriaLabel")}
         aria-live="polite"
-        className="hidden min-h-0 overflow-y-auto overscroll-contain rounded-[22px] border border-separator bg-background p-7 shadow-raised lg:block"
+        className="hidden min-h-0 overflow-hidden rounded-[22px] border border-separator bg-background shadow-raised lg:flex lg:flex-col"
       >
-        {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
+        {/* The border + radius live on the <aside>, the scrolling on this inner box, so the scrollbar
+            sits inside the rounded frame instead of painting over its border. */}
+        <div className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-7">
+          {wide && selected ? <DetailPanel job={selected} signedIn={signedIn} highlight={highlight} /> : null}
+        </div>
       </aside>
     </div>
   );

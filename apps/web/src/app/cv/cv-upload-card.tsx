@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { Cv } from "@ujc/core";
 import {
   Badge,
@@ -15,6 +16,7 @@ import {
   UploadIcon,
 } from "@ujc/ui";
 import { ApiError, getCv, giveAiConsent, uploadCv } from "@/lib/api";
+import i18n from "@/lib/i18n";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt", ".md"];
@@ -33,13 +35,13 @@ const WAITING_NOTE_MS = 20_000;
 const POLL_MS = 2_000;
 
 export function validateFile(file: File): string | null {
-  if (file.size > MAX_BYTES) return "That file is over 5 MB.";
+  if (file.size > MAX_BYTES) return i18n.t("cv:upload.fileTooLarge");
   const dot = file.name.lastIndexOf(".");
   const ext = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
   const mimeOk = file.type ? ACCEPTED_MIME.has(file.type) : false;
   const extOk = ACCEPTED_EXTENSIONS.includes(ext);
   if (!mimeOk && !extOk) {
-    return "We can read PDF, images, TXT or MD.";
+    return i18n.t("cv:upload.unsupportedFormat");
   }
   return null;
 }
@@ -58,6 +60,7 @@ export interface CvUploadCardProps {
  * onboarding wizard's CV step (docs/product/FLOW_V2.md) so both stay in sync.
  */
 export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: CvUploadCardProps) {
+  const { t } = useTranslation("cv");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -115,9 +118,7 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
       const { aiConsentAt: granted } = await giveAiConsent();
       onConsentGranted(granted);
     } catch (err) {
-      setConsentError(
-        err instanceof ApiError ? err.message : "Could not save your consent. Please try again.",
-      );
+      setConsentError(err instanceof ApiError ? err.message : t("consent.error"));
     } finally {
       setConsenting(false);
     }
@@ -135,9 +136,7 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
       const created = await uploadCv(file);
       onCvChange(created);
     } catch (err) {
-      setUploadError(
-        err instanceof ApiError ? err.message : "Could not upload your CV. Please try again.",
-      );
+      setUploadError(err instanceof ApiError ? err.message : t("uploadError.fallback"));
     } finally {
       setUploading(false);
     }
@@ -160,22 +159,18 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
     return (
       <div
         role="region"
-        aria-label="AI processing consent"
+        aria-label={t("consent.ariaLabel")}
         className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card"
       >
-        <p className="text-subheadline font-semibold text-label">Before you upload</p>
-        <p className="text-body text-label-secondary">
-          Your CV is sent to Claude, an AI model running on our host machine, to pull out your
-          skills and keywords. It&apos;s stored until you delete it, or automatically after 180
-          days.
-        </p>
+        <p className="text-subheadline font-semibold text-label">{t("consent.title")}</p>
+        <p className="text-body text-label-secondary">{t("consent.body")}</p>
         {consentError ? (
           <p role="alert" className="text-footnote text-danger-ink">
             {consentError}
           </p>
         ) : null}
         <Button onClick={() => void handleConsent()} loading={consenting} className="self-start">
-          I agree
+          {t("consent.agree")}
         </Button>
       </div>
     );
@@ -186,9 +181,9 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
       <div className="flex flex-col gap-3">
         {cv?.status === "error" ? (
           <div role="alert" className="flex flex-col gap-1 rounded-card bg-danger-soft px-4 py-3">
-            <p className="text-subheadline font-semibold text-danger-ink">We couldn&apos;t read this file</p>
+            <p className="text-subheadline font-semibold text-danger-ink">{t("readError.title")}</p>
             <p className="text-footnote text-danger-ink">
-              {cv.error ? cv.error : "If it's a photo or scan, try a clearer PDF."}
+              {cv.error ? cv.error : t("readError.genericReason")}
             </p>
           </div>
         ) : null}
@@ -206,19 +201,17 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
         >
           <SpotIllustration name="cv" />
           <div className="flex flex-col gap-1">
-            <p className="text-title3 text-label">Start with your CV</p>
-            <p className="max-w-xs text-body text-label-secondary">
-              We&apos;ll pull out your skills and find jobs that fit.
-            </p>
+            <p className="text-title3 text-label">{t("dropzone.title")}</p>
+            <p className="max-w-xs text-body text-label-secondary">{t("dropzone.subtitle")}</p>
           </div>
           <span className={buttonClasses({ variant: "tinted" })}>
             <UploadIcon size={18} />
-            Upload CV
+            {t("dropzone.upload")}
           </span>
-          <p className="text-footnote text-label-secondary">PDF, image, TXT or MD · up to 5 MB</p>
+          <p className="text-footnote text-label-secondary">{t("dropzone.hint")}</p>
           {uploading ? (
             <p className="flex items-center gap-2 text-footnote text-label-secondary">
-              <Spinner size={14} /> Uploading…
+              <Spinner size={14} /> {t("dropzone.uploading")}
             </p>
           ) : null}
           <input
@@ -251,23 +244,21 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-body font-medium text-label">{cv.filename}</p>
-            <p className="text-footnote text-label-secondary">Scanning your CV…</p>
+            <p className="text-footnote text-label-secondary">{t("scanning.title")}</p>
           </div>
           {showWaitingNote ? (
-            <Badge tone="warning">Waiting for the scanner</Badge>
+            <Badge tone="warning">{t("scanning.waiting")}</Badge>
           ) : cv.status === "processing" ? (
             <Badge tone="tint" icon={<Spinner size={12} />}>
-              Scanning
+              {t("status.scanning")}
             </Badge>
           ) : (
-            <Badge>In queue</Badge>
+            <Badge>{t("status.queued")}</Badge>
           )}
         </div>
         <Skeleton className="h-2 w-full animate-shimmer" />
         <p className="text-footnote text-label-secondary">
-          {showWaitingNote
-            ? "Your CV is safe in the queue and will be read as soon as it's back."
-            : "Usually under a minute. You can leave this page."}
+          {showWaitingNote ? t("scanning.safeNote") : t("scanning.normalNote")}
         </p>
       </div>
     );
@@ -277,8 +268,8 @@ export function CvUploadCard({ cv, onCvChange, aiConsentAt, onConsentGranted }: 
     return (
       <div className="rounded-card bg-grouped-secondary p-4 shadow-card animate-pop-in">
         <div className="flex items-center gap-2">
-          <h2 className="text-headline text-label">{cv.profile?.headline ?? "Your profile"}</h2>
-          <Badge tone="success">Ready</Badge>
+          <h2 className="text-headline text-label">{cv.profile?.headline ?? t("result.defaultTitle")}</h2>
+          <Badge tone="success">{t("status.ready")}</Badge>
         </div>
         {cv.profile?.seniority ? (
           <p className="mt-0.5 text-footnote text-label-secondary">{cv.profile.seniority}</p>

@@ -2,9 +2,11 @@
 // reuse these through react-native-web or a NativeWind port (milestone 3).
 // Tokens: ./theme.css (import it in the app stylesheet). Spec: docs/design/DESIGN_SYSTEM.md.
 export { cx } from "./cx";
+export * from "./strings";
 export * from "./icons";
 export * from "./components/button";
 export * from "./components/fields";
+export * from "./components/floating-panel";
 export * from "./components/fuzzy-select";
 export * from "./components/range-slider";
 export { fuzzyFilter, fuzzyScore } from "./fuzzy";

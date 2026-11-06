@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { sourceMeta } from "@ujc/core";
 import { cx } from "../cx";
+import { EN_UI_STRINGS, useUiStrings } from "../strings";
+import type { UiStrings } from "../strings";
 import { XIcon } from "../icons";
 
 export type Tone = "neutral" | "tint" | "success" | "warning" | "danger" | "info";
@@ -62,7 +64,9 @@ export interface ChipProps {
 }
 
 /** Tag / filter chip. Static (skills, tags), toggleable (filters) or removable (entered keywords). */
-export function Chip({ children, selected, onClick, onRemove, removeLabel = "Remove", icon, className }: ChipProps) {
+export function Chip({ children, selected, onClick, onRemove, removeLabel, icon, className }: ChipProps) {
+  const strings = useUiStrings();
+  removeLabel ??= strings.remove;
   const look = cx(
     "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-subheadline font-medium transition-colors duration-200",
     selected ? "bg-tint text-on-tint" : "bg-fill-tertiary text-label hover:bg-fill-secondary",
@@ -125,11 +129,11 @@ export interface MatchBand {
 }
 
 /** Score bands used everywhere a CV fit score is shown. Labels are friendly, never judgmental. */
-export function matchBand(score: number): MatchBand {
-  if (score >= 85) return { tone: "success", label: "Great fit" };
-  if (score >= 70) return { tone: "info", label: "Good fit" };
-  if (score >= 50) return { tone: "warning", label: "Worth a look" };
-  return { tone: "neutral", label: "Long shot" };
+export function matchBand(score: number, fit: UiStrings["fit"] = EN_UI_STRINGS.fit): MatchBand {
+  if (score >= 85) return { tone: "success", label: fit.great };
+  if (score >= 70) return { tone: "info", label: fit.good };
+  if (score >= 50) return { tone: "warning", label: fit.worth };
+  return { tone: "neutral", label: fit.long };
 }
 
 const ringStroke: Record<Tone, string> = {
@@ -155,7 +159,7 @@ export interface MatchBadgeProps {
 
 export function MatchBadge({ score, variant = "pill", size = 40, showLabel = false, className }: MatchBadgeProps) {
   const s = Math.max(0, Math.min(100, Math.round(score)));
-  const band = matchBand(s);
+  const band = matchBand(s, useUiStrings().fit);
   const a11y = `CV fit ${s} out of 100, ${band.label.toLowerCase()}`;
   if (variant === "pill") {
     return (
@@ -210,7 +214,7 @@ export function SourceDot({ source, className }: { source: string; className?: s
       title={`Crawled from ${meta.label}`}
     >
       <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--src)]" />
-      <span className="truncate">via {meta.label}</span>
+      <span className="truncate">{useUiStrings().via(meta.label)}</span>
     </span>
   );
 }

@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import type { InputHTMLAttributes, ReactNode } from "react";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
 import { SearchIcon, XCircleFillIcon } from "../icons";
 
 const fieldBase =
@@ -69,14 +70,18 @@ export function SearchField({
   value,
   defaultValue = "",
   onChange,
-  label = "Search",
-  clearLabel = "Clear search",
-  placeholder = "Search",
+  label,
+  clearLabel,
+  placeholder,
   className,
   onKeyDown,
   variant = "default",
   ...rest
 }: SearchFieldProps) {
+  const strings = useUiStrings();
+  label ??= strings.search;
+  clearLabel ??= strings.clearSearch;
+  placeholder ??= strings.search;
   const hero = variant === "hero";
   const [inner, setInner] = useState(defaultValue);
   const controlled = value !== undefined;

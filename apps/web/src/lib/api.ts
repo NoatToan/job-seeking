@@ -166,6 +166,8 @@ export interface PublicJobsFilters {
   tech?: string;
   /** Only jobs posted (or first seen) within this many days. */
   days?: number;
+  /** Only jobs posted (or first seen) within this many hours (wins over `days`). */
+  hours?: number;
 }
 
 /** `GET /api/jobs` — the public job catalogue, newest first, keyset-paginated. No sign-in
@@ -316,6 +318,8 @@ export interface FeedFilters {
   tech?: string;
   /** Only jobs posted (or first seen) within this many days. */
   days?: number;
+  /** Only jobs posted (or first seen) within this many hours (wins over `days`). */
+  hours?: number;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

@@ -1,0 +1,74 @@
+{
+  "nav": {
+    "title": "Account"
+  },
+  "signedInAs": "Signed in as",
+  "actions": {
+    "revoke": "Revoke",
+    "connect": "Connect"
+  },
+  "yourData": {
+    "title": "Your data",
+    "description": "Download a copy of everything we have about you: your account, preferences, CV details (not the original file) and applications. See our <link>privacy notice</link>.",
+    "exportError": "Could not download your data. Please try again.",
+    "downloadButton": "Download my data"
+  },
+  "runner": {
+    "title": "Local runner",
+    "description": "Crawl LinkedIn, Glassdoor and Arc.dev from your own machine with your own login. Cookies never leave your computer — only the parsed job listings are uploaded.",
+    "createError": "Could not create a pairing code. Please try again.",
+    "pairingCodeLabel": "Pairing code (valid 10 minutes, one-time use)",
+    "runOnMachine": "Run this on your machine:",
+    "createNewCode": "Create a new pairing code",
+    "addLocalRunner": "Add a local runner",
+    "loadingRunners": "Loading runners…",
+    "loadError": "Could not load your runners.",
+    "pairedRunnersHeader": "Paired runners",
+    "lastSeen": "Last seen {{date}}",
+    "notConnectedYet": "Not connected yet",
+    "revokedToast": "Runner revoked",
+    "revokeFailedTitle": "Could not revoke runner"
+  },
+  "deleteAccount": {
+    "title": "Delete account",
+    "warning": "This permanently deletes your account, CVs, preferences and applications. This cannot be undone.",
+    "confirmLabel": "Type {{confirmText}} to confirm",
+    "deleteError": "Could not delete your account. Please try again.",
+    "deleteButton": "Delete my account",
+    "deletedToastTitle": "Account deleted",
+    "deletedToastMessage": "Sorry to see you go."
+  },
+  "tokens": {
+    "title": "Personal access tokens",
+    "description": "Let your own Claude (via <code>apps/mcp</code>) read your feed and manage your applications. Pick only the scopes you need.",
+    "scopes": {
+      "jobsRead": { "label": "Read jobs", "hint": "Feed, job detail and live search." },
+      "applicationsWrite": { "label": "Read & write applications", "hint": "List, save and update tracked applications." }
+    },
+    "neverExpiry": "Never",
+    "copyNowWarning": "Copy your token now — it won't be shown again.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done",
+    "copiedToast": "Copied to clipboard",
+    "copyFailedTitle": "Couldn't copy",
+    "copyFailedMessage": "Select and copy it manually.",
+    "revokedBadge": "Revoked",
+    "expiresLastUsed": "Expires {{expires}} · Last used {{lastUsed}}",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. My laptop",
+    "scopesLabel": "Scopes",
+    "expiresInLabel": "Expires in (days)",
+    "createButton": "Create token",
+    "loadingAria": "Loading your tokens",
+    "loadingSpinnerLabel": "Loading",
+    "loadError": { "title": "We couldn't load your tokens" },
+    "empty": "No tokens yet.",
+    "errors": {
+      "nameRequired": "Give the token a name, e.g. \"My laptop\".",
+      "scopeRequired": "Pick at least one scope.",
+      "expiryRange": "Expiry must be between 1 and 365 days.",
+      "createFailed": "Could not create the token."
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "status": {
+    "ready": "Ready",
+    "failed": "Failed",
+    "scanning": "Scanning",
+    "queued": "In queue"
+  },
+  "nav": {
+    "title": "My CV"
+  },
+  "steps": {
+    "signIn": "Sign in",
+    "yourCv": "Your CV",
+    "keywords": "Keywords"
+  },
+  "progress": {
+    "setupLabel": "Setup progress"
+  },
+  "intro": "Upload your CV once — we scan it for skills and keywords, and match you to jobs automatically.",
+  "toast": {
+    "cvDeletedTitle": "CV deleted",
+    "cvDeletedMessage": "Removed from your account.",
+    "deleteFailedTitle": "Couldn't delete this CV",
+    "uploadRejectedTitle": "Couldn't upload",
+    "uploadAnotherFailedTitle": "Couldn't upload your CV",
+    "savedTitle": "Saved",
+    "savedMessage": "Saved. Here are your jobs."
+  },
+  "errors": {
+    "pleaseTryAgain": "Please try again."
+  },
+  "keywordError": {
+    "tooLong": "Keywords can be up to 40 characters.",
+    "tooMany": "You can add up to 30 keywords."
+  },
+  "saveError": {
+    "fallback": "Could not save your preferences. Please try again."
+  },
+  "found": {
+    "title": "Here's what we found",
+    "subtitle": "Remove anything that doesn't fit, or add your own.",
+    "addAtLeastOne": "Add at least one keyword below."
+  },
+  "keywordsField": {
+    "label": "Keywords",
+    "placeholder": "Add a keyword and press Enter"
+  },
+  "location": {
+    "ariaLabel": "Where you can work",
+    "remoteOnly": "Remote only",
+    "basedIn": "I'm based in",
+    "selectCountry": "Select a country…",
+    "hint": "We'll hide remote jobs that aren't open to where you are."
+  },
+  "digest": {
+    "ariaLabel": "Daily digest",
+    "emailMe": "Email me new matches",
+    "sendAround": "Send around",
+    "hint": "At most once a day, with up to 10 new matches. Never for Upwork. You can unsubscribe from any digest email."
+  },
+  "actions": {
+    "save": "Save",
+    "seeMyJobs": "See my jobs"
+  },
+  "yourCvs": {
+    "ariaLabel": "Your CVs",
+    "uploadAnother": "Upload another",
+    "uploadedOn": "Uploaded {{date}}",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "deleteAria": "Delete {{filename}}"
+  },
+  "consent": {
+    "ariaLabel": "AI processing consent",
+    "title": "Before you upload",
+    "body": "Your CV is sent to Claude, an AI model running on our host machine, to pull out your skills and keywords. It's stored until you delete it, or automatically after 180 days.",
+    "error": "Could not save your consent. Please try again.",
+    "agree": "I agree"
+  },
+  "readError": {
+    "title": "We couldn't read this file",
+    "genericReason": "If it's a photo or scan, try a clearer PDF."
+  },
+  "dropzone": {
+    "title": "Start with your CV",
+    "subtitle": "We'll pull out your skills and find jobs that fit.",
+    "upload": "Upload CV",
+    "hint": "PDF, image, TXT or MD · up to 5 MB",
+    "uploading": "Uploading…"
+  },
+  "uploadError": {
+    "fallback": "Could not upload your CV. Please try again."
+  },
+  "upload": {
+    "fileTooLarge": "That file is over 5 MB.",
+    "unsupportedFormat": "We can read PDF, images, TXT or MD."
+  },
+  "scanning": {
+    "title": "Scanning your CV…",
+    "waiting": "Waiting for the scanner",
+    "safeNote": "Your CV is safe in the queue and will be read as soon as it's back.",
+    "normalNote": "Usually under a minute. You can leave this page."
+  },
+  "result": {
+    "defaultTitle": "Your profile"
+  }
+}
