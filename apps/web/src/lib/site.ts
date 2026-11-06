@@ -8,6 +8,10 @@ export const SITE_TITLE = "JobSeeking — remote & relocation tech jobs from eve
 export const SITE_DESCRIPTION =
   "Remote and relocation tech jobs from LinkedIn, Seek, Glassdoor, Himalayas, We Work Remotely, Arc and more in one place, refreshed every morning. Filter by tech stack, country, salary and working hours, and match jobs to your CV.";
 
+/** Search Console ownership token (rendered as `google-site-verification`). Owner: tonynguyentruong.tech@gmail.com. */
+export const GOOGLE_SITE_VERIFICATION =
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "I9kQNvnSYTUfG_4Tn34gZz0SgeQtO7R_86L7l3m1unw";
+
 /** Signed-in screens and tooling: never indexed (robots.ts also disallows them). */
 export const NO_INDEX = { index: false, follow: false } as const;
 

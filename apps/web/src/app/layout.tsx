@@ -5,7 +5,7 @@ import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { SessionProvider } from "@/lib/session";
-import { OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { AppShell } from "./nav";
 import { ViewedSync } from "./viewed-sync";
 
@@ -31,6 +31,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
   formatDetection: { telephone: false },
+  verification: { google: GOOGLE_SITE_VERIFICATION },
 };
 
 export const viewport: Viewport = {
