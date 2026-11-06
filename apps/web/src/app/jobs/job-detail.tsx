@@ -23,7 +23,8 @@ import {
 } from "@ujc/ui";
 import { SaveJobButton } from "@/app/save-job-button";
 import { RemoteAccessCard } from "@/app/remote-access-card";
-import { WorkHoursCard } from "@/app/work-hours";
+import { SkyScene } from "@/app/sky-scene";
+import { useWorkHoursPhase, WorkHoursCard } from "@/app/work-hours";
 import { useBasedIn } from "@/lib/based-in";
 import { Highlighted, matchedTerms } from "@/lib/highlight";
 
@@ -56,8 +57,11 @@ export function JobDetail({
   const applyHref = job.applyUrl ?? job.url;
   const source = sourceMeta(job.source).label;
   const { country: basedIn } = useBasedIn();
+  const phase = useWorkHoursPhase()(job);
   return (
-    <article className="flex flex-col gap-4">
+    <article className="relative isolate flex flex-col gap-4">
+      {/* The sky at the job's hours on your clock, bleeding to the panel's padded corner. */}
+      {phase ? <SkyScene phase={phase} size={variant === "panel" ? "panel-bleed" : "panel"} /> : null}
       <header className="flex items-start gap-4">
         <Avatar name={job.company || job.title} shape="rounded" size={56} className="rounded-2xl" />
         <div className="min-w-0 flex-1">

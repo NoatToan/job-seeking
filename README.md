@@ -14,6 +14,8 @@
 
 ### [Try it live →](https://unified-job-crawler.vercel.app)
 
+<a href="https://unified-job-crawler.vercel.app"><img src="docs/screenshots/home.png" alt="JobSeeking home: search and filters on top, the job list on the left with each row tinted by the time of day its hours fall on your clock, and the selected job's details on the right" width="100%"></a>
+
 </div>
 
 ---

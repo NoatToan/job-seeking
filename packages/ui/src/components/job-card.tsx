@@ -186,6 +186,9 @@ export interface JobListItemProps {
   viewed?: boolean;
   /** Candidate's country (ISO): colours the remote region green / red for "open to you or not". */
   basedIn?: string | null;
+  /** Decorative layer behind the content (absolutely positioned with a negative z-index, e.g. a
+   * sky scene); the row is its own stacking context, so it paints above the row background. */
+  backdrop?: ReactNode;
   className?: string;
 }
 
@@ -204,6 +207,7 @@ export function JobListItem({
   meta,
   viewed = false,
   basedIn,
+  backdrop,
   className,
 }: JobListItemProps) {
   const strings = useUiStrings();
@@ -214,7 +218,7 @@ export function JobListItem({
       data-viewed={viewed ? "true" : undefined}
       aria-current={selected ? "true" : undefined}
       className={cx(
-        "group relative flex scroll-my-1 gap-3 rounded-[18px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 ease-spring",
+        "group relative isolate flex scroll-my-1 gap-3 rounded-[18px] border p-3.5 transition-[background-color,border-color,box-shadow] duration-200 ease-spring",
         // Border colour (not an outer ring) marks the selection, so it is never clipped by the
         // scrolling list's overflow.
         selected
@@ -223,6 +227,7 @@ export function JobListItem({
         className,
       )}
     >
+      {backdrop}
       <Avatar
         name={job.company || job.title}
         shape="rounded"
