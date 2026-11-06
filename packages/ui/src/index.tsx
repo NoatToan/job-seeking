@@ -17,4 +17,5 @@ export * from "./components/sheet";
 export * from "./components/toast";
 export * from "./components/navigation";
 export * from "./components/job-card";
+export * from "./components/location-text";
 export * from "./components/tech-icon";

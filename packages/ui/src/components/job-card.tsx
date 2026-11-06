@@ -8,6 +8,7 @@ import { cx } from "../cx";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
+import { LocationText } from "./location-text";
 import { TechStackRow } from "./tech-icon";
 
 /** "2 days ago" style label from an ISO date; null when unknown. */
@@ -77,7 +78,9 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
                 <span aria-hidden>·</span>
                 <span className="inline-flex items-center gap-1">
                   <MapPinIcon size={13} aria-hidden />
-                  {job.location}
+                  <span>
+                    <LocationText text={job.location} />
+                  </span>
                 </span>
               </>
             ) : null}
@@ -238,7 +241,12 @@ export function JobListItem({
         </div>
         <p className="mt-0.5 truncate text-footnote text-label-secondary">
           <span className="font-medium text-label">{job.company}</span>
-          {job.location ? ` · ${job.location}` : ""}
+          {job.location ? (
+            <>
+              {" · "}
+              <LocationText text={job.location} />
+            </>
+          ) : null}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote">
           {job.salaryText ? <span className="truncate font-semibold text-success-ink">{job.salaryText}</span> : null}
