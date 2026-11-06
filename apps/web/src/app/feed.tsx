@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { FeedPage, Job } from "@ujc/core";
 import { SOURCE_IDS } from "@ujc/core";
@@ -28,20 +29,20 @@ import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
-function firstName(email: string): string {
+export function firstName(email: string): string {
   const local = email.split("@")[0] ?? email;
   const word = local.split(/[._+-]/)[0] ?? local;
   return word ? word[0].toUpperCase() + word.slice(1) : email;
 }
 
-function greeting(): string {
+export function greeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
 }
 
-function FeedInner() {
+function FeedInner({ modeSwitch }: { modeSwitch?: ReactNode }) {
   const { me } = useSession();
   const toast = useToast();
   const filters = useJobFilters("feed");
@@ -97,6 +98,7 @@ function FeedInner() {
     <>
       <HomeHero
         title={title}
+        aside={modeSwitch}
         subtitle={
           <p className="flex flex-wrap items-center gap-1.5">
             {feedKeywords.length > 0 ? (
@@ -211,10 +213,10 @@ function FeedInner() {
   );
 }
 
-export function Feed() {
+export function Feed({ modeSwitch }: { modeSwitch?: ReactNode } = {}) {
   return (
     <RequireAuth>
-      <FeedInner />
+      <FeedInner modeSwitch={modeSwitch} />
     </RequireAuth>
   );
 }
