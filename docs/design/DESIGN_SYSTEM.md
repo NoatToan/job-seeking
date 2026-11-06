@@ -191,7 +191,37 @@ using size. Numbers that update (scores, counts) use `tabular-nums`.
 - Page gutters: 16 (mobile), 24 (≥ 640), content max width 1024 (`max-w-5xl`). Reading width for descriptions: 680 (`max-w-2xl`).
 - Card padding 16. Card gap in lists 12. Section gap 48.
 - Grouped list rows: min height 44, text inset 16, separator inset to the text (57 when the row has an icon tile).
-- Breakpoints: `< 768` phone layout with tab bar · `≥ 768` sidebar (256px) + content · `≥ 1024` desktop density type.
+- Breakpoints: `< 768` phone layout with tab bar · `≥ 768` top navigation (56px) + content · `≥ 1024` desktop density type and list + detail split · `≥ 1440` wide.
+
+### 5.1 Responsive and adaptive (required for every screen)
+
+**Responsive** means the layout flows between sizes without breaking: fluid widths, wrapping rows, `min()` /
+`clamp()`, nothing wider than 320px that can't shrink. **Adaptive** means each device class gets the pattern
+that fits it — a phone is not a small desktop. Design both, and write the per-class layout into `SCREENS.md`.
+
+| Class | Width (Tailwind) | Navigation | Lists and detail | Secondary UI |
+|---|---|---|---|---|
+| Phone | `< 640` (base) | Tab bar (bottom) | One column; detail is a pushed page with a sticky bottom action bar | Bottom sheets; filter pills scroll sideways |
+| Large phone | `640–767` (`sm`) | Tab bar | One column, roomier cards | Bottom sheets |
+| Tablet | `768–1023` (`md`) | Top nav | One column list; detail is a page or sheet | Popovers anchored to the control |
+| Desktop | `≥ 1024` (`lg`) | Top nav | List + detail split, each scrolling on its own | Popovers, keyboard shortcuts, hover reveals |
+| Wide | `≥ 1440` | Top nav | Panels grow; text keeps its reading width (`max-w-2xl`) | — |
+
+Adapt to the **input** as well as the width:
+- `pointer-coarse:` (touch): every target ≥ 44px, no action that only appears on hover, no drag-only control
+  without a tap alternative (sliders also accept presets / arrow keys).
+- `pointer-fine:` (mouse, trackpad): denser rows and hover reveals are fine.
+- Keyboard: everything reachable and visible with `focus-ring`.
+
+Device edges and content:
+- Full-height layouts use `dvh`, never `100vh`. Respect `env(safe-area-inset-*)`.
+- A fixed bottom bar (tab bar, Apply bar) pads the page column by its own height, so the last content and the
+  footer are never covered. Sheets without a footer pad their body by the safe-area inset.
+- Check phone landscape (844×390): sticky headers and bottom bars must still leave room for content.
+- Text must survive Vietnamese (~35% longer), 200% text zoom and very long titles, company names and URLs
+  (`line-clamp`, `truncate`, `break-words`), plus 0, 1 and 1,000 items.
+
+Review sizes for every UI change: 390×844 (touch), 844×390, 768×1024, 1280×800, 1440×900 — light and dark.
 
 ## 6. Radii (continuous-corner feel)
 
