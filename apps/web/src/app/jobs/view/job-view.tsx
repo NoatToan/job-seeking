@@ -51,7 +51,7 @@ export function JobView() {
   return (
     <>
       <NavBar title={job?.company ?? "Job details"} largeTitle={false} leading={BACK_LINK} />
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 pb-28 sm:pb-10">
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:pb-10">
         {loading ? (
           <div aria-busy="true" aria-label="Loading job" className="flex flex-col gap-3">
             <Skeleton className="h-7 w-2/3" />

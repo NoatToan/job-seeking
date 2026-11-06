@@ -183,6 +183,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on
   // desktop for pushed screens too.
   const showTabBar = showChrome && !pathname.startsWith("/jobs/view");
+  // `JobDetail variant="page"` pins an Apply bar to the bottom on phones (< sm).
+  const showApplyBar = pathname.startsWith("/jobs/view");
 
   return (
     // `--ujc-shell-top`: page-level sticky bars (NavBar) sit under the 56px TopNav on desktop.
@@ -200,10 +202,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           trailing={<AccountMenu variant="pill" />}
         />
       ) : null}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className={cx("flex-1", showTabBar && "pb-[calc(52px+env(safe-area-inset-bottom))] md:pb-0")}>
-          {children}
-        </div>
+      {/* Phones: the fixed bottom bar (tab bar, or the job page's Apply bar) must never cover the
+          end of the page, so the whole column — footer included — is padded by its height. */}
+      <div
+        className={cx(
+          "flex min-w-0 flex-1 flex-col",
+          showTabBar && "pb-[calc(52px+env(safe-area-inset-bottom))] md:pb-0",
+          showApplyBar && "pb-[calc(84px+env(safe-area-inset-bottom))] sm:pb-0",
+        )}
+      >
+        <div className="flex-1">{children}</div>
         <Footer />
       </div>
       {showTabBar ? <TabBar items={navItems} activeKey={activeKey} linkAs={Link} /> : null}

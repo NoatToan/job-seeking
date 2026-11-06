@@ -8,6 +8,7 @@ from psycopg.types.json import Jsonb
 from job_crawler import eligibility
 from job_crawler.derived import DERIVED_COLUMNS, derive
 from job_crawler.models import Board, JobRecord
+from job_crawler.text import normalize_description
 
 log = logging.getLogger(__name__)
 
@@ -64,13 +65,14 @@ def dedupe(jobs: list[JobRecord]) -> list[JobRecord]:
 
 def job_params(job: JobRecord) -> dict[str, Any]:
     params = job.model_dump()
+    params["description"] = normalize_description(job.description)
     # mode="json" turns datetimes etc. inside the raw payload into JSON-safe values
     params["raw"] = Jsonb(job.model_dump(mode="json")["raw"])
     params.update(
         derive(
             title=job.title,
             location=job.location,
-            description=job.description,
+            description=params["description"],
             remote=job.remote,
             raw=job.raw,
             tags=job.tags,
@@ -180,6 +182,21 @@ def recompute_open_to(conn: psycopg.Connection) -> int:
             changed.append((tokens, job_id))
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany("UPDATE jobs SET open_to = %s WHERE id = %s", changed)
+    return len(changed)
+
+
+def normalize_descriptions(conn: psycopg.Connection) -> int:
+    """Re-apply `text.normalize_description` to every stored description (backfill after a rule
+    change). Returns rows changed. Streams like `recompute_derived`."""
+    changed: list[tuple[str | None, int]] = []
+    with conn.transaction(), conn.cursor(name="description_normalize") as cur:
+        cur.execute("SELECT id, description FROM jobs WHERE description IS NOT NULL")
+        for job_id, description in cur:
+            fresh = normalize_description(description)
+            if fresh != description:
+                changed.append((fresh, job_id))
+    with conn.transaction(), conn.cursor() as cur:
+        cur.executemany("UPDATE jobs SET description = %s WHERE id = %s", changed)
     return len(changed)
 
 

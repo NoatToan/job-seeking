@@ -146,7 +146,7 @@ def test_lever_parse():
     assert job.remote is True
     assert job.employment_type == "Full-time"
     assert job.salary_text == "USD 100,000 - 150,000 / per year salary"
-    assert job.description == "Intro\n\nRequirements\n- React\n\n- TS\n\nBenefits"
+    assert job.description == "Intro\n\nRequirements\n- React\n- TS\n\nBenefits"
     assert job.tags == ["Web", "Engineering"]
     assert job.posted_at == datetime.fromtimestamp(1760000000, tz=UTC)
     second = jobs[1]

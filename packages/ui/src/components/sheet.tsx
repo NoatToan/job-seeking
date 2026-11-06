@@ -139,7 +139,19 @@ export function Sheet({
             />
           ) : null}
         </header>
-        {children ? <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div> : <div className="h-4" />}
+        {children ? (
+          // Without a footer the body is the sheet's last block: keep its end above the home indicator.
+          <div
+            className={cx(
+              "min-h-0 flex-1 overflow-y-auto px-5 pt-4",
+              footer ? "pb-4" : "pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))]",
+            )}
+          >
+            {children}
+          </div>
+        ) : (
+          <div className="h-[max(1rem,env(safe-area-inset-bottom))]" />
+        )}
         {footer ? (
           <footer className="flex flex-col-reverse gap-2 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
             {footer}
