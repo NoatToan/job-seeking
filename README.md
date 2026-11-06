@@ -47,6 +47,7 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 
 - Web: Vercel project `unified-job-crawler`. `vercel.json` points the build at `apps/web`, and the build runs the migrations first.
 - Daily crawl: `.github/workflows/daily-crawl.yml` (05:00 Vietnam time). Set the repository secrets `DATABASE_URL` (and optionally `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`).
+- Daily blog: `.github/workflows/daily-blog.yml` (06:30 Vietnam time). Uses `DATABASE_URL`; optionally `VERCEL_DEPLOY_HOOK_URL` (a Vercel deploy hook for production) so new posts go live right away. See "Blog" below.
 
 ## Analytics
 
@@ -85,6 +86,30 @@ Then restart Claude Code and approve the servers in `/mcp`.
 - `api-db`: runs `apps/api`'s database-backed tests against a `postgres:17` service, then applies every migration from scratch with `node scripts/migrate.mjs` to prove they apply cleanly.
 
 A PR must pass all three jobs before merging.
+
+## Blog
+
+`/blog/` publishes a daily **Hiring & career trends roundup** plus openly licensed articles in full, to bring search traffic that converts into job views. Decisions (copyright model, canonical, nofollow, freshness): [`docs/DECISIONS.md`](docs/DECISIONS.md) "Blog".
+
+- `python -m job_crawler.blog` (`apps/crawler/src/job_crawler/blog/`) fetches the feeds below (robots.txt checked, one request per feed per day), stores articles in `blog_articles` and, when at least 5 new articles are uncited, writes a templated roundup to `blog_posts` with related jobs from our catalogue. No LLM. `--dry-run` fetches and counts without a database.
+- The web build runs `apps/web/scripts/export-blog.mjs` first (reads the tables into `apps/web/.blog/snapshot.json`); the static pages are `/blog/`, `/blog/<roundup>/`, `/blog/articles/<slug>/` (full-text copies, canonical = the original), `/blog/topics/<topic>/`, `/blog/rss.xml` and `/sitemap-blog.xml`.
+- Copyright: by default only title, author, date, link and an excerpt of at most 50 words from the feed. Full text only for sources whose licence allows it, shown with author, publisher, original date, licence link and the original link.
+
+| Source | Feed | Mode | Licence |
+|---|---|---|---|
+| U.S. Bureau of Labor Statistics: Employment Situation | https://www.bls.gov/feed/empsit.rss | full | [Public domain](https://www.bls.gov/opub/copyright-information.htm) |
+| U.S. Bureau of Labor Statistics: JOLTS | https://www.bls.gov/feed/jolts.rss | full | [Public domain](https://www.bls.gov/opub/copyright-information.htm) |
+| The Conversation: Labour market, Employment, Future of work, Remote work, Careers, Layoffs | `https://theconversation.com/topics/<topic>/articles.atom` | full (max 3 per feed per day) | [CC BY-ND 4.0](https://theconversation.com/republishing-guidelines) |
+| LSE Business Review (on-topic headlines only) | https://blogs.lse.ac.uk/businessreview/feed/ | full | [CC BY 4.0](https://blogs.lse.ac.uk/republishing-policy/) |
+| Indeed Hiring Lab | https://www.hiringlab.org/feed/ | excerpt | all rights reserved |
+| HR Dive (talent) | https://www.hrdive.com/feeds/topic/talent/ | excerpt | all rights reserved |
+| ERE | https://www.ere.net/feed/ | excerpt | all rights reserved |
+| The Pragmatic Engineer | https://newsletter.pragmaticengineer.com/feed | excerpt | all rights reserved |
+| Stack Overflow Blog (on-topic headlines only) | https://stackoverflow.blog/feed/ | excerpt | all rights reserved |
+| TechCrunch (layoffs) | https://techcrunch.com/tag/layoffs/feed/ | excerpt | all rights reserved |
+| Remotive blog | https://remotive.com/blog/feed | excerpt | all rights reserved |
+
+**Add a source:** append a `FeedSource` to `apps/crawler/src/job_crawler/blog/sources.py`. Leave `republish_mode="excerpt"` unless you have read the publisher's licence and it allows republication; then set `republish_mode="full"`, `licence_name`, `licence_url` (and `item_rights_pattern` / `pixel_pattern` if the licence has per-item rights or a required counter), and record the licence check in `docs/DECISIONS.md`. Add a trimmed fixture under `apps/crawler/tests/fixtures/blog/` with a parser test, then check it live: `cd apps/crawler && uv run python -m job_crawler.blog --dry-run --source <key>`. Topic keywords live in `topics.py` (mirrored in `apps/web/src/lib/blog/topics.ts`).
 
 ## Add a company board
 

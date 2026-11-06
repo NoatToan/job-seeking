@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# blog snapshot written by scripts/export-blog.mjs at build time
+/.blog/

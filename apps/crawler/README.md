@@ -13,6 +13,12 @@ uv run pytest && uv run ruff check .
 `DATABASE_URL` comes from the environment or the repo-root `.env.local`. Adzuna runs only when
 `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` are set.
 
+## Blog feeds (`python -m job_crawler.blog`)
+
+Daily hiring / labour-market / careers articles for the web blog: `uv run python -m job_crawler.blog --dry-run`
+prints how many items each feed returned without touching the database. Sources, copyright model
+and how to add a feed: the repo README "Blog" and `docs/DECISIONS.md` "Blog".
+
 ## LinkedIn / Arc / Glassdoor (personal session crawler)
 
 These sites have no open API, so they are crawled with stock Playwright Chromium in **your own
