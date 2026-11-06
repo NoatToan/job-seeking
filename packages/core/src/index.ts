@@ -18,6 +18,12 @@ export interface Job {
   openTo: string[] | null;
   postedAt: string | null;
   firstSeenAt: string;
+  /** Time zone(s) the job works in: IANA names ("America/New_York") or fixed offsets
+   * ("UTC-05:00"); several = any of them, first is the primary. null/absent = unknown
+   * (job_crawler.timezones). */
+  timezones?: string[] | null;
+  /** "stated" = the posting says it; "location" = inferred from where the job is. */
+  timezoneSource?: "stated" | "location" | null;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
 }

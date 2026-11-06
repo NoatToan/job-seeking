@@ -4,7 +4,7 @@ from typing import Any
 import psycopg
 from psycopg.types.json import Jsonb
 
-from job_crawler import eligibility
+from job_crawler import eligibility, timezones
 from job_crawler.models import Board, JobRecord
 
 log = logging.getLogger(__name__)
@@ -14,11 +14,12 @@ ERROR_MAX_LEN = 2000
 UPSERT_SQL = """
 INSERT INTO jobs (
   source, external_id, url, apply_url, title, company, location, remote,
-  employment_type, salary_text, description, tags, posted_at, raw, open_to
+  employment_type, salary_text, description, tags, posted_at, raw, open_to, timezones,
+  timezone_source
 ) VALUES (
   %(source)s, %(external_id)s, %(url)s, %(apply_url)s, %(title)s, %(company)s, %(location)s,
   %(remote)s, %(employment_type)s, %(salary_text)s, %(description)s, %(tags)s, %(posted_at)s,
-  %(raw)s, %(open_to)s
+  %(raw)s, %(open_to)s, %(timezones)s, %(timezone_source)s
 )
 ON CONFLICT (source, external_id) DO UPDATE SET
   url = EXCLUDED.url,
@@ -34,6 +35,8 @@ ON CONFLICT (source, external_id) DO UPDATE SET
   posted_at = COALESCE(EXCLUDED.posted_at, jobs.posted_at),
   raw = EXCLUDED.raw,
   open_to = EXCLUDED.open_to,
+  timezones = EXCLUDED.timezones,
+  timezone_source = EXCLUDED.timezone_source,
   last_seen_at = now()
 RETURNING (xmax = 0) AS inserted
 """
@@ -62,6 +65,9 @@ def job_params(job: JobRecord) -> dict[str, Any]:
     # mode="json" turns datetimes etc. inside the raw payload into JSON-safe values
     params["raw"] = Jsonb(job.model_dump(mode="json")["raw"])
     params["open_to"] = eligibility.open_to(job.location, job.remote, structured_locations(job))
+    params["timezones"], params["timezone_source"] = timezones.job_timezones(
+        job.location, job.description, structured_locations(job), job.raw
+    )
     return params
 
 
@@ -172,4 +178,38 @@ def recompute_open_to(conn: psycopg.Connection) -> int:
             changed.append((tokens, job_id))
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany("UPDATE jobs SET open_to = %s WHERE id = %s", changed)
+    return len(changed)
+
+
+def recompute_timezones(conn: psycopg.Connection) -> int:
+    """Re-derive timezones for every stored job (backfill / after rule changes). Returns rows
+    changed. Streams in batches: descriptions make the whole table too big to hold at once."""
+    changed = []
+    # A server-side (named) cursor needs a transaction even on an autocommit connection.
+    with conn.transaction(), conn.cursor(name="tz_recompute") as cur:
+        cur.execute(
+            "SELECT id, location, description, raw->'locationRestrictions',"
+            " raw->'requiredCountries', raw->'timezoneRestrictions', timezones, timezone_source"
+            " FROM jobs"
+        )
+        for (
+            job_id,
+            location,
+            description,
+            restrictions,
+            required,
+            tz_raw,
+            cur_zones,
+            cur_src,
+        ) in cur:
+            extra = [str(v) for v in (restrictions or required or []) if v]
+            zones, source = timezones.job_timezones(
+                location, description, extra, {"timezoneRestrictions": tz_raw}
+            )
+            if zones != cur_zones or source != cur_src:
+                changed.append((zones, source, job_id))
+    with conn.transaction(), conn.cursor() as cur:
+        cur.executemany(
+            "UPDATE jobs SET timezones = %s, timezone_source = %s WHERE id = %s", changed
+        )
     return len(changed)

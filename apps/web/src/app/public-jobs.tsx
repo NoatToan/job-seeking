@@ -23,6 +23,7 @@ import { useInfiniteList } from "@/lib/use-infinite";
 import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { JobBrowser } from "@/app/job-browser";
+import { TimezonePicker } from "@/app/work-hours";
 
 function statusTone(status: SourceInfo["status"]): "success" | "warning" | "danger" {
   if (status === "error") return "danger";
@@ -122,10 +123,13 @@ export function PublicJobs() {
             </Chip>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-subheadline text-label-secondary">
-          <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
-          Remote only
-        </label>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <label className="flex items-center gap-2 text-subheadline text-label-secondary">
+            <Toggle label="Remote only" checked={remoteOnly} onChange={setRemoteOnly} />
+            Remote only
+          </label>
+          <TimezonePicker />
+        </div>
         <SourceStatusStrip sources={sources ?? []} />
       </NavBar>
 

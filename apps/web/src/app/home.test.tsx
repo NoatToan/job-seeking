@@ -142,6 +142,10 @@ describe("Home", () => {
     const jobsCallsAfterPage1 = fetchMock.mock.calls.filter(([u]) => (u as string).startsWith("/api/jobs"));
     expect(jobsCallsAfterPage1).toHaveLength(1);
 
+    // The first page renders a microtask before `loading` clears and the sentinel starts
+    // observing; fire it only once the observer exists.
+    await waitFor(() => expect(ioCallback).not.toBeNull());
+
     // Fire the sentinel twice in quick succession — the in-flight guard should still only issue
     // one request for page 2.
     act(() => {

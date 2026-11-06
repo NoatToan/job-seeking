@@ -25,6 +25,7 @@ import { useScrollRestoration, useViewState } from "@/lib/view-cache";
 import { AccountMenu } from "@/app/nav";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
+import { TimezonePicker } from "@/app/work-hours";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
 function firstName(email: string): string {
@@ -132,6 +133,7 @@ function FeedInner() {
             {refreshing ? <Spinner size={14} /> : <RefreshIcon size={16} />}
             Refresh scores
           </button>
+          <TimezonePicker />
         </div>
         <SearchField value={draftQ} onChange={setDraftQ} label="Filter your feed" placeholder="Filter your feed" />
         <div role="group" aria-label="Filter by source" className="flex flex-wrap gap-2">
