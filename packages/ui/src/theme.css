@@ -41,8 +41,9 @@
   --ujc-sky-dawn-cloud: #fde2e4;
   --ujc-sky-dusk-sun: #fb923c;
   --ujc-sky-dusk-cloud: #e9d5ff;
-  --ujc-sky-moon: #fef3c7;
-  --ujc-sky-moon-glow: rgb(254 243 199 / 0.22);
+  --ujc-sky-moon: #e8edf7;
+  --ujc-sky-moon-shade: #c7d0e3;
+  --ujc-sky-moon-glow: rgb(199 210 254 / 0.28);
   --ujc-sky-star: #ffffff;
   --ujc-brand-gradient: linear-gradient(135deg, #fb923c 0%, #f43f5e 55%, #a855f7 100%);
   --ujc-sky-scrim: rgb(0 0 0 / 0.06);

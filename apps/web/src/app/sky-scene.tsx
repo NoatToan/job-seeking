@@ -122,7 +122,12 @@ function Night() {
         </mask>
       </defs>
       <circle cx="164" cy="30" r="24" fill="var(--ujc-sky-moon-glow)" />
-      <circle cx="164" cy="30" r="12" fill="var(--ujc-sky-moon)" mask={`url(#${maskId})`} />
+      {/* Cool silver crescent with two faint craters, so it never reads as the (warm) sun. */}
+      <g mask={`url(#${maskId})`}>
+        <circle cx="164" cy="30" r="12" fill="var(--ujc-sky-moon)" />
+        <circle cx="158" cy="33" r="2.2" fill="var(--ujc-sky-moon-shade)" />
+        <circle cx="161" cy="25" r="1.4" fill="var(--ujc-sky-moon-shade)" />
+      </g>
       {STARS.map(([x, y, r, delay]) => (
         <circle
           key={`${x}-${y}`}
