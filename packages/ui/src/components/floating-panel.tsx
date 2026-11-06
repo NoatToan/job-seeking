@@ -58,25 +58,32 @@ export function FloatingPanel({
       const above = height > below && aboveRoom > below;
       let left = align === "end" ? a.right - width : a.left;
       left = Math.max(MARGIN, Math.min(left, vw - width - MARGIN));
-      setPos({
+      const next = {
         top: above ? a.top - GAP : a.bottom + GAP,
         left,
         maxHeight: Math.max(160, above ? aboveRoom : below),
         above,
-      });
+      };
+      setPos((prev) =>
+        prev &&
+        Math.abs(prev.top - next.top) < 0.5 &&
+        Math.abs(prev.left - next.left) < 0.5 &&
+        Math.abs(prev.maxHeight - next.maxHeight) < 0.5 &&
+        prev.above === next.above
+          ? prev
+          : next,
+      );
     };
-    const schedule = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
+    // Follow the anchor every frame while open, not only on scroll/resize events: the anchor can
+    // also move with no event at all (a header folding with a CSS transition, content loading
+    // above it). measure() only commits a new position when it actually changed.
+    const loop = () => {
+      measure();
+      frame = requestAnimationFrame(loop);
     };
-    measure();
-    window.addEventListener("scroll", schedule, true);
-    window.addEventListener("resize", schedule);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule, true);
-      window.removeEventListener("resize", schedule);
-    };
+    measure(); // place it before the first paint, then keep following
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
   }, [open, anchorRef, align, panel]);
 
   if (!open || typeof document === "undefined") return null;

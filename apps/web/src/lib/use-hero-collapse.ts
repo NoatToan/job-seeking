@@ -51,6 +51,12 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
+    // Never fold the hero out from under the user: not while focus is in it (typing, a select)
+    // or while a picker/popover opened from it is open (its panel is anchored to a control there).
+    const busy = () => {
+      const root = rootRef.current;
+      return Boolean(root?.contains(document.activeElement) || root?.querySelector('[aria-expanded="true"]'));
+    };
     const lastTop = new WeakMap<Element, number>();
     const onScroll = (e: Event) => {
       const el = e.target === document ? document.scrollingElement : (e.target as Element | null);
@@ -59,7 +65,7 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
       const prev = lastTop.get(el) ?? 0;
       lastTop.set(el, top);
       if (top <= EXPAND_AT_PX) setScrolled(false);
-      else if (top > COLLAPSE_AFTER_PX && top > prev) {
+      else if (top > COLLAPSE_AFTER_PX && top > prev && !busy()) {
         setScrolled(true);
         setPeek(false);
       }
@@ -69,7 +75,7 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
       document.removeEventListener("scroll", onScroll, { capture: true });
       clearTimeout(timer.current);
     };
-  }, []);
+  }, [rootRef]);
 
   const onPointerEnter = useCallback((e: ReactPointerEvent) => {
     if (e.pointerType !== "mouse") return;

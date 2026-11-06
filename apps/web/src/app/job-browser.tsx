@@ -219,6 +219,13 @@ export function JobBrowser({
   const [heldId, setHeldId] = useState<string | null>(null);
   const panelJob = scrolling ? (jobs.find((j) => j.id === heldId) ?? selected) : selected;
   const panelPending = scrolling && panelJob?.id !== selected?.id;
+  // Each job starts at its top: half-reading job 1 then opening job 2 must not land mid-way down
+  // job 2 (the panel's own scroller would otherwise keep its offset across jobs).
+  const detailScrollRef = useRef<HTMLDivElement | null>(null);
+  const panelJobId = panelJob?.id;
+  useLayoutEffect(() => {
+    if (detailScrollRef.current) detailScrollRef.current.scrollTop = 0;
+  }, [panelJobId]);
   const viewed = useViewedJobs();
   const { country: basedIn } = useBasedIn();
   const scrollKey = `list-scroll:${stateKey}`;
@@ -484,7 +491,7 @@ export function JobBrowser({
         ) : null}
         {/* The border + radius live on the <aside>, the scrolling on this inner box, so the scrollbar
             sits inside the rounded frame instead of painting over its border. */}
-        <div className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
+        <div ref={detailScrollRef} className="scroll-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
           {wide && panelJob ? <DetailPanel job={panelJob} signedIn={signedIn} highlight={highlight} /> : null}
         </div>
       </aside>
