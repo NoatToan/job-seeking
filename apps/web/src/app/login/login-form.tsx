@@ -5,6 +5,8 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ApiError } from "@/lib/api";
 import { requestOtp, verifyOtp } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -13,21 +15,21 @@ import { BrandMark, Button, Card, ChevronLeftIcon, CodeField, InfoIcon, TextFiel
 const RESEND_SECONDS = 60;
 const CODE_LENGTH = 6;
 
-function errorMessage(err: unknown): string {
+function errorMessage(err: unknown, t: TFunction<"auth">): string {
   if (err instanceof ApiError) {
     switch (err.code) {
       case "invalid_code":
-        return "That code isn't right. Check it and try again.";
+        return t("errors.invalidCode");
       case "code_expired":
-        return "This code has expired. Request a new one.";
+        return t("errors.codeExpired");
       case "too_many_attempts":
-        return "Too many attempts on this code. Request a new one to keep going.";
+        return t("errors.tooManyAttempts");
       default:
-        if (err.status === 429) return "Too many requests. Please wait a moment and try again.";
+        if (err.status === 429) return t("errors.tooManyRequests");
         return err.message;
     }
   }
-  return err instanceof Error ? err.message : "Something went wrong. Please try again.";
+  return err instanceof Error ? err.message : t("errors.generic");
 }
 
 export function LoginForm() {
@@ -35,6 +37,7 @@ export function LoginForm() {
   const [nextParam] = useQueryState("next");
   const next = nextParam?.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
   const router = useRouter();
+  const { t } = useTranslation("auth");
   const { refresh } = useSession();
 
   const [step, setStep] = useState<"email" | "code">("email");
@@ -65,7 +68,7 @@ export function LoginForm() {
       setCode("");
       setResendIn(RESEND_SECONDS);
     } catch (err) {
-      setEmailError(errorMessage(err));
+      setEmailError(errorMessage(err, t));
     } finally {
       setSendingEmail(false);
     }
@@ -100,7 +103,7 @@ export function LoginForm() {
         router.replace("/");
       }
     } catch (err) {
-      setCodeError(errorMessage(err));
+      setCodeError(errorMessage(err, t));
       setCode("");
       setVerifying(false);
       verifyingRef.current = false;
@@ -120,36 +123,38 @@ export function LoginForm() {
         {step === "email" ? (
           <>
             <div className="flex flex-col gap-2 text-center">
-              <h1 className="text-large-title text-label font-display">Find work you&apos;ll love</h1>
+              <h1 className="text-large-title text-label font-display">{t("title")}</h1>
               <p className="text-body text-label-secondary">
-                Enter your email and we&apos;ll send you a 6-digit code. No password needed.
+                {t("subtitle")}
               </p>
             </div>
             <Card padding="lg" className="w-full">
-              <form onSubmit={handleEmailSubmit} aria-label="Sign in with email" className="flex flex-col gap-4">
+              <form onSubmit={handleEmailSubmit} aria-label={t("formAriaLabel")} className="flex flex-col gap-4">
                 <TextField
-                  label="Email"
+                  label={t("emailLabel")}
                   name="email"
                   type="email"
                   required
                   autoFocus
                   autoComplete="email"
-                  placeholder="you@example.com"
+                  placeholder={t("emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   error={emailError ?? undefined}
                 />
                 <Button type="submit" size="lg" fullWidth loading={sendingEmail}>
-                  Continue
+                  {t("continue")}
                 </Button>
               </form>
             </Card>
             <p className="max-w-xs text-center text-footnote text-label-secondary">
-              By continuing you agree to our Terms and{" "}
-              <Link href="/privacy/" className="font-medium text-tint hover:underline focus-ring">
-                Privacy notice
-              </Link>
-              .
+              <Trans
+                t={t}
+                i18nKey="agreeTerms"
+                components={{
+                  privacyLink: <Link href="/privacy/" className="font-medium text-tint hover:underline focus-ring" />,
+                }}
+              />
             </p>
           </>
         ) : (
@@ -166,14 +171,18 @@ export function LoginForm() {
                 setCodeError(null);
               }}
             >
-              Use a different email
+              {t("useDifferentEmail")}
             </Button>
 
             <div className="flex flex-col gap-1 text-center">
-              <h1 className="text-title1 text-label">Check your email</h1>
+              <h1 className="text-title1 text-label">{t("checkEmailTitle")}</h1>
               <p className="text-body text-label-secondary">
-                We sent a code to <strong className="font-semibold text-label">{email}</strong>. It works for
-                10 minutes.
+                <Trans
+                  t={t}
+                  i18nKey="codeSentTo"
+                  values={{ email }}
+                  components={{ strong: <strong className="font-semibold text-label" /> }}
+                />
               </p>
             </div>
 
@@ -184,7 +193,12 @@ export function LoginForm() {
               >
                 <InfoIcon size={18} />
                 <span>
-                  Preview mode: your code is <span className="tabular-nums">{devCode}</span>
+                  <Trans
+                    t={t}
+                    i18nKey="previewMode"
+                    values={{ code: devCode }}
+                    components={{ code: <span className="tabular-nums" /> }}
+                  />
                 </span>
               </div>
             ) : null}
@@ -204,14 +218,14 @@ export function LoginForm() {
                 </p>
               ) : null}
               <Button type="submit" size="lg" fullWidth loading={verifying} disabled={code.length !== CODE_LENGTH}>
-                Sign in
+                {t("signIn")}
               </Button>
             </form>
 
             <div className="flex flex-col items-center gap-1">
-              <p className="text-footnote text-label-secondary">Didn&apos;t get it?</p>
+              <p className="text-footnote text-label-secondary">{t("didntGetIt")}</p>
               <Button type="button" variant="plain" size="sm" disabled={resendIn > 0 || sendingEmail} onClick={handleResend}>
-                {resendIn > 0 ? `Send a new code (${resendIn}s)` : "Send a new code"}
+                {resendIn > 0 ? t("sendNewCodeIn", { seconds: resendIn }) : t("sendNewCode")}
               </Button>
             </div>
           </div>

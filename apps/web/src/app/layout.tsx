@@ -3,6 +3,7 @@ import { GoogleTagManager } from "@next/third-parties/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n/provider";
 import { SessionProvider } from "@/lib/session";
 import { OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { AppShell } from "./nav";
@@ -51,12 +52,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {GTM_ID ? <GoogleTagManager gtmId={GTM_ID} /> : null}
       <body className="min-h-full bg-grouped text-label">
         <NuqsAdapter>
-          <SessionProvider>
-            <ViewedSync />
-            <ToastProvider>
-              <AppShell>{children}</AppShell>
-            </ToastProvider>
-          </SessionProvider>
+          <I18nProvider>
+            <SessionProvider>
+              <ViewedSync />
+              <ToastProvider>
+                <AppShell>{children}</AppShell>
+              </ToastProvider>
+            </SessionProvider>
+          </I18nProvider>
         </NuqsAdapter>
       </body>
     </html>

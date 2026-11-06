@@ -1,0 +1,64 @@
+{
+  "nav": {
+    "title": "Kết nối"
+  },
+  "loadingAria": "Đang tải các kết nối của bạn",
+  "loadError": {
+    "title": "Không thể tải các kết nối của bạn",
+    "message": "Lỗi từ phía chúng tôi, không phải do bạn. Kiểm tra kết nối rồi thử lại."
+  },
+  "badges": {
+    "connected": "Đã kết nối"
+  },
+  "actions": {
+    "disconnect": "Ngắt kết nối"
+  },
+  "builtIn": {
+    "header": "Có sẵn",
+    "ariaLabel": "Nguồn có sẵn",
+    "footer": "Luôn hoạt động. Không cần kết nối.",
+    "statusError": "Lần thu thập gần nhất bị lỗi",
+    "statusRunning": "Đang thu thập",
+    "statusAlwaysOn": "Luôn hoạt động"
+  },
+  "adzuna": {
+    "heading": "Adzuna",
+    "description": "Thêm app id/key <link>Adzuna</link> của riêng bạn để có thêm quốc gia và giới hạn tốc độ cao hơn.",
+    "connectedLabel": "Đã kết nối",
+    "appIdLabel": "App id: {{appId}}",
+    "appIdFieldLabel": "App id",
+    "appKeyFieldLabel": "App key",
+    "connectButton": "Kết nối",
+    "errors": {
+      "invalidCredentials": "Adzuna từ chối app id/key này. Kiểm tra lại rồi thử lại.",
+      "connectFailed": "Không thể kết nối Adzuna. Vui lòng thử lại.",
+      "disconnectFailed": "Không thể ngắt kết nối Adzuna."
+    },
+    "connectedToast": "Đã kết nối Adzuna",
+    "disconnectedToast": "Đã ngắt kết nối Adzuna"
+  },
+  "upwork": {
+    "heading": "Upwork",
+    "mcpTitle": "Dùng Upwork trong Claude",
+    "mcpDescription": "Thêm Upwork MCP server chính thức vào Claude Desktop/Code để tìm kiếm, lưu và nhắn tin trực tiếp từ Claude của riêng bạn:",
+    "searchLink": "Tìm trên Upwork",
+    "notAvailable": "Tìm kiếm trong ứng dụng chưa được bật. Hãy dùng các tuỳ chọn ở trên.",
+    "connectedForSearch": "Đã kết nối để tìm kiếm trong ứng dụng.",
+    "connectForSearch": "Kết nối để tìm kiếm trong ứng dụng",
+    "errors": {
+      "disconnectFailed": "Không thể ngắt kết nối Upwork."
+    }
+  },
+  "runner": {
+    "heading": "Runner cục bộ",
+    "pairedBadge": "Đã ghép nối",
+    "description": "{{platforms}} cần một runner đồng hành trên máy của chính bạn, đăng nhập bằng tài khoản của bạn.",
+    "manage": "Quản lý runner của bạn",
+    "setUp": "Thiết lập runner cục bộ"
+  },
+  "toast": {
+    "upworkConnected": "Đã kết nối Upwork",
+    "upworkCancelled": "Đã huỷ kết nối Upwork",
+    "upworkConnectFailed": "Không thể kết nối Upwork. Vui lòng thử lại."
+  }
+}

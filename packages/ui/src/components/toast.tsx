@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
 import { AlertTriangleIcon, CheckCircleIcon, InfoIcon, XIcon } from "../icons";
 
 export type ToastTone = "success" | "error" | "info";
@@ -33,7 +34,8 @@ export interface ToastProps extends ToastOptions {
 }
 
 /** Visual toast (iOS banner style). Usually rendered by ToastProvider; exported for previews. */
-export function Toast({ title, message, tone = "info", action, onDismiss, dismissLabel = "Dismiss", className }: ToastProps) {
+export function Toast({ title, message, tone = "info", action, onDismiss, dismissLabel, className }: ToastProps) {
+  dismissLabel ??= useUiStrings().dismiss;
   return (
     <div
       role={tone === "error" ? "alert" : "status"}

@@ -1,0 +1,74 @@
+{
+  "nav": {
+    "title": "Tài khoản"
+  },
+  "signedInAs": "Đăng nhập với",
+  "actions": {
+    "revoke": "Thu hồi",
+    "connect": "Kết nối"
+  },
+  "yourData": {
+    "title": "Dữ liệu của bạn",
+    "description": "Tải về bản sao mọi dữ liệu chúng tôi lưu về bạn: tài khoản, tuỳ chọn, thông tin CV (không gồm file gốc) và các đơn ứng tuyển. Xem <link>thông báo quyền riêng tư</link> của chúng tôi.",
+    "exportError": "Không thể tải dữ liệu của bạn. Vui lòng thử lại.",
+    "downloadButton": "Tải dữ liệu của tôi"
+  },
+  "runner": {
+    "title": "Runner cục bộ",
+    "description": "Thu thập dữ liệu từ LinkedIn, Glassdoor và Arc.dev từ máy của chính bạn với tài khoản đăng nhập của bạn. Cookie không bao giờ rời khỏi máy của bạn — chỉ danh sách việc làm đã xử lý được tải lên.",
+    "createError": "Không thể tạo mã ghép nối. Vui lòng thử lại.",
+    "pairingCodeLabel": "Mã ghép nối (có hiệu lực 10 phút, dùng một lần)",
+    "runOnMachine": "Chạy lệnh này trên máy của bạn:",
+    "createNewCode": "Tạo mã ghép nối mới",
+    "addLocalRunner": "Thêm runner cục bộ",
+    "loadingRunners": "Đang tải runner…",
+    "loadError": "Không thể tải danh sách runner của bạn.",
+    "pairedRunnersHeader": "Runner đã ghép nối",
+    "lastSeen": "Lần cuối hoạt động {{date}}",
+    "notConnectedYet": "Chưa kết nối",
+    "revokedToast": "Đã thu hồi runner",
+    "revokeFailedTitle": "Không thể thu hồi runner"
+  },
+  "deleteAccount": {
+    "title": "Xoá tài khoản",
+    "warning": "Thao tác này sẽ xoá vĩnh viễn tài khoản, CV, tuỳ chọn và các đơn ứng tuyển của bạn. Không thể hoàn tác.",
+    "confirmLabel": "Gõ {{confirmText}} để xác nhận",
+    "deleteError": "Không thể xoá tài khoản của bạn. Vui lòng thử lại.",
+    "deleteButton": "Xoá tài khoản của tôi",
+    "deletedToastTitle": "Đã xoá tài khoản",
+    "deletedToastMessage": "Rất tiếc khi phải chia tay bạn."
+  },
+  "tokens": {
+    "title": "Personal access token",
+    "description": "Cho phép Claude của riêng bạn (qua <code>apps/mcp</code>) đọc bảng tin và quản lý đơn ứng tuyển của bạn. Chỉ chọn những quyền bạn cần.",
+    "scopes": {
+      "jobsRead": { "label": "Đọc việc làm", "hint": "Bảng tin, chi tiết việc làm và tìm kiếm trực tiếp." },
+      "applicationsWrite": { "label": "Đọc & ghi đơn ứng tuyển", "hint": "Liệt kê, lưu và cập nhật đơn ứng tuyển đang theo dõi." }
+    },
+    "neverExpiry": "Không bao giờ",
+    "copyNowWarning": "Sao chép token của bạn ngay bây giờ — token sẽ không hiển thị lại nữa.",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "done": "Xong",
+    "copiedToast": "Đã sao chép vào clipboard",
+    "copyFailedTitle": "Không thể sao chép",
+    "copyFailedMessage": "Vui lòng chọn và sao chép thủ công.",
+    "revokedBadge": "Đã thu hồi",
+    "expiresLastUsed": "Hết hạn {{expires}} · Dùng lần cuối {{lastUsed}}",
+    "nameLabel": "Tên",
+    "namePlaceholder": "VD: Laptop của tôi",
+    "scopesLabel": "Quyền",
+    "expiresInLabel": "Hết hạn sau (ngày)",
+    "createButton": "Tạo token",
+    "loadingAria": "Đang tải token của bạn",
+    "loadingSpinnerLabel": "Đang tải",
+    "loadError": { "title": "Không thể tải token của bạn" },
+    "empty": "Chưa có token nào.",
+    "errors": {
+      "nameRequired": "Đặt tên cho token, ví dụ \"Laptop của tôi\".",
+      "scopeRequired": "Chọn ít nhất một quyền.",
+      "expiryRange": "Thời hạn phải từ 1 đến 365 ngày.",
+      "createFailed": "Không thể tạo token."
+    }
+  }
+}

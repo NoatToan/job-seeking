@@ -4,10 +4,11 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Job } from "@ujc/core";
 import type { ReactNode } from "react";
 import { sourceMeta, techInfo } from "@ujc/core";
-import { Chip, ClockIcon, cx, GlobeIcon, RangeSlider, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
+import { Chip, ClockIcon, cx, FloatingPanel, GlobeIcon, RangeSlider, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
 import { useQueryStates } from "nuqs";
+import { useTranslation } from "react-i18next";
 import { useViewState } from "@/lib/view-cache";
-import { jobFilterParsers, POSTED_DAYS } from "@/lib/url-state";
+import { jobFilterParsers, POSTED_DAYS, postedParams } from "@/lib/url-state";
 import { CountryFilter } from "@/app/country-filter";
 import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
 import { TechFilter } from "@/app/tech-filter";
@@ -18,13 +19,18 @@ import { jobFitsHours, shortZoneName } from "@/lib/work-hours";
 
 type PostedDays = (typeof POSTED_DAYS)[number];
 
-/** "Posted within" options (Slack request: 3 days, 7 days, 1 month). Value = days, "" = any. */
-export const POSTED_OPTIONS = [
-  { value: "", label: "Any time" },
-  { value: "3", label: "Past 3 days" },
-  { value: "7", label: "Past 7 days" },
-  { value: "30", label: "Past month" },
-] as const;
+/** "Posted within" options (Slack: past hour, today, 3 days, 7 days, 1 month). "" = any. */
+function usePostedOptions(): { value: string; label: string }[] {
+  const { t } = useTranslation("home");
+  return [
+    { value: "", label: t("filters.postedAny") },
+    { value: "1h", label: t("filters.postedHour") },
+    { value: "today", label: t("filters.postedToday") },
+    { value: "3", label: t("filters.posted3") },
+    { value: "7", label: t("filters.posted7") },
+    { value: "30", label: t("filters.postedMonth") },
+  ];
+}
 
 export interface JobFilterState {
   draftQ: string;
@@ -110,7 +116,7 @@ export function useJobFilters(prefix: string): JobFilterState {
       remote: remoteOnly || undefined,
       country: country || undefined,
       tech: techKey || undefined,
-      days: posted ? Number(posted) : undefined,
+      ...postedParams(posted),
     },
     activeCount: [q, source, remoteOnly, country, posted, hours].filter(Boolean).length + tech.length,
     hours,
@@ -138,13 +144,6 @@ export function useVisibleJobs(f: JobFilterState, items: Job[]): Job[] {
   }, [items, f.hiddenIds, f.hours, zone]);
 }
 
-const HOUR_PRESETS: { label: string; value: [number, number] }[] = [
-  { label: "Office 9–17", value: [9, 17] },
-  { label: "Early 6–14", value: [6, 14] },
-  { label: "Late 13–22", value: [13, 22] },
-  { label: "Evening 18–24", value: [18, 24] },
-];
-
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
 /**
@@ -153,17 +152,27 @@ const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
  * window when it is shorter); jobs with no stated time zone always stay.
  */
 function HoursFilter({ value, onChange }: { value: [number, number] | null; onChange: (v: [number, number] | null) => void }) {
+  const { t } = useTranslation("home");
+  const HOUR_PRESETS: { label: string; value: [number, number] }[] = [
+    { label: t("filters.hours.presetOffice"), value: [9, 17] },
+    { label: t("filters.hours.presetEarly"), value: [6, 14] },
+    { label: t("filters.hours.presetLate"), value: [13, 22] },
+    { label: t("filters.hours.presetEvening"), value: [18, 24] },
+  ];
   const { zone } = useUserTimezone();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<[number, number]>(value ?? [9, 17]);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const abbr = shortZoneName(zone);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -185,6 +194,7 @@ function HoursFilter({ value, onChange }: { value: [number, number] | null; onCh
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
@@ -195,25 +205,25 @@ function HoursFilter({ value, onChange }: { value: [number, number] | null; onCh
         className={cx(pillClasses(value !== null), "px-3.5")}
       >
         <ClockIcon size={15} strokeWidth={2} aria-hidden />
-        {value ? `${hourLabel(value[0])}–${hourLabel(value[1])} ${abbr}` : "Hours"}
+        {value ? `${hourLabel(value[0])}–${hourLabel(value[1])} ${abbr}` : t("filters.hours.pill")}
       </button>
-      {open ? (
-        <div
-          id={panelId}
-          role="dialog"
-          aria-label="Hours I want to work"
-          className="absolute left-0 z-50 mt-2 w-80 rounded-[18px] border border-separator bg-background p-4 shadow-overlay animate-pop-in"
-        >
-          <p className="text-headline text-label">Hours I want to work</p>
-          <p className="mt-0.5 text-footnote text-label-secondary">
-            On your clock ({abbr}). Shows jobs whose 9–5 overlaps these hours by 4h or more.
-          </p>
+      <FloatingPanel
+        anchorRef={triggerRef}
+        open={open}
+        panelRef={panelRef}
+        id={panelId}
+        role="dialog"
+        aria-label={t("filters.hours.panelTitle")}
+        className="w-80 rounded-[18px] border border-separator bg-background p-4 shadow-overlay"
+      >
+          <p className="text-headline text-label">{t("filters.hours.panelTitle")}</p>
+          <p className="mt-0.5 text-footnote text-label-secondary">{t("filters.hours.description", { abbr })}</p>
           <p className="mt-3 text-title3 font-semibold text-label tabular-nums">
             {hourLabel(draft[0])} – {hourLabel(draft[1])}
           </p>
           <RangeSlider
             className="mt-2"
-            labels={["Start of your day", "End of your day"]}
+            labels={[t("filters.hours.startOfDay"), t("filters.hours.endOfDay")]}
             min={0}
             max={24}
             value={draft}
@@ -248,29 +258,29 @@ function HoursFilter({ value, onChange }: { value: [number, number] | null; onCh
               }}
               className="rounded-control-sm text-subheadline font-medium text-tint hover:underline focus-ring"
             >
-              Any hours
+              {t("filters.hours.anyHours")}
             </button>
             <button
               type="button"
               onClick={() => setOpen(false)}
               className="rounded-full bg-label px-4 py-1.5 text-subheadline font-semibold text-background focus-ring"
             >
-              Done
+              {t("filters.hours.done")}
             </button>
           </div>
-        </div>
-      ) : null}
+      </FloatingPanel>
     </div>
   );
 }
 
 /** "Read 42 jobs · Clear" — the read history kept in this browser (and the account). */
 function ReadHistory() {
+  const { t } = useTranslation("home");
   const viewed = useViewedJobs();
   const [clearing, setClearing] = useState(false);
   return (
     <p className="flex items-center gap-2 text-subheadline text-label-secondary">
-      Read {viewed.size} {viewed.size === 1 ? "job" : "jobs"}
+      {t("filters.readHistory", { count: viewed.size })}
       {viewed.size ? (
         <button
           type="button"
@@ -283,7 +293,7 @@ function ReadHistory() {
           }}
           className="rounded-control-sm font-medium text-tint hover:underline focus-ring disabled:opacity-50"
         >
-          Clear read history
+          {t("filters.clearReadHistory")}
         </button>
       ) : null}
     </p>
@@ -305,6 +315,8 @@ export interface JobFilterBarProps {
  * open in a panel underneath only when asked for. Selected techs stay visible as small chips.
  */
 export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
+  const { t } = useTranslation("home");
+  const postedOptions = usePostedOptions();
   const [moreOpen, setMoreOpen] = useState(false);
   const panelId = useId();
   return (
@@ -315,13 +327,13 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
           variant="hero"
           value={f.draftQ}
           onChange={f.setDraftQ}
-          label="Search jobs"
-          placeholder="Job title, company or skill — e.g. Next.js, Python"
+          label={t("filters.searchLabel")}
+          placeholder={t("filters.searchPlaceholder")}
           className="w-full xl:max-w-xl xl:min-w-[22rem] xl:flex-1"
         />
         <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
-        <PillSelect label="Source" value={f.source} onChange={f.setSource}>
-          <option value="">All sources</option>
+        <PillSelect label={t("filters.sourceLabel")} value={f.source} onChange={f.setSource}>
+          <option value="">{t("filters.allSources")}</option>
           {sources.map((id) => (
             <option key={id} value={id}>
               {sourceMeta(id).label}
@@ -329,21 +341,21 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
           ))}
         </PillSelect>
         <CountryFilter value={f.country} onChange={f.setCountry} compact />
-        <PillSelect label="Posted" value={f.posted} onChange={f.setPosted}>
-          {POSTED_OPTIONS.map((o) => (
+        <PillSelect label={t("filters.postedLabel")} value={f.posted} onChange={f.setPosted}>
+          {postedOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </PillSelect>
         <PillToggle
-          label="Remote"
+          label={t("common:ui.remote")}
           checked={f.remoteOnly}
           onChange={f.setRemoteOnly}
           icon={<GlobeIcon size={15} strokeWidth={2} aria-hidden />}
         />
         <HoursFilter value={f.hours} onChange={f.setHours} />
-        <PillToggle label="Unread" checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
+        <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
         <button
           type="button"
           aria-expanded={moreOpen}
@@ -352,14 +364,14 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
           className={cx(pillClasses(moreOpen || f.tech.length > 0), "px-3.5")}
         >
           <SlidersIcon size={15} strokeWidth={2} aria-hidden />
-          More filters{f.tech.length ? ` (${f.tech.length})` : ""}
+          {f.tech.length ? t("filters.moreFiltersCount", { count: f.tech.length }) : t("filters.moreFilters")}
         </button>
         {!moreOpen
           ? f.tech.map((id) => (
               <Chip
                 key={id}
-                onRemove={() => f.setTech(f.tech.filter((t) => t !== id))}
-                removeLabel="Remove"
+                onRemove={() => f.setTech(f.tech.filter((techId) => techId !== id))}
+                removeLabel={t("common:ui.remove")}
                 icon={<TechIcon id={id} size={14} />}
                 className="h-9 border border-separator bg-background"
               >
@@ -373,7 +385,7 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
             onClick={f.clear}
             className="h-9 rounded-full px-2 text-subheadline font-medium text-tint hover:underline focus-ring"
           >
-            Clear all
+            {t("filters.clearAll")}
           </button>
         ) : null}
         {extra}

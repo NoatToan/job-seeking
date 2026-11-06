@@ -1,0 +1,50 @@
+{
+  "nav": {
+    "title": "Theo dõi"
+  },
+  "view": {
+    "label": "Hiển thị",
+    "board": "Bảng",
+    "list": "Danh sách"
+  },
+  "columns": {
+    "saved": "Đã lưu",
+    "applied": "Đã ứng tuyển",
+    "interviewing": "Phỏng vấn",
+    "offer": "Có offer",
+    "closed": "Đã đóng"
+  },
+  "status": {
+    "saved": "Đã lưu",
+    "applied": "Đã ứng tuyển",
+    "interviewing": "Phỏng vấn",
+    "offer": "Có offer",
+    "rejected": "Bị từ chối",
+    "withdrawn": "Đã rút"
+  },
+  "fields": {
+    "status": "Trạng thái",
+    "note": "Ghi chú",
+    "nextAction": "Hành động tiếp theo"
+  },
+  "untitledJob": "Việc chưa đặt tên",
+  "unknownCompany": "Công ty không xác định",
+  "untitledApplication": "đơn ứng tuyển này",
+  "deleteAria": "Xoá {{name}}",
+  "statusForAria": "Trạng thái cho {{name}}",
+  "noteForAria": "Ghi chú cho {{name}}",
+  "nextActionForAria": "Ngày hành động tiếp theo cho {{name}}",
+  "errors": {
+    "updateFailed": "Không thể cập nhật đơn ứng tuyển này.",
+    "deleteFailed": "Không thể xoá đơn ứng tuyển này."
+  },
+  "loadingAria": "Đang tải tracker của bạn",
+  "loadError": {
+    "title": "Không thể tải tracker của bạn",
+    "message": "Lỗi từ phía chúng tôi, không phải do bạn. Kiểm tra kết nối rồi thử lại."
+  },
+  "empty": {
+    "title": "Chưa có gì được theo dõi",
+    "message": "Lưu một việc làm từ bảng tin hoặc tìm kiếm để bắt đầu xây dựng lộ trình ứng tuyển của bạn."
+  }
+}

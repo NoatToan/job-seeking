@@ -3,6 +3,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
+import { FloatingPanel } from "./floating-panel";
 import { fuzzyFilter } from "../fuzzy";
 import { CheckIcon, ChevronDownIcon, SearchIcon } from "../icons";
 
@@ -47,15 +49,19 @@ export function FuzzySelect({
   value,
   onChange,
   options,
-  placeholder = "Select…",
-  searchPlaceholder = "Search…",
-  emptyLabel = "No matches",
+  placeholder,
+  searchPlaceholder,
+  emptyLabel,
   variant = "field",
   active,
   disabled = false,
   maxResults = 200,
   className,
 }: FuzzySelectProps) {
+  const strings = useUiStrings();
+  placeholder ??= strings.select;
+  searchPlaceholder ??= strings.searchEllipsis;
+  emptyLabel ??= strings.noMatches;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -63,6 +69,7 @@ export function FuzzySelect({
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const optionId = (i: number) => `${listId}-opt-${i}`;
 
@@ -75,7 +82,8 @@ export function FuzzySelect({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
     document.addEventListener("pointerdown", onDown);
     inputRef.current?.focus();
@@ -165,15 +173,19 @@ export function FuzzySelect({
           className={cx("shrink-0 transition-transform duration-200", open && "rotate-180", isActive && variant === "pill" ? "text-tint-ink" : "text-label-tertiary")}
         />
       </button>
-      {open ? (
-        <div className="absolute top-full left-0 z-50 mt-2 w-72 rounded-[18px] border border-separator bg-background p-1.5 shadow-overlay animate-pop-in">
+      <FloatingPanel
+        anchorRef={triggerRef}
+        open={open}
+        panelRef={panelRef}
+        className="w-72 rounded-[18px] border border-separator bg-background p-1.5 shadow-overlay"
+      >
           <div className="relative flex items-center">
             <SearchIcon size={15} aria-hidden className="pointer-events-none absolute left-2.5 text-label-tertiary" />
             <input
               ref={inputRef}
               type="text"
               role="searchbox"
-              aria-label={`Search ${label.toLowerCase()}`}
+              aria-label={`${strings.search} ${label.toLowerCase()}`}
               aria-controls={listId}
               aria-activedescendant={results.length ? optionId(cursor) : undefined}
               autoComplete="off"
@@ -218,8 +230,7 @@ export function FuzzySelect({
               })
             )}
           </ul>
-        </div>
-      ) : null}
+      </FloatingPanel>
     </div>
   );
 }

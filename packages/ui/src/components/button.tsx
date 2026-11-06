@@ -7,7 +7,8 @@ export type ButtonSize = "sm" | "md" | "lg";
 const base =
   "relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold " +
   "transition-[background-color,color,transform,opacity] duration-200 ease-spring active:scale-[0.97] " +
-  "focus-ring disabled:cursor-not-allowed";
+  // Tailwind v4 Preflight gives <button> `cursor: default`; ask for the hand back (also for <a>/<Link> using buttonClasses).
+  "cursor-pointer focus-ring disabled:cursor-not-allowed";
 
 const variants: Record<ButtonVariant, string> = {
   filled: "bg-tint text-on-tint hover:bg-tint-pressed",

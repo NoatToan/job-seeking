@@ -1,28 +1,22 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { PersonalAccessToken, TokenScope } from "@ujc/core";
 import { Badge, Button, EmptyState, Spinner, TextField, Toggle, useToast } from "@ujc/ui";
 import { ApiError, createToken, listTokens, revokeToken } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
-
-const SCOPES: ReadonlyArray<{ value: TokenScope; label: string; hint: string }> = [
-  { value: "jobs:read", label: "Read jobs", hint: "Feed, job detail and live search." },
-  {
-    value: "applications:write",
-    label: "Read & write applications",
-    hint: "List, save and update tracked applications.",
-  },
-];
+import i18n from "@/lib/i18n";
 
 const DEFAULT_EXPIRY_DAYS = 365;
 
 function formatDate(value: string | null): string {
-  if (!value) return "Never";
+  if (!value) return i18n.t("account:tokens.neverExpiry");
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 function CreatedTokenCard({ token, onDismiss }: { token: string; onDismiss: () => void }) {
+  const { t } = useTranslation("account");
   const toast = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -30,26 +24,28 @@ function CreatedTokenCard({ token, onDismiss }: { token: string; onDismiss: () =
     try {
       await navigator.clipboard.writeText(token);
       setCopied(true);
-      toast.show({ tone: "success", title: "Copied to clipboard" });
+      toast.show({ tone: "success", title: t("tokens.copiedToast") });
     } catch {
-      toast.show({ tone: "error", title: "Couldn't copy", message: "Select and copy it manually." });
+      toast.show({
+        tone: "error",
+        title: t("tokens.copyFailedTitle"),
+        message: t("tokens.copyFailedMessage"),
+      });
     }
   }
 
   return (
     <div className="flex flex-col gap-2 rounded-card bg-tint-soft p-4">
-      <p className="text-subheadline font-semibold text-tint-ink">
-        Copy your token now — it won&apos;t be shown again.
-      </p>
+      <p className="text-subheadline font-semibold text-tint-ink">{t("tokens.copyNowWarning")}</p>
       <code className="break-all rounded-control bg-background px-3 py-2 text-footnote text-label">
         {token}
       </code>
       <div className="flex gap-2">
         <Button size="sm" variant="tinted" onClick={() => void handleCopy()}>
-          {copied ? "Copied" : "Copy"}
+          {copied ? t("tokens.copied") : t("tokens.copy")}
         </Button>
         <Button size="sm" variant="plain" onClick={onDismiss}>
-          Done
+          {t("tokens.done")}
         </Button>
       </div>
     </div>
@@ -57,6 +53,7 @@ function CreatedTokenCard({ token, onDismiss }: { token: string; onDismiss: () =
 }
 
 function TokenRow({ token, onRevoke }: { token: PersonalAccessToken; onRevoke: (id: string) => void }) {
+  const { t } = useTranslation("account");
   const [revoking, setRevoking] = useState(false);
   const revoked = token.revokedAt !== null;
 
@@ -80,10 +77,13 @@ function TokenRow({ token, onRevoke }: { token: PersonalAccessToken; onRevoke: (
               {scope}
             </Badge>
           ))}
-          {revoked ? <Badge tone="danger">Revoked</Badge> : null}
+          {revoked ? <Badge tone="danger">{t("tokens.revokedBadge")}</Badge> : null}
         </div>
         <p className="text-footnote text-label-secondary">
-          Expires {formatDate(token.expiresAt)} · Last used {formatDate(token.lastUsedAt)}
+          {t("tokens.expiresLastUsed", {
+            expires: formatDate(token.expiresAt),
+            lastUsed: formatDate(token.lastUsedAt),
+          })}
         </p>
       </div>
       {revoked ? null : (
@@ -94,7 +94,7 @@ function TokenRow({ token, onRevoke }: { token: PersonalAccessToken; onRevoke: (
           onClick={() => void handleRevoke()}
           className="self-start sm:self-center"
         >
-          Revoke
+          {t("actions.revoke")}
         </Button>
       )}
     </div>
@@ -102,6 +102,15 @@ function TokenRow({ token, onRevoke }: { token: PersonalAccessToken; onRevoke: (
 }
 
 export function PersonalAccessTokens() {
+  const { t } = useTranslation("account");
+  const SCOPES: ReadonlyArray<{ value: TokenScope; label: string; hint: string }> = [
+    { value: "jobs:read", label: t("tokens.scopes.jobsRead.label"), hint: t("tokens.scopes.jobsRead.hint") },
+    {
+      value: "applications:write",
+      label: t("tokens.scopes.applicationsWrite.label"),
+      hint: t("tokens.scopes.applicationsWrite.hint"),
+    },
+  ];
   const { data, loading, error, reload } = useApi(() => listTokens(), []);
   const [tokens, setTokens] = useState<PersonalAccessToken[] | null>(null);
 
@@ -122,15 +131,15 @@ export function PersonalAccessTokens() {
     setCreateError(null);
     const days = Number(expiresInDays);
     if (!name.trim()) {
-      setCreateError("Give the token a name, e.g. \"My laptop\".");
+      setCreateError(t("tokens.errors.nameRequired"));
       return;
     }
     if (scopes.length === 0) {
-      setCreateError("Pick at least one scope.");
+      setCreateError(t("tokens.errors.scopeRequired"));
       return;
     }
     if (!Number.isInteger(days) || days < 1 || days > 365) {
-      setCreateError("Expiry must be between 1 and 365 days.");
+      setCreateError(t("tokens.errors.expiryRange"));
       return;
     }
     setCreating(true);
@@ -142,7 +151,7 @@ export function PersonalAccessTokens() {
       setScopes([]);
       setExpiresInDays(String(DEFAULT_EXPIRY_DAYS));
     } catch (err) {
-      setCreateError(err instanceof ApiError ? err.message : "Could not create the token.");
+      setCreateError(err instanceof ApiError ? err.message : t("tokens.errors.createFailed"));
     } finally {
       setCreating(false);
     }
@@ -157,10 +166,9 @@ export function PersonalAccessTokens() {
   return (
     <section className="flex flex-col gap-3 rounded-card bg-grouped-secondary p-4 shadow-card">
       <div>
-        <h2 className="text-headline text-label">Personal access tokens</h2>
+        <h2 className="text-headline text-label">{t("tokens.title")}</h2>
         <p className="text-body text-label-secondary">
-          Let your own Claude (via <code>apps/mcp</code>) read your feed and manage your
-          applications. Pick only the scopes you need.
+          <Trans i18nKey="account:tokens.description" components={{ code: <code /> }} />
         </p>
       </div>
 
@@ -170,13 +178,13 @@ export function PersonalAccessTokens() {
 
       <div className="flex flex-col gap-3">
         <TextField
-          label="Name"
-          placeholder="e.g. My laptop"
+          label={t("tokens.nameLabel")}
+          placeholder={t("tokens.namePlaceholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <div className="flex flex-col gap-2">
-          <span className="text-subheadline font-medium text-label">Scopes</span>
+          <span className="text-subheadline font-medium text-label">{t("tokens.scopesLabel")}</span>
           {SCOPES.map((scope) => (
             <label key={scope.value} className="flex items-center justify-between gap-3">
               <span>
@@ -192,7 +200,7 @@ export function PersonalAccessTokens() {
           ))}
         </div>
         <TextField
-          label="Expires in (days)"
+          label={t("tokens.expiresInLabel")}
           type="number"
           min={1}
           max={365}
@@ -205,27 +213,27 @@ export function PersonalAccessTokens() {
           </p>
         ) : null}
         <Button onClick={() => void handleCreate()} loading={creating} className="self-start">
-          Create token
+          {t("tokens.createButton")}
         </Button>
       </div>
 
       {loading ? (
-        <div aria-busy="true" aria-label="Loading your tokens" className="flex justify-center py-4">
-          <Spinner label="Loading" />
+        <div aria-busy="true" aria-label={t("tokens.loadingAria")} className="flex justify-center py-4">
+          <Spinner label={t("tokens.loadingSpinnerLabel")} />
         </div>
       ) : error ? (
         <EmptyState
           tone="error"
           illustration="error"
-          title="We couldn't load your tokens"
+          title={t("tokens.loadError.title")}
           action={
             <Button size="sm" variant="gray" onClick={reload}>
-              Try again
+              {t("common:tryAgain")}
             </Button>
           }
         />
       ) : items.length === 0 ? (
-        <p className="text-footnote text-label-secondary">No tokens yet.</p>
+        <p className="text-footnote text-label-secondary">{t("tokens.empty")}</p>
       ) : (
         <div className="flex flex-col gap-2">
           {items.map((token) => (

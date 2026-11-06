@@ -1,0 +1,107 @@
+{
+  "status": {
+    "ready": "Sẵn sàng",
+    "failed": "Thất bại",
+    "scanning": "Đang quét",
+    "queued": "Đang chờ"
+  },
+  "nav": {
+    "title": "CV của tôi"
+  },
+  "steps": {
+    "signIn": "Đăng nhập",
+    "yourCv": "CV của bạn",
+    "keywords": "Từ khoá"
+  },
+  "progress": {
+    "setupLabel": "Tiến độ thiết lập"
+  },
+  "intro": "Tải CV lên một lần — chúng tôi sẽ quét kỹ năng, từ khoá và tự động ghép việc phù hợp cho bạn.",
+  "toast": {
+    "cvDeletedTitle": "Đã xoá CV",
+    "cvDeletedMessage": "Đã xoá khỏi tài khoản của bạn.",
+    "deleteFailedTitle": "Không thể xoá CV này",
+    "uploadRejectedTitle": "Không thể tải lên",
+    "uploadAnotherFailedTitle": "Không thể tải CV lên",
+    "savedTitle": "Đã lưu",
+    "savedMessage": "Đã lưu. Đây là các việc làm của bạn."
+  },
+  "errors": {
+    "pleaseTryAgain": "Vui lòng thử lại."
+  },
+  "keywordError": {
+    "tooLong": "Từ khoá tối đa 40 ký tự.",
+    "tooMany": "Bạn có thể thêm tối đa 30 từ khoá."
+  },
+  "saveError": {
+    "fallback": "Không thể lưu tuỳ chọn của bạn. Vui lòng thử lại."
+  },
+  "found": {
+    "title": "Đây là những gì chúng tôi tìm thấy",
+    "subtitle": "Xoá những gì không phù hợp, hoặc thêm từ khoá của riêng bạn.",
+    "addAtLeastOne": "Thêm ít nhất một từ khoá bên dưới."
+  },
+  "keywordsField": {
+    "label": "Từ khoá",
+    "placeholder": "Thêm từ khoá rồi nhấn Enter"
+  },
+  "location": {
+    "ariaLabel": "Nơi bạn có thể làm việc",
+    "remoteOnly": "Chỉ làm Remote",
+    "basedIn": "Bạn đang ở",
+    "selectCountry": "Chọn quốc gia…",
+    "hint": "Chúng tôi sẽ ẩn các việc remote không mở cho nơi bạn đang ở."
+  },
+  "digest": {
+    "ariaLabel": "Bản tin hằng ngày",
+    "emailMe": "Gửi email khi có việc mới phù hợp",
+    "sendAround": "Gửi vào khoảng",
+    "hint": "Tối đa một lần mỗi ngày, với tối đa 10 việc mới phù hợp. Không áp dụng cho Upwork. Bạn có thể huỷ đăng ký bất kỳ email bản tin nào."
+  },
+  "actions": {
+    "save": "Lưu",
+    "seeMyJobs": "Xem việc làm của tôi"
+  },
+  "yourCvs": {
+    "ariaLabel": "CV của bạn",
+    "uploadAnother": "Tải thêm CV",
+    "uploadedOn": "Đã tải lên {{date}}",
+    "confirm": "Xác nhận",
+    "cancel": "Huỷ",
+    "deleteAria": "Xoá {{filename}}"
+  },
+  "consent": {
+    "ariaLabel": "Đồng ý xử lý bằng AI",
+    "title": "Trước khi tải lên",
+    "body": "CV của bạn sẽ được gửi tới Claude, một mô hình AI chạy trên máy chủ của chúng tôi, để trích xuất kỹ năng và từ khoá. CV được lưu trữ cho đến khi bạn xoá, hoặc tự động sau 180 ngày.",
+    "error": "Không thể lưu sự đồng ý của bạn. Vui lòng thử lại.",
+    "agree": "Tôi đồng ý"
+  },
+  "readError": {
+    "title": "Chúng tôi không đọc được file này",
+    "genericReason": "Nếu đây là ảnh chụp hoặc bản scan, hãy thử một file PDF rõ nét hơn."
+  },
+  "dropzone": {
+    "title": "Bắt đầu với CV của bạn",
+    "subtitle": "Chúng tôi sẽ trích xuất kỹ năng và tìm việc phù hợp với bạn.",
+    "upload": "Tải CV lên",
+    "hint": "PDF, ảnh, TXT hoặc MD · tối đa 5 MB",
+    "uploading": "Đang tải lên…"
+  },
+  "uploadError": {
+    "fallback": "Không thể tải CV lên. Vui lòng thử lại."
+  },
+  "upload": {
+    "fileTooLarge": "File này vượt quá 5 MB.",
+    "unsupportedFormat": "Chúng tôi chỉ đọc được PDF, ảnh, TXT hoặc MD."
+  },
+  "scanning": {
+    "title": "Đang quét CV của bạn…",
+    "waiting": "Đang chờ bộ quét",
+    "safeNote": "CV của bạn vẫn an toàn trong hàng đợi và sẽ được đọc ngay khi bộ quét hoạt động trở lại.",
+    "normalNote": "Thường mất chưa đến một phút. Bạn có thể rời khỏi trang này."
+  },
+  "result": {
+    "defaultTitle": "Hồ sơ của bạn"
+  }
+}

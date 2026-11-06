@@ -1,0 +1,23 @@
+{
+  "detail": {
+    "applyOn": "Apply on {{source}}",
+    "track": "Track",
+    "tracked": "Tracked ✓",
+    "matchesSearchAria": "Matches your search",
+    "matchesSearchLabel": "Matches your search:",
+    "techStack": "Tech stack",
+    "aboutRole": "About the role",
+    "loadingDescription": "Loading description",
+    "noDescription": "No description provided.",
+    "foundInDescription": "Found in the job description",
+    "fromDescription": "from description"
+  },
+  "view": {
+    "title": "Job details",
+    "missingIdTitle": "Missing job id",
+    "missingIdMessage": "We couldn't tell which job to show.",
+    "backToFeed": "Back to your feed",
+    "loadingJob": "Loading job",
+    "errorTitle": "We couldn't load this job"
+  }
+}

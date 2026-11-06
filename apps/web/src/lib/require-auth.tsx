@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "./session";
 
 /**
@@ -11,9 +12,10 @@ import { useSession } from "./session";
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { me, loading, error, refresh } = useSession();
+  const { t } = useTranslation("home");
 
   if (loading) {
-    return <p className="px-4 py-8 text-sm text-zinc-500">Checking your session…</p>;
+    return <p className="px-4 py-8 text-sm text-zinc-500">{t("requireAuth.checking")}</p>;
   }
 
   if (error) {
@@ -22,9 +24,9 @@ export function RequireAuth({ children }: { children: ReactNode }) {
         role="alert"
         className="mx-4 mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
       >
-        <p>Could not check your session: {error.message}</p>
+        <p>{t("requireAuth.errorMessage", { message: error.message })}</p>
         <button type="button" onClick={() => void refresh()} className="mt-2 underline">
-          Try again
+          {t("common:tryAgain")}
         </button>
       </div>
     );

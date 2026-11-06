@@ -1,0 +1,144 @@
+{
+  "greeting": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening"
+  },
+  "modeSwitch": {
+    "label": "Which jobs",
+    "all": "All jobs",
+    "forYou": "For you"
+  },
+  "hero": {
+    "titleLove": "Find a tech job you'll <love>love</love>",
+    "subtitlePublic": "Remote and relocation roles from Himalayas, We Work Remotely, Seek, Arc and more — in one place, refreshed every morning.",
+    "subtitleFreeSearch": "Free search across every job we have — not filtered by your profile.",
+    "uploadCv": "<cvLink>Upload your CV</cvLink> to get fit scores in <strong>For you</strong>.",
+    "signInCta": "Sign in to get matches from your CV"
+  },
+  "sources": {
+    "count_one": "{{count}} source",
+    "count_other": "{{count}} sources",
+    "paused": "{{count}} paused",
+    "ariaLabel": "Source status",
+    "summary": "{{total}} jobs, refreshed every morning. Every job links to its original posting.",
+    "summaryNoTotal": "Refreshed every morning. Every job links to its original posting.",
+    "attribution": "Jobs by Adzuna",
+    "privacy": "Privacy",
+    "rowPaused": "paused",
+    "rowUpdating": "updating"
+  },
+  "list": {
+    "loadingJobs": "Loading jobs",
+    "loadingFeed": "Loading your feed",
+    "loadingMore": "Loading more…",
+    "errorTitle": "We couldn't load jobs",
+    "errorMessage": "It's on our side, not yours. Check your connection and try again.",
+    "emptyTitle": "No jobs match yet",
+    "emptyMessage": "Try a different search, or clear the filters.",
+    "clearFilters": "Clear filters",
+    "endPublic": "You've reached the end — new jobs are crawled every day.",
+    "endFeed": "You've reached the end of your feed. New jobs arrive every morning.",
+    "jobsAriaLabel": "Jobs",
+    "jobDetailsAriaLabel": "Job details"
+  },
+  "detailPanel": {
+    "errorTitle": "We couldn't load the full description"
+  },
+  "feed": {
+    "fallbackTitle": "Feed",
+    "pickedFor": "Jobs picked for",
+    "noKeywords": "No keywords yet — add some to personalise your feed.",
+    "editAriaLabel": "Edit keywords",
+    "edit": "Edit",
+    "bestMatches": "Best matches",
+    "refreshScores": "Refresh scores",
+    "refreshingTitle": "Refreshing your scores",
+    "refreshingMessage": "We're rescoring your feed against your CV — check back in a minute.",
+    "dailyLimitTitle": "Daily limit reached",
+    "refreshErrorTitle": "Couldn't refresh scores",
+    "refreshErrorMessage": "Please try again.",
+    "emptyTitle": "No matches yet — let's widen the net",
+    "emptyMessage": "Try fewer keywords, or turn off Remote only.",
+    "editKeywords": "Edit keywords",
+    "searchLiveInstead": "Search live instead"
+  },
+  "filters": {
+    "searchLabel": "Search jobs",
+    "searchPlaceholder": "Job title, company or skill — e.g. Next.js, Python",
+    "sourceLabel": "Source",
+    "allSources": "All sources",
+    "postedLabel": "Posted",
+    "postedAny": "Any time",
+    "postedHour": "Past hour",
+    "postedToday": "Today",
+    "posted3": "Past 3 days",
+    "posted7": "Past 7 days",
+    "postedMonth": "Past month",
+    "unread": "Unread",
+    "moreFilters": "More filters",
+    "moreFiltersCount": "More filters ({{count}})",
+    "clearAll": "Clear all",
+    "hours": {
+      "pill": "Hours",
+      "panelTitle": "Hours I want to work",
+      "description": "On your clock ({{abbr}}). Shows jobs whose 9–5 overlaps these hours by 4h or more.",
+      "startOfDay": "Start of your day",
+      "endOfDay": "End of your day",
+      "presetOffice": "Office 9–17",
+      "presetEarly": "Early 6–14",
+      "presetLate": "Late 13–22",
+      "presetEvening": "Evening 18–24",
+      "anyHours": "Any hours",
+      "done": "Done"
+    },
+    "readHistory_one": "Read {{count}} job",
+    "readHistory_other": "Read {{count}} jobs",
+    "clearReadHistory": "Clear read history"
+  },
+  "country": {
+    "label": "Country",
+    "allCountries": "All countries",
+    "searchPlaceholder": "Type a country…"
+  },
+  "tech": {
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "groupAriaLabel": "{{label}} tech"
+  },
+  "workHours": {
+    "yourTimeZone": "Your time zone",
+    "searchPlaceholder": "City, region or VNT/EST…",
+    "fit": {
+      "same": "Same time zone",
+      "good": "Good overlap",
+      "partial": "Partial overlap",
+      "evening": "Evening hours",
+      "night": "Night shift"
+    },
+    "badgeTitle": "{{fit}}: the job's 9–5 in {{zone}} is {{range}} {{abbr}}",
+    "cardTitle": "Working hours",
+    "noZone": "No time zone stated — likely flexible or worldwide. Check the posting before applying.",
+    "yourTime": "Your time",
+    "jobsTime": "Job's time",
+    "sameClock": "Same clock as you",
+    "ahead": "You are {{hours}}h ahead",
+    "behind": "You are {{hours}}h behind",
+    "overlap": "{{hours}}h overlap with your 9–5 (outlined)",
+    "noOverlap": "No overlap with your 9–5 (outlined)",
+    "acceptsMore": "accepts {{zones}}",
+    "inferredLocation": "inferred from the job's location",
+    "statedPosting": "stated in the posting",
+    "moreWord": "more"
+  },
+  "requireAuth": {
+    "checking": "Checking your session…",
+    "errorMessage": "Could not check your session: {{message}}"
+  },
+  "save": {
+    "save": "Save",
+    "saved": "Saved ✓",
+    "signInTo": "Sign in to {{action}}",
+    "errorMessage": "Could not save this job."
+  }
+}

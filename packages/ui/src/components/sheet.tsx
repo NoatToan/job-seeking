@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "../cx";
+import { useUiStrings } from "../strings";
 import { XIcon } from "../icons";
 import { IconButton } from "./button";
 
@@ -36,10 +37,12 @@ export function Sheet({
   description,
   children,
   footer,
-  closeLabel = "Close",
+  closeLabel,
   variant = "sheet",
   className,
 }: SheetProps) {
+  const strings = useUiStrings();
+  closeLabel ??= strings.close;
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();

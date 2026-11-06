@@ -63,6 +63,11 @@
   --ujc-danger-ink: #b00012;
   --ujc-info: #0e7a86;
   --ujc-info-ink: #0b656f;
+  /* Accent hues for avatars / logo stand-ins (sunrise violet and rose). */
+  --ujc-violet: #a855f7;
+  --ujc-violet-ink: #7e22ce;
+  --ujc-rose: #f43f5e;
+  --ujc-rose-ink: #be123c;
 
   /* Soft (tinted) backgrounds: 12% of the hue over the surface */
   --ujc-soft: 12%;
@@ -122,6 +127,10 @@
   --ujc-danger-ink: #ff6961;
   --ujc-info: #40c8e0;
   --ujc-info-ink: #40c8e0;
+  --ujc-violet: #a855f7;
+  --ujc-violet-ink: #d8b4fe;
+  --ujc-rose: #f43f5e;
+  --ujc-rose-ink: #fda4af;
   --ujc-soft: 18%;
   --ujc-material: rgb(28 27 26 / 0.72);
   --ujc-material-thick: rgb(22 21 20 / 0.86);
@@ -163,6 +172,10 @@
     --ujc-danger-ink: #ff6961;
     --ujc-info: #40c8e0;
     --ujc-info-ink: #40c8e0;
+    --ujc-violet: #a855f7;
+    --ujc-violet-ink: #d8b4fe;
+    --ujc-rose: #f43f5e;
+    --ujc-rose-ink: #fda4af;
     --ujc-soft: 18%;
     --ujc-material: rgb(28 27 26 / 0.72);
     --ujc-material-thick: rgb(22 21 20 / 0.86);
@@ -210,6 +223,10 @@
   --color-info: var(--ujc-info);
   --color-info-ink: var(--ujc-info-ink);
   --color-info-soft: color-mix(in srgb, var(--ujc-info) var(--ujc-soft), transparent);
+  --color-violet-ink: var(--ujc-violet-ink);
+  --color-violet-soft: color-mix(in srgb, var(--ujc-violet) var(--ujc-soft), transparent);
+  --color-rose-ink: var(--ujc-rose-ink);
+  --color-rose-soft: color-mix(in srgb, var(--ujc-rose) var(--ujc-soft), transparent);
   --color-material: var(--ujc-material);
   --color-material-thick: var(--ujc-material-thick);
   --color-scrim: var(--ujc-scrim);
@@ -374,6 +391,33 @@
   }
 }
 
+/* Layer for dropdowns / popovers (FloatingPanel, portalled to <body>): above the sticky bars
+   (z-30/z-40) and sheets (z-50), below toasts (z-[60]), so an open menu is never painted over by
+   page content. */
+@utility z-popover {
+  z-index: 55;
+}
+
+/* Scroll box inside a rounded, bordered frame: the frame clips (overflow-hidden) and this inner box
+   scrolls, so the scrollbar never paints over the border; a thin bar with its track inset from the
+   rounded corners, and a stable gutter so content doesn't jump when the bar appears. */
+@utility scroll-inset {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--ujc-separator) transparent;
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    margin-block: 14px;
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: var(--ujc-separator);
+  }
+}
+
 /* Sunrise wash behind page heroes: a faint orange -> rose -> violet glow over the page colour. */
 @utility hero-wash {
   background-color: var(--ujc-background);
@@ -403,6 +447,32 @@
   :focus-visible {
     outline: 2px solid var(--ujc-tint);
     outline-offset: 2px;
+  }
+  /* Tailwind v4 Preflight sets `cursor: default` on <button>. Everything a user can press, pick or
+     toggle shows the hand, once, here — so no component can forget it. Disabled reads disabled. */
+  button,
+  [role="button"],
+  [role="option"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="menuitem"],
+  [role="combobox"],
+  a[href],
+  summary,
+  select,
+  label:has(:is(input, select, textarea):not(:disabled)),
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"],
+  input[type="file"],
+  input[type="color"] {
+    cursor: pointer;
+  }
+  :is(button, select, input, [role="button"], [role="option"], [role="tab"], [role="switch"]):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
   }
 }
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useQueryState } from "nuqs";
 import type { Platform } from "@ujc/core";
 import { DEEP_LINK_SITES } from "@ujc/core";
@@ -34,18 +36,19 @@ import { AccountMenu } from "@/app/nav";
 const UPWORK_MCP_URL = "https://mcp.upwork.com/mcp";
 const UPWORK_SEARCH_URL = DEEP_LINK_SITES.find((s) => s.label === "Upwork")?.search("") ?? "https://www.upwork.com/nx/search/jobs/";
 
-function statusDetail(platform: Platform): string {
-  if (platform.status === "error") return "Last crawl had an error";
-  if (platform.status === "running") return "Crawling now";
-  return "Always on";
+function statusDetail(platform: Platform, t: TFunction<"connections">): string {
+  if (platform.status === "error") return t("builtIn.statusError");
+  if (platform.status === "running") return t("builtIn.statusRunning");
+  return t("builtIn.statusAlwaysOn");
 }
 
 function BuiltInSourcesCard({ platforms }: { platforms: Platform[] }) {
+  const { t } = useTranslation("connections");
   if (platforms.length === 0) return null;
   return (
-    <GroupedList header="Built in" label="Built-in sources" footer="Always on. No connection needed.">
+    <GroupedList header={t("builtIn.header")} label={t("builtIn.ariaLabel")} footer={t("builtIn.footer")}>
       {platforms.map((p) => (
-        <ListRow key={p.id} title={p.label} detail={statusDetail(p)} />
+        <ListRow key={p.id} title={p.label} detail={statusDetail(p, t)} />
       ))}
     </GroupedList>
   );
@@ -57,6 +60,7 @@ interface AdzunaCardProps {
 }
 
 function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
+  const { t } = useTranslation("connections");
   const toast = useToast();
   const [appId, setAppId] = useState("");
   const [appKey, setAppKey] = useState("");
@@ -70,15 +74,15 @@ function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
       await connectAdzuna(appId.trim(), appKey.trim());
       setAppId("");
       setAppKey("");
-      toast.show({ tone: "success", title: "Adzuna connected" });
+      toast.show({ tone: "success", title: t("adzuna.connectedToast") });
       onChanged();
     } catch (err) {
       setError(
         err instanceof ApiError
           ? err.code === "invalid_credentials"
-            ? "Adzuna rejected this app id/key. Double-check them and try again."
+            ? t("adzuna.errors.invalidCredentials")
             : err.message
-          : "Could not connect Adzuna. Please try again.",
+          : t("adzuna.errors.connectFailed"),
       );
     } finally {
       setBusy(false);
@@ -90,10 +94,10 @@ function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
     setError(null);
     try {
       await disconnectPlatform("adzuna");
-      toast.show({ tone: "success", title: "Adzuna disconnected" });
+      toast.show({ tone: "success", title: t("adzuna.disconnectedToast") });
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not disconnect Adzuna.");
+      setError(err instanceof ApiError ? err.message : t("adzuna.errors.disconnectFailed"));
     } finally {
       setBusy(false);
     }
@@ -102,20 +106,23 @@ function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-label">Adzuna</h2>
-        {platform.connected ? <Badge tone="success">Connected</Badge> : null}
+        <h2 className="text-headline text-label">{t("adzuna.heading")}</h2>
+        {platform.connected ? <Badge tone="success">{t("badges.connected")}</Badge> : null}
       </div>
       <p className="text-body text-label-secondary">
-        Add your own{" "}
-        <a
-          href={platform.homepage}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-tint hover:underline focus-ring"
-        >
-          Adzuna
-        </a>{" "}
-        app id/key for more countries and a higher rate limit.
+        <Trans
+          i18nKey="connections:adzuna.description"
+          components={{
+            link: (
+              <a
+                href={platform.homepage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-tint hover:underline focus-ring"
+              />
+            ),
+          }}
+        />
       </p>
       {error ? (
         <p role="alert" className="text-footnote text-danger-ink">
@@ -125,22 +132,24 @@ function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
       {platform.connected ? (
         <div className="flex items-center justify-between gap-2">
           <p className="text-body text-label-secondary">
-            {platform.externalAccount ? `App id: ${platform.externalAccount}` : "Connected"}
+            {platform.externalAccount
+              ? t("adzuna.appIdLabel", { appId: platform.externalAccount })
+              : t("adzuna.connectedLabel")}
           </p>
           <Button variant="destructive" size="sm" loading={busy} onClick={() => void handleDisconnect()}>
-            Disconnect
+            {t("actions.disconnect")}
           </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <TextField
-            label="App id"
+            label={t("adzuna.appIdFieldLabel")}
             value={appId}
             onChange={(e) => setAppId(e.target.value)}
             className="flex-1"
           />
           <TextField
-            label="App key"
+            label={t("adzuna.appKeyFieldLabel")}
             type="password"
             value={appKey}
             onChange={(e) => setAppKey(e.target.value)}
@@ -151,7 +160,7 @@ function AdzunaCard({ platform, onChanged }: AdzunaCardProps) {
             disabled={!appId.trim() || !appKey.trim()}
             onClick={() => void handleConnect()}
           >
-            Connect
+            {t("adzuna.connectButton")}
           </Button>
         </div>
       )}
@@ -165,6 +174,7 @@ interface UpworkCardProps {
 }
 
 function UpworkCard({ platform, onChanged }: UpworkCardProps) {
+  const { t } = useTranslation("connections");
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,10 +184,10 @@ function UpworkCard({ platform, onChanged }: UpworkCardProps) {
     setError(null);
     try {
       await disconnectPlatform("upwork");
-      toast.show({ tone: "success", title: "Upwork disconnected" });
+      toast.show({ tone: "success", title: t("toast.upworkConnected") });
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not disconnect Upwork.");
+      setError(err instanceof ApiError ? err.message : t("upwork.errors.disconnectFailed"));
     } finally {
       setBusy(false);
     }
@@ -186,16 +196,13 @@ function UpworkCard({ platform, onChanged }: UpworkCardProps) {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-label">Upwork</h2>
-        {platform.available && platform.connected ? <Badge tone="success">Connected</Badge> : null}
+        <h2 className="text-headline text-label">{t("upwork.heading")}</h2>
+        {platform.available && platform.connected ? <Badge tone="success">{t("badges.connected")}</Badge> : null}
       </div>
 
       <div className="flex flex-col gap-1.5 rounded-control border border-control-border p-3">
-        <p className="text-subheadline font-semibold text-label">Use Upwork in Claude</p>
-        <p className="text-footnote text-label-secondary">
-          Add the official Upwork MCP server to Claude Desktop/Code to search, save and message
-          directly from your own Claude:
-        </p>
+        <p className="text-subheadline font-semibold text-label">{t("upwork.mcpTitle")}</p>
+        <p className="text-footnote text-label-secondary">{t("upwork.mcpDescription")}</p>
         <code className="rounded-control-sm bg-fill-tertiary px-2 py-1 text-footnote text-label">
           {UPWORK_MCP_URL}
         </code>
@@ -208,7 +215,7 @@ function UpworkCard({ platform, onChanged }: UpworkCardProps) {
         className={buttonClasses({ variant: "gray", size: "sm" }) + " self-start"}
       >
         <ExternalLinkIcon size={16} />
-        Search on Upwork
+        {t("upwork.searchLink")}
       </a>
 
       {error ? (
@@ -218,19 +225,17 @@ function UpworkCard({ platform, onChanged }: UpworkCardProps) {
       ) : null}
 
       {!platform.available ? (
-        <p className="text-footnote text-label-tertiary">
-          In-app search isn&apos;t enabled yet. Use the options above for now.
-        </p>
+        <p className="text-footnote text-label-tertiary">{t("upwork.notAvailable")}</p>
       ) : platform.connected ? (
         <div className="flex items-center justify-between gap-2">
-          <p className="text-body text-label-secondary">Connected for in-app search.</p>
+          <p className="text-body text-label-secondary">{t("upwork.connectedForSearch")}</p>
           <Button variant="destructive" size="sm" loading={busy} onClick={() => void handleDisconnect()}>
-            Disconnect
+            {t("actions.disconnect")}
           </Button>
         </div>
       ) : (
         <a href={upworkAuthorizeUrl()} className={buttonClasses({ size: "sm" }) + " self-start"}>
-          Connect for in-app search
+          {t("upwork.connectForSearch")}
         </a>
       )}
     </Card>
@@ -238,23 +243,23 @@ function UpworkCard({ platform, onChanged }: UpworkCardProps) {
 }
 
 function RunnerCard({ platforms }: { platforms: Platform[] }) {
+  const { t } = useTranslation("connections");
   if (platforms.length === 0) return null;
   const connected = platforms.some((p) => p.connected);
   return (
     <Card className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-headline text-label">Local runner</h2>
-        {connected ? <Badge tone="success">Paired</Badge> : null}
+        <h2 className="text-headline text-label">{t("runner.heading")}</h2>
+        {connected ? <Badge tone="success">{t("runner.pairedBadge")}</Badge> : null}
       </div>
       <p className="text-body text-label-secondary">
-        {platforms.map((p) => p.label).join(" and ")} need a companion runner on your own machine,
-        logged in with your own account.
+        {t("runner.description", { platforms: platforms.map((p) => p.label).join(" and ") })}
       </p>
       <Link
         href="/account/#runner"
         className={buttonClasses({ variant: "gray", size: "sm" }) + " self-start"}
       >
-        {connected ? "Manage your runner" : "Set up a local runner"}
+        {connected ? t("runner.manage") : t("runner.setUp")}
       </Link>
     </Card>
   );

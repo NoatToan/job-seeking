@@ -5,8 +5,10 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { SourceInfo } from "@ujc/core";
 import { SOURCES, sourceMeta } from "@ujc/core";
-import { BrandMark, ChevronDownIcon, cx } from "@ujc/ui";
+import { BrandMark, ChevronDownIcon, cx, FloatingPanel } from "@ujc/ui";
+import { useTranslation } from "react-i18next";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
+import { LanguageSwitch, useLanguage } from "@/lib/i18n/provider";
 
 /**
  * Top of the home page (public catalogue and signed-in feed): a warm "sunrise" band with a
@@ -29,14 +31,18 @@ export function HomeHero({
   /** Search + filter bar. */
   children?: ReactNode;
 }) {
+  const { t } = useTranslation("common");
   return (
     <section className="hero-wash hairline-b">
       <div className="flex w-full flex-col gap-3.5 px-4 pt-4 pb-4 sm:px-6 md:pt-5">
         <div className="flex items-center justify-between md:hidden">
-          <Link href="/" aria-label={`${BRAND_NAME} home`} className="rounded-control focus-ring">
+          <Link href="/" aria-label={t("brand.homeAriaLabel", { name: BRAND_NAME })} className="rounded-control focus-ring">
             <BrandMark name={BRAND_NAME} />
           </Link>
-          <AccountMenu />
+          <div className="flex items-center gap-2">
+            <LanguageSwitch />
+            <AccountMenu />
+          </div>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
@@ -65,14 +71,19 @@ function statusColor(status: SourceInfo["status"]): string {
  * dashboard; the information is one click away and still honest about sources that are down.
  */
 export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
+  const { t } = useTranslation("home");
+  const { dateLocale } = useLanguage();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -92,6 +103,7 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
@@ -102,8 +114,8 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-50 motion-reduce:hidden" />
           <span className="relative inline-flex size-2 rounded-full bg-success" />
         </span>
-        {sources.length} sources
-        {down ? <span className="text-label-tertiary">· {down} paused</span> : null}
+        {t("sources.count", { count: sources.length })}
+        {down ? <span className="text-label-tertiary">· {t("sources.paused", { count: down })}</span> : null}
         <ChevronDownIcon
           size={14}
           strokeWidth={2.25}
@@ -111,16 +123,20 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
           className={cx("text-label-tertiary transition-transform duration-200", open && "rotate-180")}
         />
       </button>
-      {open ? (
-        <div
-          id={panelId}
-          role="status"
-          aria-label="Source status"
-          className="absolute right-0 z-40 mt-2 w-72 rounded-[18px] border border-separator bg-background p-2 shadow-overlay animate-pop-in"
-        >
+      <FloatingPanel
+        anchorRef={triggerRef}
+        open={open}
+        panelRef={panelRef}
+        align="end"
+        id={panelId}
+        role="status"
+        aria-label={t("sources.ariaLabel")}
+        className="w-72 rounded-[18px] border border-separator bg-background p-2 shadow-overlay"
+      >
           <p className="px-2 pt-1 pb-2 text-footnote text-label-secondary">
-            {total ? `${total.toLocaleString("en-US")} jobs, ` : ""}refreshed every morning. Every job links to its
-            original posting.
+            {total
+              ? t("sources.summary", { total: total.toLocaleString(dateLocale) })
+              : t("sources.summaryNoTotal")}
           </p>
           <ul className="flex flex-col">
             {sources.map((s) => (
@@ -128,7 +144,11 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
                 <span aria-hidden className={cx("size-2 shrink-0 rounded-full", statusColor(s.status))} />
                 <span className="flex-1 truncate text-label">{sourceMeta(s.source).label}</span>
                 <span className="text-footnote text-label-tertiary tabular-nums">
-                  {s.status === "error" ? "paused" : s.status === "running" ? "updating" : (s.total || 0).toLocaleString("en-US")}
+                  {s.status === "error"
+                    ? t("sources.rowPaused")
+                    : s.status === "running"
+                      ? t("sources.rowUpdating")
+                      : (s.total || 0).toLocaleString(dateLocale)}
                 </span>
               </li>
             ))}
@@ -142,15 +162,14 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
               rel="noopener noreferrer"
               className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
             >
-              Jobs by Adzuna
+              {t("sources.attribution")}
             </a>
             <span aria-hidden>·</span>
             <Link href="/privacy/" className="rounded-control-sm hover:underline focus-ring">
-              Privacy
+              {t("sources.privacy")}
             </Link>
           </p>
-        </div>
-      ) : null}
+      </FloatingPanel>
     </div>
   );
 }

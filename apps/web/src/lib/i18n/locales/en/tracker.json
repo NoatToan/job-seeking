@@ -1,0 +1,50 @@
+{
+  "nav": {
+    "title": "Tracker"
+  },
+  "view": {
+    "label": "View",
+    "board": "Board",
+    "list": "List"
+  },
+  "columns": {
+    "saved": "Saved",
+    "applied": "Applied",
+    "interviewing": "Interviewing",
+    "offer": "Offer",
+    "closed": "Closed"
+  },
+  "status": {
+    "saved": "Saved",
+    "applied": "Applied",
+    "interviewing": "Interviewing",
+    "offer": "Offer",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn"
+  },
+  "fields": {
+    "status": "Status",
+    "note": "Note",
+    "nextAction": "Next action"
+  },
+  "untitledJob": "Untitled job",
+  "unknownCompany": "Unknown company",
+  "untitledApplication": "this application",
+  "deleteAria": "Delete {{name}}",
+  "statusForAria": "Status for {{name}}",
+  "noteForAria": "Note for {{name}}",
+  "nextActionForAria": "Next action date for {{name}}",
+  "errors": {
+    "updateFailed": "Could not update this application.",
+    "deleteFailed": "Could not delete this application."
+  },
+  "loadingAria": "Loading your tracker",
+  "loadError": {
+    "title": "We couldn't load your tracker",
+    "message": "It's on our side, not yours. Check your connection and try again."
+  },
+  "empty": {
+    "title": "Nothing tracked yet",
+    "message": "Save a job from your feed or search to start building your pipeline."
+  }
+}

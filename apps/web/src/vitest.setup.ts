@@ -1,3 +1,5 @@
+// Real i18n instance (English): components call useTranslation() exactly as in the app.
+import "@/lib/i18n";
 import { afterEach } from "vitest";
 import { clearViewCache } from "@/lib/view-cache";
 import { resetViewedForTests } from "@/lib/viewed";

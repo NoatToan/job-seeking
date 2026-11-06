@@ -12,11 +12,10 @@ from ujc_api.db import get_conn
 from ujc_api.dto import JOB_COLUMNS, job_dto, job_sort_key
 from ujc_api.feed_query import (
     COUNTRY_CLAUSE,
-    MAX_POSTED_WITHIN_DAYS,
-    POSTED_WITHIN_CLAUSE,
     TECH_CLAUSE,
     feed_filter_clauses,
     parse_tech,
+    posted_within_clause,
 )
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
@@ -49,6 +48,7 @@ def get_feed(
     country: str | None = Query(default=None),
     tech: str | None = Query(default=None),
     days: int | None = Query(default=None),
+    hours: int | None = Query(default=None),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -90,9 +90,9 @@ def get_feed(
         clauses.append(TECH_CLAUSE)
         where_params.append(tech_ids)
 
-    if days:
-        clauses.append(POSTED_WITHIN_CLAUSE)
-        where_params.append(max(1, min(days, MAX_POSTED_WITHIN_DAYS)))
+    if posted := posted_within_clause(days, hours):
+        clauses.append(posted[0])
+        where_params.append(posted[1])
 
     if cursor_state:
         cursor_t, cursor_i = cursor_state

@@ -1,0 +1,142 @@
+{
+  "greeting": {
+    "morning": "Chào buổi sáng",
+    "afternoon": "Chào buổi chiều",
+    "evening": "Chào buổi tối"
+  },
+  "modeSwitch": {
+    "label": "Xem việc làm nào",
+    "all": "Mọi việc làm",
+    "forYou": "Dành cho bạn"
+  },
+  "hero": {
+    "titleLove": "Tìm việc công nghệ bạn sẽ <love>yêu thích</love>",
+    "subtitlePublic": "Việc làm remote và chuyển chỗ ở từ Himalayas, We Work Remotely, Seek, Arc và nhiều nguồn khác — tất cả trong một nơi, cập nhật mỗi sáng.",
+    "subtitleFreeSearch": "Tìm kiếm tự do trên mọi việc làm chúng tôi có — không lọc theo hồ sơ của bạn.",
+    "uploadCv": "<cvLink>Tải CV của bạn lên</cvLink> để nhận điểm phù hợp trong mục <strong>Dành cho bạn</strong>.",
+    "signInCta": "Đăng nhập để nhận gợi ý việc làm từ CV của bạn"
+  },
+  "sources": {
+    "count_other": "{{count}} nguồn",
+    "paused": "{{count}} tạm dừng",
+    "ariaLabel": "Trạng thái nguồn",
+    "summary": "{{total}} việc làm, cập nhật mỗi sáng. Mỗi việc làm đều liên kết đến bài đăng gốc.",
+    "summaryNoTotal": "Cập nhật mỗi sáng. Mỗi việc làm đều liên kết đến bài đăng gốc.",
+    "attribution": "Jobs by Adzuna",
+    "privacy": "Quyền riêng tư",
+    "rowPaused": "tạm dừng",
+    "rowUpdating": "đang cập nhật"
+  },
+  "list": {
+    "loadingJobs": "Đang tải việc làm",
+    "loadingFeed": "Đang tải nguồn việc làm của bạn",
+    "loadingMore": "Đang tải thêm…",
+    "errorTitle": "Không thể tải việc làm",
+    "errorMessage": "Lỗi từ phía chúng tôi, không phải do bạn. Kiểm tra kết nối và thử lại.",
+    "emptyTitle": "Chưa có việc làm phù hợp",
+    "emptyMessage": "Thử tìm kiếm khác, hoặc xoá bộ lọc.",
+    "clearFilters": "Xoá bộ lọc",
+    "endPublic": "Bạn đã xem hết — việc làm mới được thu thập mỗi ngày.",
+    "endFeed": "Bạn đã xem hết nguồn việc làm của mình. Việc làm mới xuất hiện mỗi sáng.",
+    "jobsAriaLabel": "Việc làm",
+    "jobDetailsAriaLabel": "Chi tiết việc làm"
+  },
+  "detailPanel": {
+    "errorTitle": "Không thể tải đầy đủ mô tả công việc"
+  },
+  "feed": {
+    "fallbackTitle": "Nguồn việc làm",
+    "pickedFor": "Việc làm chọn cho",
+    "noKeywords": "Chưa có từ khoá nào — thêm vài từ để cá nhân hoá nguồn việc làm của bạn.",
+    "editAriaLabel": "Sửa từ khoá",
+    "edit": "Sửa",
+    "bestMatches": "Phù hợp nhất",
+    "refreshScores": "Làm mới điểm phù hợp",
+    "refreshingTitle": "Đang làm mới điểm của bạn",
+    "refreshingMessage": "Chúng tôi đang chấm lại nguồn việc làm của bạn theo CV — quay lại sau một phút nhé.",
+    "dailyLimitTitle": "Đã đạt giới hạn trong ngày",
+    "refreshErrorTitle": "Không thể làm mới điểm",
+    "refreshErrorMessage": "Vui lòng thử lại.",
+    "emptyTitle": "Chưa có việc làm phù hợp — hãy mở rộng tìm kiếm",
+    "emptyMessage": "Thử giảm bớt từ khoá, hoặc tắt Chỉ remote.",
+    "editKeywords": "Sửa từ khoá",
+    "searchLiveInstead": "Tìm trực tiếp thay thế"
+  },
+  "filters": {
+    "searchLabel": "Tìm việc làm",
+    "searchPlaceholder": "Chức danh, công ty hoặc kỹ năng — ví dụ: Next.js, Python",
+    "sourceLabel": "Nguồn",
+    "allSources": "Mọi nguồn",
+    "postedLabel": "Đăng lúc",
+    "postedAny": "Bất kỳ lúc nào",
+    "postedHour": "1 giờ qua",
+    "postedToday": "Hôm nay",
+    "posted3": "3 ngày qua",
+    "posted7": "7 ngày qua",
+    "postedMonth": "1 tháng qua",
+    "unread": "Chưa đọc",
+    "moreFilters": "Thêm bộ lọc",
+    "moreFiltersCount": "Thêm bộ lọc ({{count}})",
+    "clearAll": "Xoá tất cả",
+    "hours": {
+      "pill": "Giờ làm",
+      "panelTitle": "Khung giờ bạn muốn làm việc",
+      "description": "Theo giờ của bạn ({{abbr}}). Hiện việc làm có khung 9–5 trùng với khung giờ này từ 4 giờ trở lên.",
+      "startOfDay": "Bắt đầu ngày của bạn",
+      "endOfDay": "Kết thúc ngày của bạn",
+      "presetOffice": "Giờ hành chính 9–17",
+      "presetEarly": "Sớm 6–14",
+      "presetLate": "Muộn 13–22",
+      "presetEvening": "Tối 18–24",
+      "anyHours": "Bất kỳ khung giờ nào",
+      "done": "Xong"
+    },
+    "readHistory_other": "Đã đọc {{count}} việc làm",
+    "clearReadHistory": "Xoá lịch sử đã đọc"
+  },
+  "country": {
+    "label": "Quốc gia",
+    "allCountries": "Mọi quốc gia",
+    "searchPlaceholder": "Nhập tên quốc gia…"
+  },
+  "tech": {
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "groupAriaLabel": "Công nghệ {{label}}"
+  },
+  "workHours": {
+    "yourTimeZone": "Múi giờ của bạn",
+    "searchPlaceholder": "Thành phố, khu vực hoặc VNT/EST…",
+    "fit": {
+      "same": "Cùng múi giờ",
+      "good": "Trùng giờ tốt",
+      "partial": "Trùng giờ một phần",
+      "evening": "Giờ buổi tối",
+      "night": "Ca đêm"
+    },
+    "badgeTitle": "{{fit}}: khung 9–5 của việc làm theo {{zone}} là {{range}} {{abbr}}",
+    "cardTitle": "Giờ làm việc",
+    "noZone": "Không có múi giờ — có thể linh hoạt hoặc làm việc toàn cầu. Kiểm tra bài đăng trước khi ứng tuyển.",
+    "yourTime": "Giờ của bạn",
+    "jobsTime": "Giờ của việc làm",
+    "sameClock": "Cùng múi giờ với bạn",
+    "ahead": "Bạn nhanh hơn {{hours}} giờ",
+    "behind": "Bạn chậm hơn {{hours}} giờ",
+    "overlap": "Trùng {{hours}} giờ với khung 9–5 của bạn (viền)",
+    "noOverlap": "Không trùng với khung 9–5 của bạn (viền)",
+    "acceptsMore": "chấp nhận {{zones}}",
+    "inferredLocation": "suy ra từ địa điểm của việc làm",
+    "statedPosting": "ghi trong bài đăng",
+    "moreWord": "nữa"
+  },
+  "requireAuth": {
+    "checking": "Đang kiểm tra phiên đăng nhập của bạn…",
+    "errorMessage": "Không thể kiểm tra phiên đăng nhập: {{message}}"
+  },
+  "save": {
+    "save": "Lưu",
+    "saved": "Đã lưu ✓",
+    "signInTo": "Đăng nhập để {{action}}",
+    "errorMessage": "Không thể lưu việc làm này."
+  }
+}

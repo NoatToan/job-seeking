@@ -1,0 +1,52 @@
+{
+  "ui": {
+    "search": "Search",
+    "clearSearch": "Clear search",
+    "select": "Select…",
+    "searchEllipsis": "Search…",
+    "noMatches": "No matches",
+    "remove": "Remove",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "progress": "Progress",
+    "mainNav": "Main",
+    "remote": "Remote",
+    "remoteOpenTo": "Remote · {{openTo}}",
+    "read": "Read",
+    "viewDetails": "View details",
+    "opensInNewTab": "(opens original posting in a new tab)",
+    "skillsToBrushUp": "Skills to brush up:",
+    "via": "via {{source}}",
+    "today": "today",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago",
+    "fit": { "great": "Great fit", "good": "Good fit", "worth": "Worth a look", "long": "Long shot" }
+  },
+  "language": { "label": "Language" },
+  "brand": { "homeAriaLabel": "{{name}} home" },
+  "nav": {
+    "jobs": "Jobs",
+    "liveSearch": "Live search",
+    "tracker": "Tracker",
+    "myCv": "My CV",
+    "connections": "Connections",
+    "signIn": "Sign in",
+    "account": "Account",
+    "accountOf": "Account: {{email}}",
+    "accountOptions": "Account options",
+    "accountPrivacy": "Account & privacy",
+    "signOut": "Sign out"
+  },
+  "loading": "Loading…",
+  "tryAgain": "Try again",
+  "error": {
+    "title": "Something went wrong",
+    "message": "This page hit an unexpected error. Try again, or go back to the jobs list.",
+    "backToJobs": "Back to jobs"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "This link doesn't go anywhere. It may have moved, or the address has a typo.",
+    "backToJobs": "Back to jobs"
+  }
+}
