@@ -3,7 +3,8 @@ name: Daily blog
 # Fetches the hiring / labour-market / careers feeds in apps/crawler/src/job_crawler/blog/sources.py
 # into Postgres and publishes the day's roundup post (templated, no LLM). The web app is a static
 # export, so new posts and republished articles go live on the next build: when something new was
-# stored and the VERCEL_DEPLOY_HOOK_URL secret is set, this triggers a production rebuild.
+# stored, this triggers a production rebuild through vercel-rebuild.yml (VERCEL_TOKEN, or a
+# VERCEL_DEPLOY_HOOK_URL, or skipped with a notice).
 
 on:
   schedule:
@@ -29,10 +30,12 @@ jobs:
     defaults:
       run:
         working-directory: apps/crawler
+    outputs:
+      published: ${{ steps.blog.outputs.published }}
+      new_articles: ${{ steps.blog.outputs.new_articles }}
     # `secrets` can't be used in `if:`; expose them as env instead.
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,12 +56,8 @@ jobs:
         if: ${{ !inputs.dry_run && env.DATABASE_URL != '' }}
         run: uv run python -m job_crawler.blog
 
-      # The deploy hook URL is a secret (anyone holding it can trigger builds); it is only ever read
-      # from the environment, never echoed.
-      - name: Rebuild the site
-        if: ${{ steps.blog.outcome == 'success' && (steps.blog.outputs.published == 'true' || steps.blog.outputs.new_articles == 'true') && env.VERCEL_DEPLOY_HOOK_URL != '' }}
-        run: curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL" > /dev/null && echo "Deploy hook triggered"
-
-      - name: Rebuild skipped
-        if: ${{ steps.blog.outcome == 'success' && env.VERCEL_DEPLOY_HOOK_URL == '' }}
-        run: echo "VERCEL_DEPLOY_HOOK_URL is not set; new posts appear on the next deploy."
+  rebuild:
+    needs: blog
+    if: ${{ needs.blog.result == 'success' && (needs.blog.outputs.published == 'true' || needs.blog.outputs.new_articles == 'true') }}
+    uses: ./.github/workflows/vercel-rebuild.yml
+    secrets: inherit

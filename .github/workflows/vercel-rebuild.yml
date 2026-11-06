@@ -1,0 +1,58 @@
+name: Rebuild production site
+
+# Rebuilds the production site on Vercel so the build-time snapshots (static job pages and job
+# sitemaps from scripts/seo-snapshot.mjs, blog posts from apps/web/scripts/export-blog.mjs) pick up
+# what the daily crawl / daily blog just wrote to Postgres. Called by daily-crawl.yml and
+# daily-blog.yml, or run by hand.
+#
+# The Vercel project is not connected to the GitHub repo (deployments are made with the Vercel CLI),
+# so the preferred path is a CLI deploy:
+#   1. secret VERCEL_TOKEN set      -> `vercel deploy --prod` from this checkout. It is a remote
+#                                      build (not --prebuilt), so it runs with the Vercel project's
+#                                      own build env (DATABASE_URL), migrations and snapshots included.
+#   2. else VERCEL_DEPLOY_HOOK_URL  -> POST to that Deploy Hook (only works on a Git-connected project).
+#   3. else                         -> skipped with a notice.
+# The org / project ids are not secrets; repository variables VERCEL_ORG_ID / VERCEL_PROJECT_ID
+# override the defaults below.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One production deploy at a time across every caller (crawl, blog, manual). A second request
+    # waits instead of cancelling a running build; GitHub keeps at most one waiting, which is
+    # enough because every build reads the latest database state.
+    concurrency:
+      group: vercel-prod-deploy
+      cancel-in-progress: false
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID || 'team_qyoW6o5AL7lNAnuaopY1wnhK' }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID || 'prj_tPVJ1Ekxw4XYEKCRgGBGb0VGBmhF' }}
+      # Read from the environment only; never echoed.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        if: ${{ env.VERCEL_TOKEN != '' }}
+        with:
+          node-version: 22
+
+      - name: Deploy to production
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+          elif [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL" > /dev/null
+            echo "Deploy hook triggered"
+          else
+            echo "::notice::Neither VERCEL_TOKEN nor VERCEL_DEPLOY_HOOK_URL is set; skipping the rebuild (changes appear on the next deploy)."
+          fi

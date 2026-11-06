@@ -40,7 +40,7 @@ Our own "Read the original on X" links and article titles are editorial citation
 
 The site owner decided against any AI-written text (no Anthropic API key, no summaries). Roundup intros and per-topic lines are factual templates built from the article list (counts, publishers, themes, the newest headline, how many related jobs we matched), with the opening sentence rotated between three variants, and a post needs at least 8 articles, to keep templated text a small share of each page. The value a roundup adds is curation: grouping by topic, the excerpt and credit for each article, links to full openly licensed copies, and related jobs from our catalogue.
 
-### B5. Rendering and freshness: build-time snapshot, deploy hook
+### B5. Rendering and freshness: build-time snapshot, daily rebuild
 
 The web app is a static export with no database access at runtime (ARCHITECTURE.md D1). Blog pages need real HTML for search engines, so they are generated at build time from a snapshot: `apps/web/scripts/export-blog.mjs` runs before `next build`, reads the blog tables in a read-only transaction and writes `apps/web/.blog/snapshot.json` (git-ignored). Blog routes use dynamic segments with `generateStaticParams` and `dynamicParams = false` (an exception to D1's "no dynamic segments", which exists for signed-in, per-user pages).
 
@@ -48,7 +48,7 @@ The web app is a static export with no database access at runtime (ARCHITECTURE.
 - Blog tables missing: same, with a warning.
 - Any other database error fails the build on purpose, so Vercel keeps serving the previous deployment instead of a blog with every post gone.
 
-New content goes live with the next build. `daily-blog.yml` (06:30 Vietnam time, after the 05:00 job crawl so related jobs are fresh) POSTs to the `VERCEL_DEPLOY_HOOK_URL` secret when it stored new articles or published a post; without the secret it skips that step and content appears on the next ordinary deploy.
+New content goes live with the next build. `daily-blog.yml` (06:30 Vietnam time, after the 05:00 job crawl so related jobs are fresh) triggers a production rebuild through `vercel-rebuild.yml` when it stored new articles or published a post (`vercel deploy --prod` with the `VERCEL_TOKEN` secret, else a `VERCEL_DEPLOY_HOOK_URL` secret; with neither it skips and content appears on the next ordinary deploy). The rebuild shares the `vercel-prod-deploy` concurrency group with the crawl's rebuild.
 
 We considered committing the snapshot to the repo from the workflow (bot commits on `main` every day, fights branch protection) and fetching it from the API at build time (the API is deployed with the same build, so a fresh deploy would read the previous one); both were worse.
 

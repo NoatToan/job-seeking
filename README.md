@@ -46,10 +46,10 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 
 ## Deploy
 
-- Web: Vercel project `unified-job-crawler`. `vercel.json` points the build at `apps/web`, and the build runs the migrations first.
+- Web: Vercel project `unified-job-crawler`, deployed with the Vercel CLI (the project is not connected to the GitHub repo). `vercel.json` points the build at `apps/web`, whose `build` script runs, in order: the migrations (`scripts/migrate.mjs`), the job snapshot for the static SEO pages (`scripts/seo-snapshot.mjs`), the blog snapshot (`apps/web/scripts/export-blog.mjs`), then `next build`. All three need `DATABASE_URL` in the Vercel build env; the job snapshot refuses to build on Vercel without it.
 - Daily crawl: `.github/workflows/daily-crawl.yml` (05:00 Vietnam time). Set the repository secrets `DATABASE_URL` (and optionally `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`).
-- Daily rebuild of the static job pages: create a Vercel Deploy Hook for `main` (Project → Settings → Git → Deploy Hooks) and save its URL as the repository secret `VERCEL_DEPLOY_HOOK_URL`; the daily crawl calls it when it finishes.
-- Daily blog: `.github/workflows/daily-blog.yml` (06:30 Vietnam time). Uses `DATABASE_URL`; optionally `VERCEL_DEPLOY_HOOK_URL` (a Vercel deploy hook for production) so new posts go live right away. See "Blog" below.
+- Daily blog: `.github/workflows/daily-blog.yml` (06:30 Vietnam time). Uses `DATABASE_URL`. See "Blog" below.
+- Daily rebuild (static job pages after the crawl, new blog posts after the blog run): both workflows call `.github/workflows/vercel-rebuild.yml` (also runnable by hand). With the repository secret `VERCEL_TOKEN` it runs `vercel deploy --prod` (a remote build, so it uses the Vercel project's build env); `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` default to this project's ids and can be overridden with repository variables. Without a token it falls back to a `VERCEL_DEPLOY_HOOK_URL` secret (Git-connected projects only), else it skips with a notice. Deploys share the concurrency group `vercel-prod-deploy`, so the two workflows never build at the same time.
 
 ## Contributor (feedback, feature ideas, admin review)
 

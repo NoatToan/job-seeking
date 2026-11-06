@@ -15,6 +15,13 @@ if (!process.env.DATABASE_URL) {
   process.exit(0);
 }
 
+// The web build runs this on Vercel. Only a production build may change the schema: a preview
+// deployment of an unmerged branch shares the same DATABASE_URL and must not apply its migrations.
+if (process.env.VERCEL === "1" && process.env.VERCEL_ENV !== "production") {
+  console.log(`migrate: Vercel ${process.env.VERCEL_ENV ?? "unknown"} build, skipping (production builds only)`);
+  process.exit(0);
+}
+
 const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 try {
   await sql`CREATE TABLE IF NOT EXISTS schema_migrations (
