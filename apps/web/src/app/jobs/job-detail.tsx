@@ -15,6 +15,7 @@ import {
   SourceBadge,
 } from "@ujc/ui";
 import { SaveJobButton } from "@/app/save-job-button";
+import { WorkHoursCard } from "@/app/work-hours";
 
 export interface JobDetailProps {
   /** The list row is enough for the header; `description` arrives with `GET /api/jobs/{id}`. */
@@ -69,6 +70,8 @@ export function JobDetail({ job, loadingDescription = false, signedIn, variant =
           signedIn={signedIn}
         />
       </div>
+
+      <WorkHoursCard job={job} />
 
       {job.match ? (
         <Card className="bg-tint-soft shadow-none">

@@ -7,7 +7,7 @@ from typing import Any
 
 JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
-    " salary_text, tags, open_to, posted_at, first_seen_at"
+    " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
@@ -30,6 +30,12 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
 
+def job_sort_key(row: tuple) -> tuple[datetime, int]:
+    """Keyset position of a `JOB_COLUMNS` row: (coalesce(posted_at, first_seen_at), id)."""
+    posted_at, first_seen_at = row[12], row[13]
+    return (posted_at or first_seen_at), row[0]
+
+
 def job_dto(row: tuple) -> dict[str, Any]:
     """Maps one row selected with `JOB_COLUMNS` to the `Job` shape (packages/core)."""
     (
@@ -47,6 +53,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         open_to,
         posted_at,
         first_seen_at,
+        timezones,
+        timezone_source,
     ) = row
     return {
         "id": str(id_),
@@ -63,6 +71,9 @@ def job_dto(row: tuple) -> dict[str, Any]:
         "openTo": list(open_to) if open_to is not None else None,
         "postedAt": _iso(posted_at),
         "firstSeenAt": _iso(first_seen_at),
+        # Working time zone(s): IANA names or "UTC±hh:mm" (job_crawler.timezones); null = unknown.
+        "timezones": list(timezones) if timezones is not None else None,
+        "timezoneSource": timezone_source,
     }
 
 

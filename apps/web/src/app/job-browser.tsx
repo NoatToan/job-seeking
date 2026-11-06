@@ -9,6 +9,7 @@ import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
+import { WorkHoursBadge } from "@/app/work-hours";
 
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
 const WIDE_QUERY = "(min-width: 64rem)";
@@ -155,6 +156,7 @@ export function JobBrowser({ jobs, stateKey, signedIn, renderActions, footer }: 
                 selected={selected?.id === job.id}
                 onSelect={onSelect(job.id)}
                 actions={renderActions?.(job)}
+                meta={<WorkHoursBadge job={job} />}
               />
             </div>
           ))}

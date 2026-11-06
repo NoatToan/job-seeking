@@ -172,6 +172,8 @@ export interface JobListItemProps {
   onSelect?: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** Small action buttons (Save), kept clickable above the row link. */
   actions?: ReactNode;
+  /** Extra badges after source / remote (e.g. working-hours fit). */
+  meta?: ReactNode;
   className?: string;
 }
 
@@ -187,6 +189,7 @@ export function JobListItem({
   selected = false,
   onSelect,
   actions,
+  meta,
   className,
 }: JobListItemProps) {
   const posted = timeAgo(job.postedAt ?? job.firstSeenAt);
@@ -224,6 +227,7 @@ export function JobListItem({
               Remote
             </Badge>
           ) : null}
+          {meta}
           {posted ? <span>{posted}</span> : null}
         </div>
       </div>

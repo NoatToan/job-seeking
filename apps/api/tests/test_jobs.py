@@ -34,6 +34,18 @@ def test_get_job_returns_job_detail_with_description():
     assert body["description"] == "Full job description."
 
 
+def test_job_dto_carries_working_timezones():
+    conn = FakeJobsConn(
+        jobs=[_job(timezones=["UTC-05:00", "UTC-04:00"], timezone_source="stated"), _job(id=2)]
+    )
+    body = get_job(1, user=USER, conn=conn)
+    assert body["timezones"] == ["UTC-05:00", "UTC-04:00"]
+    assert body["timezoneSource"] == "stated"
+    unknown = get_job(2, user=USER, conn=conn)
+    assert unknown["timezones"] is None
+    assert unknown["timezoneSource"] is None
+
+
 def test_get_job_works_without_a_session_too():
     """`GET /api/jobs/{id}` is public: `optional_user` can be `None` (anonymous)."""
     conn = FakeJobsConn(jobs=[_job()])

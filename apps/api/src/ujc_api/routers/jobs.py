@@ -18,7 +18,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from ujc_api.auth.deps import AuthedUser, optional_user
 from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
-from ujc_api.dto import JOB_COLUMNS, JOB_DETAIL_COLUMNS, job_detail_dto, job_dto, source_dto
+from ujc_api.dto import (
+    JOB_COLUMNS,
+    JOB_DETAIL_COLUMNS,
+    job_detail_dto,
+    job_dto,
+    job_sort_key,
+    source_dto,
+)
 
 router = APIRouter(tags=["jobs"])
 
@@ -118,9 +125,7 @@ def list_jobs(
 
     next_cursor = None
     if has_more and page:
-        last = page[-1]
-        job_id, posted_at, first_seen_at = last[0], last[-2], last[-1]
-        next_cursor = encode_feed_cursor(posted_at or first_seen_at, job_id)
+        next_cursor = encode_feed_cursor(*job_sort_key(page[-1]))
 
     return {"items": [job_dto(r) for r in page], "nextCursor": next_cursor}
 

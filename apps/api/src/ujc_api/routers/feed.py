@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from ujc_api.auth.deps import AuthedUser, require_jobs_read
 from ujc_api.cursor import InvalidCursor, decode_feed_cursor, encode_feed_cursor
 from ujc_api.db import get_conn
-from ujc_api.dto import JOB_COLUMNS, job_dto
+from ujc_api.dto import JOB_COLUMNS, job_dto, job_sort_key
 from ujc_api.feed_query import feed_filter_clauses
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
@@ -30,11 +30,6 @@ def _job_dto_with_match(row: tuple) -> dict[str, Any]:
         else None
     )
     return dto
-
-
-def _sort_key(row: tuple) -> tuple[datetime, int]:
-    posted_at, first_seen_at = row[-2], row[-1]
-    return (posted_at or first_seen_at), row[0]
 
 
 @router.get("")
@@ -104,7 +99,7 @@ def get_feed(
 
     next_cursor = None
     if has_more and page:
-        ts, job_id = _sort_key(tuple(page[-1][:-3]))
+        ts, job_id = job_sort_key(page[-1])
         next_cursor = encode_feed_cursor(ts, job_id)
 
     return {
