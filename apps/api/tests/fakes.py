@@ -102,6 +102,67 @@ class FakeJobsConn:
         s = " ".join(sql.split())
         params = params or ()
 
+        if s.startswith("SELECT") and "FROM jobs WHERE source !=" in s:
+            params = list(params)
+            i = 0
+            excluded_source = params[i]
+            i += 1
+            q = None
+            if "websearch_to_tsquery" in s:
+                q = params[i]
+                i += 1
+            source_filter = None
+            if "AND source = %s" in s:
+                source_filter = params[i]
+                i += 1
+            remote_filter = "remote = true" in s
+            cursor_state = None
+            if "< (%s, %s)" in s:
+                cursor_state = (params[i], params[i + 1])
+                i += 2
+            limit = params[i]
+
+            def sort_key(job: dict) -> tuple:
+                return (job.get("posted_at") or job["first_seen_at"], job["id"])
+
+            rows = [j for j in self.jobs if j["source"] != excluded_source]
+            if q:
+                needle = q.lower()
+                rows = [
+                    j
+                    for j in rows
+                    if needle in j["title"].lower() or needle in (j.get("company") or "").lower()
+                ]
+            if source_filter:
+                rows = [j for j in rows if j["source"] == source_filter]
+            if remote_filter:
+                rows = [j for j in rows if j.get("remote")]
+            rows.sort(key=sort_key, reverse=True)
+            if cursor_state:
+                rows = [j for j in rows if sort_key(j) < cursor_state]
+            rows = rows[:limit]
+            return _Result(
+                rows=[
+                    (
+                        j["id"],
+                        j["source"],
+                        j["url"],
+                        j.get("apply_url"),
+                        j["title"],
+                        j["company"],
+                        j.get("location"),
+                        j.get("remote", False),
+                        j.get("employment_type"),
+                        j.get("salary_text"),
+                        j.get("tags", []),
+                        j.get("open_to"),
+                        j.get("posted_at"),
+                        j["first_seen_at"],
+                    )
+                    for j in rows
+                ]
+            )
+
         if s.startswith("SELECT") and "FROM jobs WHERE id = %s" in s:
             (job_id,) = params
             for job in self.jobs:

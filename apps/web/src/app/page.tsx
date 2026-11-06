@@ -1,5 +1,5 @@
-import { Feed } from "./feed";
+import { Home } from "./home";
 
-export default function Home() {
-  return <Feed />;
+export default function HomePage() {
+  return <Home />;
 }

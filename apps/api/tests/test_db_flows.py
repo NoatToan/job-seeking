@@ -268,15 +268,109 @@ def test_get_job_returns_description_and_404s_when_missing(
     assert missing.json()["error"]["code"] == "not_found"
 
 
-def test_get_job_requires_a_session(client: TestClient):
-    resp = client.get("/api/jobs/1")
-    assert resp.status_code == 401
+def test_get_job_works_without_a_session(client: TestClient, migrated_database_url: str):
+    """`GET /api/jobs/{id}` is public (Slack request: show jobs on `/` without signing in)."""
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        row = conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company, description)"
+            " VALUES ('weworkremotely', 'anon-detail-1', 'https://example.test/anon-detail-1',"
+            " 'Anon Engineer', 'Acme', 'Anon description') RETURNING id"
+        ).fetchone()
+        job_id = row[0]
+
+    resp = client.get(f"/api/jobs/{job_id}")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["title"] == "Anon Engineer"
 
 
 def test_get_job_rejects_a_non_numeric_id(client: TestClient):
-    _sign_in(client, "jobidvalidation@example.com")
     resp = client.get("/api/jobs/not-a-number")
     assert resp.status_code in (400, 404, 422)
+
+
+def test_public_jobs_pagination_has_no_duplicates_and_needs_no_session(
+    client: TestClient, migrated_database_url: str
+):
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        for i in range(25):
+            conn.execute(
+                "INSERT INTO jobs (source, external_id, url, title, company, remote, posted_at)"
+                " VALUES (%s, %s, %s, %s, %s, false, %s)",
+                (
+                    "public-jobs-test",
+                    f"pub-job-{i}",
+                    f"https://example.test/pub-{i}",
+                    f"Public Job {i}",
+                    "Acme",
+                    base + timedelta(minutes=i),
+                ),
+            )
+
+    seen_ids: list[str] = []
+    cursor = None
+    for _ in range(10):
+        params = {"limit": 10, "source": "public-jobs-test"}
+        if cursor:
+            params["cursor"] = cursor
+        resp = client.get("/api/jobs", params=params)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        seen_ids.extend(item["id"] for item in body["items"])
+        cursor = body["nextCursor"]
+        if not cursor:
+            break
+
+    assert len(seen_ids) == 25
+    assert len(seen_ids) == len(set(seen_ids))
+
+
+def test_public_jobs_filters_by_q_source_and_remote(client: TestClient, migrated_database_url: str):
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company, remote)"
+            " VALUES ('public-filter-a', 'pf-1', 'https://example.test/pf-1',"
+            " 'Backend Engineer', 'Acme', true)"
+        )
+        conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company, remote)"
+            " VALUES ('public-filter-b', 'pf-2', 'https://example.test/pf-2',"
+            " 'Frontend Engineer', 'Acme', false)"
+        )
+
+    by_q = client.get("/api/jobs", params={"q": "Backend", "source": "public-filter-a"})
+    assert by_q.status_code == 200, by_q.text
+    assert [item["title"] for item in by_q.json()["items"]] == ["Backend Engineer"]
+
+    by_source = client.get("/api/jobs", params={"source": "public-filter-b"})
+    assert {item["source"] for item in by_source.json()["items"]} == {"public-filter-b"}
+
+    by_remote = client.get("/api/jobs", params={"source": "public-filter-a", "remote": "true"})
+    assert all(item["remote"] for item in by_remote.json()["items"])
+    assert len(by_remote.json()["items"]) == 1
+
+
+def test_public_jobs_rejects_a_tampered_cursor(client: TestClient):
+    resp = client.get("/api/jobs", params={"cursor": "not-a-valid-cursor"})
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "invalid_cursor"
+
+
+def test_public_jobs_never_includes_upwork(client: TestClient, migrated_database_url: str):
+    # Upwork data is never written to `jobs` in practice (ARCHITECTURE.md §7); this just proves
+    # the defensive filter, in case that invariant is ever accidentally broken upstream. `q`
+    # scopes the query to just this row so the assertion holds regardless of how many other jobs
+    # earlier tests left in the shared schema.
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        conn.execute(
+            "INSERT INTO jobs (source, external_id, url, title, company)"
+            " VALUES ('upwork', 'uw-1', 'https://example.test/uw-1',"
+            " 'Zyxelqvorp Freelance Gig', 'Acme')"
+        )
+
+    resp = client.get("/api/jobs", params={"q": "Zyxelqvorp"})
+    assert resp.status_code == 200
+    assert resp.json()["items"] == []
 
 
 def test_get_sources_is_public_and_merges_runs_with_job_counts(

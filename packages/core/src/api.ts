@@ -133,6 +133,15 @@ export interface FeedPage {
   keywords: string[];
 }
 
+/** `GET /api/jobs`: the public job catalogue, newest first, keyset-paginated. No sign-in
+ * required (the home page shows this to a signed-out visitor instead of the personalised
+ * `FeedPage`). `total` is an approximate/cheap count when present, and may be omitted. */
+export interface PublicJobsPage {
+  items: Job[];
+  nextCursor: string | null;
+  total?: number;
+}
+
 /** Lifecycle of a tracked application (`applications.status`, docs/product/ARCHITECTURE.md). */
 export type ApplicationStatus =
   | "saved"

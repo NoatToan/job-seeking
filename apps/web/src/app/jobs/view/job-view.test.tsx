@@ -2,12 +2,35 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const searchParamsMock = new URLSearchParams();
+const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => searchParamsMock,
 }));
 
+vi.mock("@/lib/session", () => ({
+  useSession: () => useSessionMock(),
+}));
+
 import { JobView } from "./job-view";
+
+function signedInSession() {
+  return {
+    me: {
+      user: { id: "1", email: "person@example.com" },
+      preferences: { keywords: [], remoteOnly: false, candidateCountry: null },
+      latestCv: null,
+    },
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+    signOut: vi.fn(),
+  };
+}
+
+function signedOutSession() {
+  return { me: null, loading: false, error: null, refresh: vi.fn(), signOut: vi.fn() };
+}
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -19,6 +42,7 @@ function jsonResponse(status: number, body: unknown): Response {
 describe("JobView", () => {
   beforeEach(() => {
     for (const key of Array.from(searchParamsMock.keys())) searchParamsMock.delete(key);
+    useSessionMock.mockReturnValue(signedInSession());
   });
 
   afterEach(() => {
@@ -72,5 +96,39 @@ describe("JobView", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
     expect(screen.getByRole("alert").textContent).toContain("Job not found");
+  });
+
+  it("works signed out, and the Track button prompts sign-in instead of saving", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    searchParamsMock.set("id", "42");
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        id: "42",
+        source: "greenhouse",
+        url: "https://example.com/job/42",
+        applyUrl: "https://example.com/apply/42",
+        title: "Staff Engineer",
+        company: "Acme",
+        location: null,
+        remote: true,
+        employmentType: "full_time",
+        salaryText: null,
+        tags: [],
+        openTo: null,
+        postedAt: null,
+        firstSeenAt: new Date().toISOString(),
+        description: "Line one\nLine two",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<JobView />);
+
+    await waitFor(() => expect(screen.getByText("Staff Engineer")).toBeTruthy());
+    const trackLink = screen.getByRole("link", { name: /Sign in to track/i });
+    // next/link's trailingSlash normalisation doesn't run in this unit-test environment.
+    expect(trackLink.getAttribute("href")).toMatch(/^\/login\/?$/);
+    const calledPaths = fetchMock.mock.calls.map(([u]) => u as string);
+    expect(calledPaths.every((u) => u !== "/api/applications")).toBe(true);
   });
 });

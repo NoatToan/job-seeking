@@ -55,6 +55,21 @@ def current_user(request: Request, conn: psycopg.Connection = Depends(get_conn))
     return AuthedUser(id=row[0], email=row[1])
 
 
+def optional_user(
+    request: Request, conn: psycopg.Connection = Depends(get_conn)
+) -> AuthedUser | None:
+    """Like `current_user`, but never raises: a missing/invalid session cookie just means
+    `None` (anonymous). For public routes (e.g. `GET /api/jobs`, `GET /api/jobs/{id}`) that work
+    for both signed-in and anonymous visitors."""
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        return None
+    row = lookup_user(conn, token)
+    if row is None:
+        return None
+    return AuthedUser(id=row[0], email=row[1])
+
+
 def current_runner(request: Request, conn: psycopg.Connection = Depends(get_conn)) -> AuthedRunner:
     """A valid, non-revoked runner bearer token (`Authorization: Bearer ujc_run_...`).
 

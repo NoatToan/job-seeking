@@ -1,13 +1,13 @@
 """Unit tests for `ujc_api.routers.jobs` against `FakeJobsConn` (no real Postgres)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fakes import FakeJobsConn
 from fastapi import HTTPException
 
 from ujc_api.auth.deps import AuthedUser
-from ujc_api.routers.jobs import get_job, get_sources
+from ujc_api.routers.jobs import get_job, get_sources, list_jobs
 
 USER = AuthedUser(id=1, email="person@example.com")
 
@@ -34,11 +34,81 @@ def test_get_job_returns_job_detail_with_description():
     assert body["description"] == "Full job description."
 
 
+def test_get_job_works_without_a_session_too():
+    """`GET /api/jobs/{id}` is public: `optional_user` can be `None` (anonymous)."""
+    conn = FakeJobsConn(jobs=[_job()])
+    body = get_job(1, user=None, conn=conn)
+    assert body["id"] == "1"
+
+
 def test_get_job_missing_raises_404():
     conn = FakeJobsConn(jobs=[])
     with pytest.raises(HTTPException) as exc_info:
         get_job(999, user=USER, conn=conn)
     assert exc_info.value.status_code == 404
+
+
+def test_list_jobs_is_public_and_newest_first():
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    conn = FakeJobsConn(
+        jobs=[
+            _job(id=1, title="Older", first_seen_at=base),
+            _job(id=2, title="Newer", first_seen_at=base + timedelta(days=1)),
+        ]
+    )
+    body = list_jobs(user=None, conn=conn)
+    assert [item["title"] for item in body["items"]] == ["Newer", "Older"]
+    assert body["nextCursor"] is None
+
+
+def test_list_jobs_paginates_without_duplicates():
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    jobs = [
+        _job(id=i, title=f"Job {i}", first_seen_at=base + timedelta(minutes=i)) for i in range(25)
+    ]
+    conn = FakeJobsConn(jobs=jobs)
+
+    seen_ids: list[str] = []
+    cursor = None
+    for _ in range(10):
+        body = list_jobs(cursor=cursor, limit=10, user=None, conn=conn)
+        seen_ids.extend(item["id"] for item in body["items"])
+        cursor = body["nextCursor"]
+        if not cursor:
+            break
+
+    assert len(seen_ids) == 25
+    assert len(seen_ids) == len(set(seen_ids))
+
+
+def test_list_jobs_filters_by_q_source_and_remote():
+    conn = FakeJobsConn(
+        jobs=[
+            _job(id=1, title="Backend Engineer", source="weworkremotely", remote=True),
+            _job(id=2, title="Frontend Engineer", source="himalayas", remote=False),
+            _job(id=3, title="Backend Architect", source="himalayas", remote=True),
+        ]
+    )
+
+    by_q = list_jobs(q="Backend", user=None, conn=conn)
+    assert {item["id"] for item in by_q["items"]} == {"1", "3"}
+
+    by_source = list_jobs(source="himalayas", user=None, conn=conn)
+    assert {item["id"] for item in by_source["items"]} == {"2", "3"}
+
+    by_remote = list_jobs(remote=True, user=None, conn=conn)
+    assert {item["id"] for item in by_remote["items"]} == {"1", "3"}
+
+
+def test_list_jobs_never_includes_upwork():
+    conn = FakeJobsConn(
+        jobs=[
+            _job(id=1, title="Freelance gig", source="upwork"),
+            _job(id=2, title="Staff Engineer", source="weworkremotely"),
+        ]
+    )
+    body = list_jobs(user=None, conn=conn)
+    assert [item["id"] for item in body["items"]] == ["2"]
 
 
 def test_get_sources_merges_runs_and_job_counts():

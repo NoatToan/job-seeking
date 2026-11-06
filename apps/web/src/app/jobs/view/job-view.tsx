@@ -21,6 +21,7 @@ import {
 } from "@ujc/ui";
 import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
+import { useSession } from "@/lib/session";
 import { SaveJobButton } from "@/app/save-job-button";
 
 const BACK_LINK = (
@@ -35,6 +36,7 @@ const BACK_LINK = (
 
 export function JobView() {
   const searchParams = useSearchParams();
+  const { me } = useSession();
   const id = searchParams.get("id") ?? "";
   const { data: job, loading, error, reload } = useApi(() => getJob(id), [id]);
 
@@ -105,7 +107,13 @@ export function JobView() {
             </div>
 
             <div>
-              <SaveJobButton jobId={job.id} label="Track" savedLabel="Tracked ✓" size="md" />
+              <SaveJobButton
+                jobId={job.id}
+                label="Track"
+                savedLabel="Tracked ✓"
+                size="md"
+                signedIn={Boolean(me)}
+              />
             </div>
 
             {job.match ? (
