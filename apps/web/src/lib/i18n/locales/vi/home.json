@@ -120,7 +120,8 @@
       "reset": "Đặt lại",
       "back": "Quay lại",
       "done": "Xong",
-      "zoneError": "Không lưu được múi giờ vào tài khoản. Múi giờ đã được đặt trên thiết bị này; hãy thử lại sau."
+      "zoneError": "Không lưu được múi giờ vào tài khoản. Múi giờ đã được đặt trên thiết bị này; hãy thử lại sau.",
+      "hideReported": "Ẩn job người khác đã báo cáo"
     },
     "collapsedAll": "Tất cả việc làm",
     "collapsedFilters_one": "{{count}} bộ lọc",
@@ -132,7 +133,8 @@
       "timezone": "Hợp múi giờ nhất ({{abbr}})",
       "salary": "Lương cao nhất",
       "match": "Hợp CV nhất"
-    }
+    },
+    "hideReported": "Ẩn job bị báo cáo"
   },
   "country": {
     "label": "Quốc gia",

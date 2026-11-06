@@ -77,6 +77,8 @@ export interface JobFilterValues {
   hours: [number, number] | null;
   unreadOnly: boolean;
   sort: JobSort;
+  /** Optional so callers that predate it keep compiling; `apply` leaves it unchanged when absent. */
+  hideReported?: boolean;
 }
 
 export interface JobFilterState {
@@ -114,7 +116,11 @@ export interface JobFilterState {
     based_in?: string;
     sort?: JobSort;
     tz?: string;
+    hide_reported?: boolean;
   };
+  /** Hide jobs the community flagged as not worth applying (server-side, `hide_reported`). */
+  hideReported: boolean;
+  setHideReported: (v: boolean) => void;
   /** Filters on (what "Clear all" undoes); the sort is not counted here — see `sortActive`. */
   activeCount: number;
   /** List order. Not a filter: it never empties the list, so it isn't in `activeCount`. */
@@ -146,7 +152,7 @@ export interface JobFilterState {
  */
 export function useJobFilters(prefix: string, { matchSort = false }: { matchSort?: boolean } = {}): JobFilterState {
   const [url, setUrl] = useQueryStates(jobFilterParsers);
-  const { q, source, remote: remoteOnly, country, tech, posted, hours, access } = url;
+  const { q, source, remote: remoteOnly, country, tech, posted, hours, access, hideReported } = url;
   // `?sort=match` is shared with the feed; the public catalogue can't score jobs, so it shows newest.
   const sort: JobSort = url.sort === "match" && !matchSort ? "newest" : url.sort;
   // The time-zone sort ranks against the viewer's own zone (saved preference, else the browser's).
@@ -204,6 +210,7 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
       access ? basedIn : "",
       sort,
       sortTz,
+      hideReported,
     ]),
     params: {
       q: q || undefined,
@@ -215,8 +222,11 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
       ...(access ? { access, based_in: basedIn ?? undefined } : {}),
       ...(sort !== "newest" ? { sort } : {}),
       ...(sortTz ? { tz: sortTz } : {}),
+      ...(hideReported ? { hide_reported: true } : {}),
     },
-    activeCount: [q, source, remoteOnly, country, posted, hours, access].filter(Boolean).length + tech.length,
+    hideReported,
+    setHideReported: (v) => void setUrl({ hideReported: v }),
+    activeCount: [q, source, remoteOnly, country, posted, hours, access, hideReported].filter(Boolean).length + tech.length,
     sort,
     setSort: (v) => void setUrl({ sort: v }),
     sortActive: sort !== "newest",
@@ -244,6 +254,7 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
         access: (REMOTE_ACCESS as readonly string[]).includes(v.access) ? (v.access as RemoteAccessMode) : null,
         hours: v.hours,
         sort: v.sort,
+        ...(v.hideReported !== undefined ? { hideReported: v.hideReported } : {}),
       });
     },
   };
@@ -514,6 +525,7 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
         />
         <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
+        <PillToggle label={t("filters.hideReported")} checked={f.hideReported} onChange={f.setHideReported} />
         <PillSelect
           label={t("filters.sort.label")}
           // "" = the default order, so the pill stays untinted until another order is picked.

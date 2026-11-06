@@ -130,3 +130,11 @@ export function useToast(): ToastContextValue {
   if (!ctx) throw new Error("useToast must be used inside <ToastProvider>");
   return ctx;
 }
+
+const NO_TOASTS: ToastContextValue = { show: () => 0, dismiss: () => {} };
+
+/** Like `useToast`, but a no-op outside `<ToastProvider>` (for components that are also rendered
+ * on their own, e.g. the job detail in isolated tests). */
+export function useOptionalToast(): ToastContextValue {
+  return useContext(ToastContext) ?? NO_TOASTS;
+}

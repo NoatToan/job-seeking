@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from job_crawler.matching.scorer import MatchResult
 from psycopg.types.json import Jsonb
 
-from ujc_api import digest, worker
+from ujc_api import digest, job_votes, worker
 from ujc_api.db import get_conn
 from ujc_api.main import create_app
 from ujc_api.settings import Settings
@@ -115,6 +115,14 @@ def _track(url: str, user_id: int, job_ids: list[int]) -> None:
             " FROM generate_series(1, %s) g RETURNING id",
             (user_id, len(job_ids)),
         ).fetchall()
+        # Job votes (+ their aggregate), so the job lists' community join has rows to read.
+        conn.execute(
+            "INSERT INTO job_votes (job_id, user_id, vote, reason, updated_at)"
+            " SELECT j, %s, -1, 'expired', now() - interval '2 hours'"
+            " FROM unnest(%s::bigint[]) j ON CONFLICT DO NOTHING",
+            (user_id, job_ids),
+        )
+        job_votes.refresh_stats(conn, job_ids)
         conn.execute(
             "INSERT INTO feedback_votes (item_id, user_id, value)"
             " SELECT i, %s, 1 FROM unnest(%s::bigint[]) i",
@@ -135,6 +143,7 @@ SIGNED_IN = {
     # Public, CDN-cached routes never read the session (ujc_api.cache_control): page only.
     "/api/jobs": 1,
     "/api/jobs?country=VN&tech=python": 1,
+    "/api/jobs?hide_reported=true&sort=salary": 1,  # vote stats are a JOIN, not a query per row
     "/api/jobs/facets": 2,  # countries + tech
     "/api/sources": 1,
     "/api/feed": 3,  # session + preferences + page (with the match LEFT JOIN)
@@ -144,6 +153,7 @@ SIGNED_IN = {
     "/api/me/profile": 2,
     "/api/applications": 2,
     "/api/me/viewed": 2,
+    "/api/feed?hide_reported=true": 3,
     # session + admin role + count + page (scores and comment counts are stored columns)
     "/api/feedback?scope=board": 4,
     "/api/feedback?scope=mine&sort=top": 4,
@@ -170,6 +180,19 @@ def test_list_endpoints_run_a_constant_number_of_queries(
     assert large == small, "query count grew with the number of rows (N+1)"
     assert large == SIGNED_IN
 
+    # Job votes: the personal batch read is one statement for any number of ids, and the detail
+    # stays one statement with the aggregate joined in.
+    ids = [int(j["id"]) for j in client.get("/api/jobs?source=qc-src&limit=50").json()["items"]]
+    assert len(ids) == 42
+    assert _queries(client, f"/api/me/job-votes?ids={ids[0]}") == 2  # session + one read
+    assert _queries(client, "/api/me/job-votes?ids=" + ",".join(map(str, ids))) == 2
+    assert _queries(client, f"/api/jobs/{ids[0]}") == 2  # session + job with its aggregate
+    QUERIES.clear()
+    csrf = {"X-CSRF-Token": client.cookies.get("ujc_csrf") or ""}
+    resp = client.put(f"/api/jobs/{ids[0]}/vote", json={"vote": "up"}, headers=csrf)
+    assert resp.status_code == 200, resp.text
+    assert len(QUERIES) == 4  # session + rate limit + upsert + aggregate refresh
+
     # The single-statement /api/me still returns every part (newest CV, stored preferences).
     me = client.get("/api/me").json()
     assert me["user"]["role"] == "user"
@@ -180,6 +203,7 @@ def test_list_endpoints_run_a_constant_number_of_queries(
     # Signed out: the public catalogue is a single statement.
     client.cookies.clear()
     assert _queries(client, "/api/jobs?remote=true") == 1
+    assert _queries(client, "/api/jobs?hide_reported=true") == 1
     assert _queries(client, "/api/feedback?scope=board") == 2  # count + page
     # "Load more" is a keyset page: no count, one statement.
     cursor = client.get("/api/feedback?scope=board&limit=1").json()["nextCursor"]

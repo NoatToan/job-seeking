@@ -497,3 +497,53 @@ contributor-box DECISIONS 16-22 hold the reasoning; this is what job-seeking cho
   main). It adds stored scores and comment counts with triggers, the score index the board sorts
   on, and keyset pagination, which closes the contributor-box items of the database audit except
   `ILIKE` search.
+
+## Job downvotes: "Not worth applying?" (2026-11-07)
+
+Status: accepted. Code: `db/migrations/030_job_votes.sql`, `apps/api/src/ujc_api/job_votes.py`,
+`apps/api/src/ujc_api/routers/job_votes.py`, `apps/web/src/app/jobs/job-vote.tsx`.
+
+Request: let people mark a job as not worth applying to, so others don't waste time on it.
+
+- **Two-sided signal, one vote per user per job.** A report ("Not worth applying") needs a
+  reason: expired / already filled, not actually remote, scam or suspicious, wrong salary or
+  details, ghosting, reposted forever (evergreen), other (a note of at most 200 characters is then
+  required). "Still good" is the counterweight, so a stale report can be answered instead of only
+  piling up. The vote can be changed or removed. Notes are never public (stored for admins only),
+  so the feature can't become a comment board that needs moderation.
+- **Sign-in required, in place.** Voting uses the login modal (`useRequireLogin`); after signing
+  in, "Still good" is sent and "Not worth applying" opens the reason picker on the same job (the
+  home page remounts as the signed-in view, so the intent is carried over for 15 s).
+- **What counts** (recomputed in SQL, `job_votes.REFRESH_SQL`):
+  - accounts at least **24 h** old (a burst of fresh sign-ups can't sink a job; their votes start
+    counting once the account comes of age, and the UI tells them so);
+  - weight **1** for votes from the last **14 days**, **0.5** up to **45 days**, nothing after;
+  - not votes written before the job's `posted_at` (a repost by the board starts over), except
+    "reposted forever" reports, which are about exactly that. The crawler has no content hash, so
+    a description change without a new `posted_at` doesn't reset; adding one would need a crawler
+    change;
+  - not votes written before an admin cleared the job.
+- **Flag threshold.** A job is *flagged* when weighted reports are **≥ 2** and more than the
+  weighted confirmations. One person alone never flags a job. Only flagged jobs get the row chip
+  ("⚠ 3 reports · Expired") and are dropped by "Hide reported"; any counted vote shows in the
+  detail (counts per reason, last report time).
+- **Denormalised aggregate.** `job_vote_stats` (one row per voted job) is upserted in the same
+  request as every vote write, and daily after the crawl (`python -m ujc_api.maintenance
+  refresh-votes`, `daily-crawl.yml`) so decay, accounts coming of age and reposts apply without a
+  new vote. Lists and detail read it with a primary-key LEFT JOIN: no per-row query and no GROUP
+  BY at read time (PERFORMANCE.md). A `GROUP BY` per request was rejected because "Hide reported"
+  must filter inside the paged query.
+- **Public vs personal.** Public job payloads carry only the aggregate (`community`), identical
+  for every viewer, so they can be CDN-cached (it lags by the cache TTL). The viewer's own vote
+  and fresh counts come from `GET /api/me/job-votes?ids=` (personal, never cached). The UI is
+  optimistic and rolls back with a toast on failure.
+- **Abuse limits.** 30 vote writes per user per hour (counted in the database, so it holds across
+  serverless instances; 429 `rate_limited`), plus the generic per-IP limit on unsafe methods, the
+  account-age rule and the threshold. Admins (`users.role` / `UJC_ADMIN_EMAILS`) can clear a
+  job's reports (`DELETE /api/admin/jobs/{id}/votes`): votes are kept but stop counting, so
+  voters still see their choice, and a new or changed vote counts again.
+- **API.** `PUT /api/jobs/{id}/vote` `{vote: "up"} | {vote: "down", reason, note?}` and
+  `DELETE /api/jobs/{id}/vote` (session + CSRF) answer `{vote, community}`;
+  `GET /api/me/job-votes?ids=1,2` answers `{votes: {id: {vote, reason, note, updatedAt,
+  counted}}, community: {id: … | null}}`; `GET /api/jobs` and `/api/feed` accept
+  `hide_reported=true`.

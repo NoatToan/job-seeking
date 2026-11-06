@@ -10,6 +10,7 @@ import { getJob } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
+import { CommunityFlagChip } from "@/app/jobs/job-vote";
 import { LogoLoader } from "@/app/logo-loader";
 import { SkyScene } from "@/app/sky-scene";
 import { useWorkHoursPhase, WorkHoursBadge } from "@/app/work-hours";
@@ -465,6 +466,7 @@ export function JobBrowser({
                 onSelect={onSelect(job.id)}
                 actions={renderActions?.(job)}
                 meta={<WorkHoursBadge job={job} />}
+                flag={job.community?.flagged ? <CommunityFlagChip community={job.community} /> : undefined}
                 backdrop={(() => {
                   const phase = phaseOf(job);
                   return phase ? <SkyScene phase={phase} /> : null;

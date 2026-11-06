@@ -183,6 +183,9 @@ export interface JobListItemProps {
   actions?: ReactNode;
   /** Extra badges after source / remote (e.g. working-hours fit). */
   meta?: ReactNode;
+  /** A small warning shown first in the badge row (e.g. the community's "3 reports · Expired"
+   * chip). Pass it only when there is something to warn about. */
+  flag?: ReactNode;
   /** Already read: dimmed with a "Read" mark so unread jobs stand out. */
   viewed?: boolean;
   /** Candidate's country (ISO): colours the remote region green / red for "open to you or not". */
@@ -206,6 +209,7 @@ export function JobListItem({
   onSelect,
   actions,
   meta,
+  flag,
   viewed = false,
   basedIn,
   backdrop,
@@ -277,7 +281,12 @@ export function JobListItem({
           {job.remote ? <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} /> : null}
         </div>
         {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-2" /> : null}
-        {meta ? <div className="mt-2 flex flex-wrap items-center gap-1.5">{meta}</div> : null}
+        {meta || flag ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {flag}
+            {meta}
+          </div>
+        ) : null}
         <div className="mt-2 flex items-center gap-2 text-caption text-label-tertiary">
           <SourceDot source={job.source} />
           {posted ? (

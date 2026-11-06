@@ -32,6 +32,13 @@ from ujc_api.feed_query import (
     posted_within_clause,
 )
 from ujc_api.job_sort import PUBLIC_SORTS, fetch_page, resolve_sort
+from ujc_api.job_votes import (
+    HIDE_REPORTED_CLAUSE,
+    STATS_COLUMN_COUNT,
+    STATS_COLUMNS,
+    STATS_JOIN,
+    community_dto,
+)
 
 router = APIRouter(tags=["jobs"])
 
@@ -90,12 +97,15 @@ def list_jobs(
     based_in: str | None = None,
     sort: str | None = None,
     tz: str | None = None,
+    hide_reported: bool = False,
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     """The public job catalogue: every job we've crawled, no sign-in required, newest first unless
     `sort` says otherwise (`newest` | `timezone` (+ `tz`, the viewer's IANA zone) | `salary`; see
     ujc_api.job_sort). Same keyset cursors as `GET /api/feed` (routers/feed.py), just without the
-    per-user keyword/eligibility filters, and without reading the session at all."""
+    per-user keyword/eligibility filters, and without reading the session at all. Each job carries
+    `community` (ujc_api.job_votes, identical for every viewer); `hide_reported` drops jobs the
+    community flagged."""
     limit = max(1, min(limit, MAX_LIMIT))
     plan = resolve_sort(sort, tz, allowed=PUBLIC_SORTS)
 
@@ -129,18 +139,29 @@ def list_jobs(
         clauses.append(posted[0])
         params.append(posted[1])
 
+    if hide_reported:
+        clauses.append(HIDE_REPORTED_CLAUSE)
+
     page, next_cursor = fetch_page(
         conn,
         plan,
         cursor,
-        columns=JOB_COLUMNS,
-        from_sql="jobs",
+        columns=f"{JOB_COLUMNS}, {STATS_COLUMNS}",
+        from_sql=f"jobs {STATS_JOIN}",
         from_params=[],
         clauses=clauses,
         where_params=params,
         limit=limit,
     )
-    return {"items": [job_dto(r) for r in page], "nextCursor": next_cursor}
+    return {"items": [job_dto_with_community(r) for r in page], "nextCursor": next_cursor}
+
+
+def job_dto_with_community(row: tuple) -> dict:
+    """A `JOB_COLUMNS` row followed by `job_votes.STATS_COLUMNS` -> `Job` + `community` (the
+    aggregate every viewer sees; never the viewer's own vote, so the payload stays cacheable)."""
+    dto = job_dto(tuple(row[:-STATS_COLUMN_COUNT]))
+    dto["community"] = community_dto(tuple(row[-STATS_COLUMN_COUNT:]))
+    return dto
 
 
 # Declared before `/api/jobs/{job_id}` so "facets" isn't parsed as a job id.
@@ -169,10 +190,15 @@ def get_job(
     job_id: int,
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
-    row = conn.execute(f"SELECT {JOB_DETAIL_COLUMNS} FROM jobs WHERE id = %s", (job_id,)).fetchone()
+    row = conn.execute(
+        f"SELECT {JOB_DETAIL_COLUMNS}, {STATS_COLUMNS} FROM jobs {STATS_JOIN} WHERE jobs.id = %s",
+        (job_id,),
+    ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job_detail_dto(row)
+    dto = job_detail_dto(tuple(row[:-STATS_COLUMN_COUNT]))
+    dto["community"] = community_dto(tuple(row[-STATS_COLUMN_COUNT:]))
+    return dto
 
 
 @router.get("/api/sources")

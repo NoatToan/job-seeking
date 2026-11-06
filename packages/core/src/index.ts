@@ -46,6 +46,51 @@ export interface Job {
   levelSource?: "source" | "title" | "description" | null;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
+  /** What other job seekers say about this posting (apps/api ujc_api/job_votes.py); null/absent =
+   * no counted votes. The same for every viewer: the viewer's own vote is `GET /api/me/job-votes`. */
+  community?: JobCommunity | null;
+}
+
+/** Why a job isn't worth applying to (a "Not worth applying?" report). */
+export const JOB_VOTE_REASONS = [
+  "expired",
+  "not_remote",
+  "scam",
+  "wrong_details",
+  "ghosting",
+  "evergreen",
+  "other",
+] as const;
+export type JobVoteReason = (typeof JOB_VOTE_REASONS)[number];
+
+/** Longest note on a report (reason "other"). */
+export const JOB_VOTE_NOTE_MAX = 200;
+
+/** Aggregate community signal on a job (`job_vote_stats`). Counts only votes that count: accounts
+ * older than a day, reports from the last 45 days, none older than an admin clear or a repost. */
+export interface JobCommunity {
+  /** "Not worth applying" reports. */
+  reports: number;
+  /** "Still good" confirmations. */
+  confirms: number;
+  /** Enough recent reports (weighted) and more than the confirmations: warn on the job row. */
+  flagged: boolean;
+  topReason: JobVoteReason | null;
+  /** Reports per reason. */
+  reasons: Partial<Record<JobVoteReason, number>>;
+  lastReportedAt: string | null;
+}
+
+/** The signed-in user's own vote on a job. */
+export interface MyJobVote {
+  vote: "up" | "down";
+  reason: JobVoteReason | null;
+  /** Private note (reason "other"); only the voter and admins see it. */
+  note: string | null;
+  updatedAt: string;
+  /** Whether it counts in `community` right now (false for accounts under a day old, or after an
+   * admin cleared the job's reports). */
+  counted: boolean;
 }
 
 /**

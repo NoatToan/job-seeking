@@ -28,6 +28,7 @@ from ujc_api.routers import cvs as cvs_router
 from ujc_api.routers import digest as digest_router
 from ujc_api.routers import feed as feed_router
 from ujc_api.routers import feedback as feedback_router
+from ujc_api.routers import job_votes as job_votes_router
 from ujc_api.routers import jobs as jobs_router
 from ujc_api.routers import matches as matches_router
 from ujc_api.routers import me as me_router
@@ -188,6 +189,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(cvs_router.router)
     app.include_router(feed_router.router)
     app.include_router(jobs_router.router)
+    app.include_router(job_votes_router.router)
     app.include_router(search_router.router)
     app.include_router(applications_router.router)
     app.include_router(viewed_router.router)

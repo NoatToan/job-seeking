@@ -148,6 +148,14 @@ Current constants (signed in): `/api/jobs` 2, `/api/jobs/facets` 2, `/api/source
 `/api/me/profile` 2, `/api/feedback?scope=board|mine` 4. Signed out: `/api/jobs` 1, feedback
 board 2.
 
+Job votes (migration 030, DECISIONS.md "Job downvotes"): the `community` aggregate is a
+primary-key `LEFT JOIN job_vote_stats` in the same statement, so `/api/jobs`, `/api/jobs/{id}`
+and `/api/feed` keep the counts above (with or without `hide_reported`, which is a `NOT EXISTS`
+anti-join so `jobs_feed_idx` / `jobs_salary_sort_idx` still drive the page: 0.03–0.06 ms on 50k
+jobs, versus ~40 ms for a `vs.flagged IS NOT TRUE` filter, which turned into a hash join).
+`GET /api/me/job-votes?ids=` (any number of ids up to 100) is 2, `PUT /api/jobs/{id}/vote` 4
+(session, rate-limit count, upsert, aggregate refresh).
+
 Checked and not N+1:
 
 - The SPA has no per-row API calls: viewed jobs are posted in batches, and application events
