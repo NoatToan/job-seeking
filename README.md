@@ -48,6 +48,30 @@ uv run python -m job_crawler             # crawl all sources into Postgres
 - Web: Vercel project `unified-job-crawler`. `vercel.json` points the build at `apps/web`, and the build runs the migrations first.
 - Daily crawl: `.github/workflows/daily-crawl.yml` (05:00 Vietnam time). Set the repository secrets `DATABASE_URL` (and optionally `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`).
 
+## Analytics
+
+- Google Tag Manager container `GTM-WSR78ZW4` loads on every page (`apps/web/src/app/layout.tsx`). Set `NEXT_PUBLIC_GTM_ID` at build time to use another container, or to an empty string to turn it off (e.g. local dev).
+- GA4 is configured inside GTM, not in code: add a *Google tag* with the GA4 measurement ID, triggered on *Initialization – All Pages*. The app is a SPA, so keep GA4 *Enhanced measurement → Page changes based on browser history events* on to count client-side navigation.
+- A tag that loads from a host other than Google Tag Manager / Google Analytics must also be added to the CSP in `vercel.json` and `deploy/Caddyfile`.
+
+## MCP servers (Claude Code)
+
+`.mcp.json` registers `job-search` (this repo's `apps/mcp`), `jobspy`, `upwork`, and two Google Cloud servers:
+- `gcloud` ([@google-cloud/gcloud-mcp](https://github.com/googleapis/gcloud-mcp)): runs `gcloud` commands.
+- `google-analytics` ([analytics-mcp](https://github.com/googleanalytics/google-analytics-mcp)): GA4 reports and realtime data.
+
+Both sign in with your own Google account on your machine; nothing is stored in the repo. One-time setup with the Google Cloud CLI installed:
+
+```bash
+gcloud auth login                         # the Google account that owns the GCP project / GA4 property
+gcloud config set project <project-id>
+gcloud auth application-default login \
+  --scopes=https://www.googleapis.com/auth/analytics.readonly,https://www.googleapis.com/auth/cloud-platform
+gcloud services enable analyticsadmin.googleapis.com analyticsdata.googleapis.com
+```
+
+Then restart Claude Code and approve the servers in `/mcp`.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on push to `main`:
