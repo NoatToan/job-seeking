@@ -102,6 +102,25 @@
       "openWorldwide": "Hide region-locked",
       "confirmed": "Confirmed open to {{you}}",
       "confirmedWorldwide": "Worldwide only"
+    },
+    "mobile": {
+      "button": "Filters",
+      "buttonLabel_one": "Filters, {{count}} on",
+      "buttonLabel_other": "Filters, {{count}} on",
+      "title": "Filters",
+      "keywords": "Keywords",
+      "where": "Source and country",
+      "remote": "Remote",
+      "remoteOnly": "Remote jobs only",
+      "reading": "Reading",
+      "unreadOnly": "Unread jobs only",
+      "tech": "Tech stack",
+      "techAny": "Any",
+      "show": "Show jobs",
+      "reset": "Reset",
+      "back": "Back",
+      "done": "Done",
+      "zoneError": "We couldn't save your time zone. It's set on this device; try again later to save it to your account."
     }
   },
   "country": {

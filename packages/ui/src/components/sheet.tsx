@@ -23,6 +23,12 @@ export interface SheetProps {
   closeLabel?: string;
   /** "sheet" = bottom sheet on phones, centred card on >= sm. "alert" = always centred and narrow. */
   variant?: "sheet" | "alert";
+  /** "tall" = fixed 90dvh on phones (a filter view whose body swaps between steps keeps its height). */
+  size?: "auto" | "tall";
+  /** Header slot before the title (e.g. a Back button in a multi-step sheet). */
+  leading?: ReactNode;
+  /** Esc handler. Default `onClose`; a multi-step sheet passes "go back one step". */
+  onEscape?: () => void;
   className?: string;
 }
 
@@ -39,6 +45,9 @@ export function Sheet({
   footer,
   closeLabel,
   variant = "sheet",
+  size = "auto",
+  leading,
+  onEscape,
   className,
 }: SheetProps) {
   const strings = useUiStrings();
@@ -47,10 +56,12 @@ export function Sheet({
   const titleId = useId();
   const descId = useId();
   const onCloseRef = useRef(onClose);
+  const onEscapeRef = useRef(onEscape);
 
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    onEscapeRef.current = onEscape;
+  }, [onClose, onEscape]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,8 +75,10 @@ export function Sheet({
 
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // A field already used Esc (SearchField clears itself): don't also close or step back.
+        if (e.defaultPrevented) return;
         e.stopPropagation();
-        onCloseRef.current();
+        (onEscapeRef.current ?? onCloseRef.current)();
         return;
       }
       if (e.key !== "Tab" || !panel) return;
@@ -115,13 +128,15 @@ export function Sheet({
           isAlert
             ? "max-w-sm animate-pop-in rounded-sheet"
             : "animate-sheet-up rounded-t-sheet sm:max-w-lg sm:animate-pop-in sm:rounded-sheet",
+          size === "tall" && !isAlert && "h-[90dvh] sm:h-auto",
           className,
         )}
       >
         {!isAlert ? (
           <span aria-hidden className="mx-auto mt-2 h-1.5 w-9 shrink-0 rounded-full bg-fill sm:hidden" />
         ) : null}
-        <header className={cx("flex items-start gap-3 px-5 pt-4", isAlert && "text-center")}>
+        <header className={cx("flex gap-3 px-5 pt-4", leading ? "items-center" : "items-start", isAlert && "text-center")}>
+          {leading}
           <div className="min-w-0 flex-1">
             <h2 id={titleId} className="text-headline text-label">
               {title}
@@ -146,7 +161,7 @@ export function Sheet({
           // Without a footer the body is the sheet's last block: keep its end above the home indicator.
           <div
             className={cx(
-              "min-h-0 flex-1 overflow-y-auto px-5 pt-4",
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4",
               footer ? "pb-4" : "pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))]",
             )}
           >

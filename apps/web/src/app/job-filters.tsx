@@ -21,6 +21,7 @@ import {
 import { useQueryStates } from "nuqs";
 import { useTranslation } from "react-i18next";
 import { useViewState } from "@/lib/view-cache";
+import { usePhoneLayout } from "@/lib/use-phone-layout";
 import { jobFilterParsers, POSTED_DAYS, postedParams, REMOTE_ACCESS } from "@/lib/url-state";
 import { useBasedIn } from "@/lib/based-in";
 import { CountryFilter } from "@/app/country-filter";
@@ -30,12 +31,13 @@ import { TimezonePicker } from "@/app/work-hours";
 import { clearViewed, useViewedJobs } from "@/lib/viewed";
 import { useUserTimezone } from "@/lib/user-timezone";
 import { jobFitsHours, shortZoneName } from "@/lib/work-hours";
+import { MobileFilterBar } from "@/app/mobile-filters";
 
 type PostedDays = (typeof POSTED_DAYS)[number];
 type RemoteAccessMode = (typeof REMOTE_ACCESS)[number];
 
 /** "Posted within" options (Slack: past hour, today, 3 days, 7 days, 1 month). "" = any. */
-function usePostedOptions(): { value: string; label: string }[] {
+export function usePostedOptions(): { value: string; label: string }[] {
   const { t } = useTranslation("home");
   return [
     { value: "", label: t("filters.postedAny") },
@@ -45,6 +47,19 @@ function usePostedOptions(): { value: string; label: string }[] {
     { value: "7", label: t("filters.posted7") },
     { value: "30", label: t("filters.postedMonth") },
   ];
+}
+
+/** Every filter value at once: what the phone filter view edits as a draft and applies together. */
+export interface JobFilterValues {
+  q: string;
+  source: string;
+  remoteOnly: boolean;
+  country: string;
+  tech: string[];
+  posted: string;
+  access: string;
+  hours: [number, number] | null;
+  unreadOnly: boolean;
 }
 
 export interface JobFilterState {
@@ -83,6 +98,8 @@ export interface JobFilterState {
   };
   activeCount: number;
   clear: () => void;
+  /** Apply every value in one URL update (phone filter view: Apply). */
+  apply: (v: JobFilterValues) => void;
   /** "Unread only": the ids read when it was switched on (a snapshot, so the job you are reading
    * now doesn't vanish from the list under you). `null` = show everything. */
   hiddenIds: ReadonlySet<string> | null;
@@ -164,6 +181,21 @@ export function useJobFilters(prefix: string): JobFilterState {
       setHidden(null);
       void setUrl(null);
     },
+    apply: (v) => {
+      // The search box follows at once, so its debounce has nothing left to write.
+      setDraftQ(v.q);
+      if ((hidden !== null) !== v.unreadOnly) setHidden(v.unreadOnly ? [...viewed] : null);
+      void setUrl({
+        q: v.q,
+        source: v.source,
+        remote: v.remoteOnly,
+        country: v.country,
+        tech: v.tech,
+        posted: (POSTED_DAYS as readonly string[]).includes(v.posted) ? (v.posted as PostedDays) : null,
+        access: (REMOTE_ACCESS as readonly string[]).includes(v.access) ? (v.access as RemoteAccessMode) : null,
+        hours: v.hours,
+      });
+    },
   };
 }
 
@@ -180,7 +212,18 @@ export function useVisibleJobs(f: JobFilterState, items: Job[]): Job[] {
   }, [items, f.hiddenIds, f.hours, zone]);
 }
 
-const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
+export const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
+
+/** One-tap ranges next to the hours slider (no drag-only control). */
+export function useHourPresets(): { label: string; value: [number, number] }[] {
+  const { t } = useTranslation("home");
+  return [
+    { label: t("filters.hours.presetOffice"), value: [9, 17] },
+    { label: t("filters.hours.presetEarly"), value: [6, 14] },
+    { label: t("filters.hours.presetLate"), value: [13, 22] },
+    { label: t("filters.hours.presetEvening"), value: [18, 24] },
+  ];
+}
 
 /**
  * "Hours" pill (Slack request: "a filter to drag my preferred hours"): a two-thumb slider on the
@@ -189,12 +232,7 @@ const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
  */
 function HoursFilter({ value, onChange }: { value: [number, number] | null; onChange: (v: [number, number] | null) => void }) {
   const { t } = useTranslation("home");
-  const HOUR_PRESETS: { label: string; value: [number, number] }[] = [
-    { label: t("filters.hours.presetOffice"), value: [9, 17] },
-    { label: t("filters.hours.presetEarly"), value: [6, 14] },
-    { label: t("filters.hours.presetLate"), value: [13, 22] },
-    { label: t("filters.hours.presetEvening"), value: [18, 24] },
-  ];
+  const HOUR_PRESETS = useHourPresets();
   const { zone } = useUserTimezone();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<[number, number]>(value ?? [9, 17]);
@@ -310,7 +348,7 @@ function HoursFilter({ value, onChange }: { value: [number, number] | null; onCh
 }
 
 /** "Read 42 jobs · Clear" — the read history kept in this browser (and the account). */
-function ReadHistory() {
+export function ReadHistory() {
   const { t } = useTranslation("home");
   const viewed = useViewedJobs();
   const [clearing, setClearing] = useState(false);
@@ -345,12 +383,20 @@ export interface JobFilterBarProps {
 }
 
 /**
+ * Home filter bar. Phones (< 768px) get one "Filters" button that opens a single modal view
+ * (`MobileFilterBar`); wider screens keep the pill bar below.
+ */
+export function JobFilterBar(props: JobFilterBarProps) {
+  return usePhoneLayout() ? <MobileFilterBar {...props} /> : <DesktopFilterBar {...props} />;
+}
+
+/**
  * Home filter bar (Slack requests: "the filter area takes too much room", then "looks like an admin
  * tool"): one big search pill like a job site, and a single row of filter pills under it — source,
  * country, posted-within, remote, unread and "More filters". Tech chips and the time-zone picker
  * open in a panel underneath only when asked for. Selected techs stay visible as small chips.
  */
-export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
+function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const { t } = useTranslation("home");
   const postedOptions = usePostedOptions();
   const strings = useUiStrings();

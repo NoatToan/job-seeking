@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import type { ReactNode } from "react";
 import type { Job } from "@ujc/core";
 import { SOURCES } from "@ujc/core";
+import type { ModalViewHandle } from "@ujc/ui";
 import {
   Avatar,
   Badge,
@@ -37,6 +38,7 @@ import {
   SearchField,
   SearchIcon,
   SegmentedControl,
+  ModalView,
   Sheet,
   Sidebar,
   Skeleton,
@@ -247,6 +249,7 @@ function StyleguideBody() {
   const [filters, setFilters] = useState({ remote: true, worldwide: false, contract: false });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const modalViewRef = useRef<ModalViewHandle>(null);
 
   return (
     <div className="min-h-full bg-grouped pb-24">
@@ -574,7 +577,24 @@ function StyleguideBody() {
             <Button variant="destructive" onClick={() => setAlertOpen(true)}>
               Open alert
             </Button>
+            <Button variant="tinted" onClick={() => modalViewRef.current?.open()}>
+              Open modal view
+            </Button>
           </div>
+          <ModalView
+            ref={modalViewRef}
+            size="tall"
+            title="Filters"
+            footer={
+              <Button onClick={() => modalViewRef.current?.close()} fullWidth>
+                Show jobs
+              </Button>
+            }
+          >
+            <p className="text-body text-label-secondary">
+              Phones: one self-owned view, opened with <code>ref.current?.open()</code>. Back and Esc close it.
+            </p>
+          </ModalView>
           <ToastDemo />
           <Specimen label="Toast (static preview)" className="flex flex-col gap-2">
             <Toast tone="success" title="Marked as applied — good luck!" message="We'll remind you to follow up in 7 days." onDismiss={() => undefined} className="animate-none" />
