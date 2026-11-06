@@ -142,7 +142,7 @@ export function PublicJobs({
             stateKey="public"
             highlight={highlightTerms({ q: filters.q, tech: filters.tech })}
             signedIn={signedIn}
-            renderActions={signedIn ? (job) => <SaveJobButton jobId={job.id} /> : undefined}
+            renderActions={signedIn ? (job) => <SaveJobButton jobId={job.id} compact /> : undefined}
             onNearEnd={nextCursor && !loading ? loadMore : undefined}
             footer={
               <>

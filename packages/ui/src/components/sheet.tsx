@@ -115,7 +115,8 @@ export function Sheet({
   const isAlert = variant === "alert";
   return createPortal(
     <div className={cx("fixed inset-0 z-50 flex justify-center", isAlert ? "items-center p-6" : "items-end sm:items-center sm:p-6")}>
-      <div aria-hidden className="absolute inset-0 animate-fade-in bg-scrim" onClick={onClose} />
+      {/* Darker + blurred so the sheet never blends into the page behind it. */}
+      <div aria-hidden className="absolute inset-0 animate-fade-in bg-scrim backdrop-blur-md" onClick={onClose} />
       <div
         ref={panelRef}
         role={isAlert ? "alertdialog" : "dialog"}

@@ -111,7 +111,7 @@
   /* Materials */
   --ujc-material: rgb(255 255 255 / 0.72);
   --ujc-material-thick: rgb(250 249 247 / 0.86);
-  --ujc-scrim: rgb(28 27 26 / 0.32);
+  --ujc-scrim: rgb(28 27 26 / 0.5);
 
   /* Elevation (light mode uses soft warm shadows) */
   --ujc-shadow-card: 0 1px 2px rgb(60 40 20 / 0.06), 0 1px 1px rgb(60 40 20 / 0.04);
@@ -178,7 +178,7 @@
   --ujc-soft: 18%;
   --ujc-material: rgb(28 27 26 / 0.72);
   --ujc-material-thick: rgb(22 21 20 / 0.86);
-  --ujc-scrim: rgb(0 0 0 / 0.5);
+  --ujc-scrim: rgb(0 0 0 / 0.68);
   --ujc-shadow-card: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.08);
   --ujc-shadow-raised: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.1), 0 8px 24px rgb(0 0 0 / 0.4);
   --ujc-shadow-overlay: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.12), 0 24px 64px rgb(0 0 0 / 0.6);
@@ -233,7 +233,7 @@
     --ujc-soft: 18%;
     --ujc-material: rgb(28 27 26 / 0.72);
     --ujc-material-thick: rgb(22 21 20 / 0.86);
-    --ujc-scrim: rgb(0 0 0 / 0.5);
+    --ujc-scrim: rgb(0 0 0 / 0.68);
     --ujc-shadow-card: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.08);
     --ujc-shadow-raised: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.1), 0 8px 24px rgb(0 0 0 / 0.4);
     --ujc-shadow-overlay: 0 0 0 var(--ujc-hairline) rgb(255 248 240 / 0.12), 0 24px 64px rgb(0 0 0 / 0.6);

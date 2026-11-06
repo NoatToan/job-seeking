@@ -7,7 +7,7 @@ import { sortTech } from "@ujc/core";
 import { cx } from "../cx";
 import { EN_UI_STRINGS, useUiStrings } from "../strings";
 import type { UiStrings } from "../strings";
-import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
+import { CheckIcon, ChevronRightIcon, ClockIcon, EyeIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
 import { AccessStamp, RemoteAccessBadge } from "./remote-access";
@@ -277,9 +277,10 @@ export function JobListItem({
             </>
           ) : null}
           {viewed ? (
-            <span className="ml-auto inline-flex items-center gap-0.5 font-medium text-label-tertiary">
-              <CheckIcon size={12} strokeWidth={2.5} aria-hidden />
-              {strings.read}
+            // Icon only (an open eye): the word stays as the tooltip and for screen readers.
+            <span title={strings.read} className="ml-auto inline-flex items-center text-label-tertiary">
+              <EyeIcon size={15} strokeWidth={2} />
+              <span className="sr-only">{strings.read}</span>
             </span>
           ) : null}
           {actions ? (

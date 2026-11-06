@@ -2,7 +2,10 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BookmarkIcon, Button, buttonClasses, CheckIcon } from "@ujc/ui";
+import { BookmarkIcon, Button, buttonClasses, CheckIcon, cx } from "@ujc/ui";
+
+const ICON_BUTTON =
+  "inline-flex size-9 items-center justify-center rounded-full transition-colors duration-150 hover:bg-fill-tertiary focus-ring disabled:cursor-default disabled:hover:bg-transparent pointer-coarse:size-11";
 import { useTranslation } from "react-i18next";
 import { ApiError, saveApplication } from "@/lib/api";
 
@@ -14,6 +17,9 @@ export interface SaveJobButtonProps {
   savedLabel?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Job rows: just the bookmark (outline = save, filled = saved), the words live in the label
+   * and tooltip. The detail page keeps the labelled button. */
+  compact?: boolean;
   /** Pass `false` when the viewer isn't signed in (e.g. the public home page, or the job detail
    * page viewed signed out): renders a "Sign in to {label}" link to `/login/` instead of calling
    * the session-only save endpoint. Default `true` (every existing caller is already behind a
@@ -34,6 +40,7 @@ export function SaveJobButton({
   size = "sm",
   className,
   signedIn = true,
+  compact = false,
 }: SaveJobButtonProps) {
   const { t } = useTranslation("home");
   const idleLabel = label ?? t("save.save");
@@ -43,6 +50,15 @@ export function SaveJobButton({
   // Guards against a second click firing before the `saved` state re-render commits (state
   // updates are not synchronous), so `saveApplication` is only ever called once per mount.
   const inFlightRef = useRef(false);
+
+  if (!signedIn && compact) {
+    const label = t("save.signInTo", { action: idleLabel.toLowerCase() });
+    return (
+      <Link href="/login/" aria-label={label} title={label} className={cx(ICON_BUTTON, "text-label-secondary", className)}>
+        <BookmarkIcon size={17} />
+      </Link>
+    );
+  }
 
   if (!signedIn) {
     return (
@@ -70,6 +86,26 @@ export function SaveJobButton({
     } finally {
       inFlightRef.current = false;
     }
+  }
+
+  if (compact) {
+    const label = saved ? doneLabel : idleLabel;
+    return (
+      <span className={cx("inline-flex items-center", className)}>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={saved}
+          title={error ?? label}
+          disabled={saved}
+          onClick={() => void onSave()}
+          className={cx(ICON_BUTTON, saved ? "text-tint" : "text-label-secondary hover:text-label")}
+        >
+          <BookmarkIcon size={17} strokeWidth={2} className={cx(saved && "fill-current")} />
+        </button>
+        {error ? <span role="alert" className="sr-only">{error}</span> : null}
+      </span>
+    );
   }
 
   return (

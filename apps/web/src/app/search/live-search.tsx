@@ -198,7 +198,7 @@ function LiveSearchInner() {
               <JobCard
                 key={`${job.source}-${job.id}`}
                 job={job}
-                actions={<SaveJobButton jobId={job.id} />}
+                actions={<SaveJobButton jobId={job.id} compact />}
               />
             ))}
           </div>
