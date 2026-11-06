@@ -124,9 +124,48 @@ US_STATES = {
     "WY",
     "DC",
 }
+# Every other ISO 3166 country / territory, by English name (generated from Intl.DisplayNames), so
+# "Remote - Senegal" or "Curaçao" also gets a region instead of "not stated". Names only: their
+# 2-letter codes are not matched in text (too many collide with US states and words: NC, GA, TO…).
+EXTRA_COUNTRIES: dict[str, str] = {
+    "afghanistan": "AF", "american samoa": "AS", "angola": "AO", "anguilla": "AI",
+    "antigua and barbuda": "AG", "aruba": "AW", "bahamas": "BS", "barbados": "BB", "benin": "BJ",
+    "bermuda": "BM", "bhutan": "BT", "botswana": "BW", "british virgin islands": "VG",
+    "brunei": "BN", "burkina faso": "BF", "burma": "MM", "burundi": "BI", "cameroon": "CM",
+    "cape verde": "CV", "caribbean netherlands": "BQ", "cayman islands": "KY",
+    "central african republic": "CF", "chad": "TD", "christmas island": "CX",
+    "cocos islands": "CC", "comoros": "KM", "cook islands": "CK", "cote d'ivoire": "CI",
+    "cuba": "CU", "curacao": "CW", "curaçao": "CW", "côte d'ivoire": "CI", "djibouti": "DJ",
+    "dominica": "DM", "east timor": "TL", "equatorial guinea": "GQ", "eritrea": "ER",
+    "eswatini": "SZ", "falkland islands": "FK", "faroe islands": "FO", "fiji": "FJ",
+    "french guiana": "GF", "french polynesia": "PF", "gabon": "GA", "gambia": "GM",
+    "gibraltar": "GI", "greenland": "GL", "grenada": "GD", "guadeloupe": "GP", "guam": "GU",
+    "guernsey": "GG", "guinea": "GN", "guinea-bissau": "GW", "guyana": "GY", "iran": "IR",
+    "iraq": "IQ", "isle of man": "IM", "ivory coast": "CI", "kiribati": "KI", "kyrgyzstan": "KG",
+    "laos": "LA", "lesotho": "LS", "liberia": "LR", "libya": "LY", "liechtenstein": "LI",
+    "macao": "MO", "macau": "MO", "madagascar": "MG", "malawi": "MW", "maldives": "MV",
+    "mali": "ML", "marshall islands": "MH", "martinique": "MQ", "mauritania": "MR",
+    "mauritius": "MU", "mayotte": "YT", "micronesia": "FM", "monaco": "MC", "montserrat": "MS",
+    "mozambique": "MZ", "myanmar": "MM", "namibia": "NA", "nauru": "NR", "new caledonia": "NC",
+    "niger": "NE", "niue": "NU", "norfolk island": "NF", "north korea": "KP",
+    "northern mariana islands": "MP", "palau": "PW", "palestine": "PS",
+    "palestinian territories": "PS", "pitcairn islands": "PN", "russia": "RU",
+    "russian federation": "RU", "réunion": "RE", "samoa": "WS", "san marino": "SM",
+    "sao tome and principe": "ST", "senegal": "SN", "seychelles": "SC", "sierra leone": "SL",
+    "sint maarten": "SX", "solomon islands": "SB", "somalia": "SO", "south sudan": "SS",
+    "st. barthélemy": "BL", "st. helena": "SH", "st. kitts and nevis": "KN", "st. lucia": "LC",
+    "st. martin": "MF", "st. pierre and miquelon": "PM", "st. vincent and grenadines": "VC",
+    "sudan": "SD", "suriname": "SR", "svalbard and jan mayen": "SJ", "swaziland": "SZ",
+    "syria": "SY", "são tomé and príncipe": "ST", "tajikistan": "TJ", "timor-leste": "TL",
+    "togo": "TG", "tokelau": "TK", "tonga": "TO", "trinidad and tobago": "TT",
+    "turkmenistan": "TM", "turks and caicos islands": "TC", "tuvalu": "TV",
+    "u.s. virgin islands": "VI", "vanuatu": "VU", "vatican city": "VA",
+    "wallis and futuna": "WF", "western sahara": "EH", "yemen": "YE", "zambia": "ZM",
+    "zimbabwe": "ZW", "åland islands": "AX",
+}  # fmt: skip
 _ISO = set(COUNTRIES.values())
 
-_NAMES = {**REGIONS, **COUNTRIES, **CITIES}
+_NAMES = {**REGIONS, **EXTRA_COUNTRIES, **COUNTRIES, **CITIES}
 # longest names first so "south east asia" wins over "asia", "united states" over "us"
 _NAME_RE = re.compile(
     r"(?<![a-z0-9])("

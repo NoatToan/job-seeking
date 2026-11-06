@@ -19,10 +19,39 @@
     "via": "từ {{source}}",
     "today": "hôm nay",
     "daysAgo_other": "{{count}} ngày trước",
-    "fit": { "great": "Rất phù hợp", "good": "Phù hợp", "worth": "Đáng xem", "long": "Ít phù hợp" }
+    "fit": {
+      "great": "Rất phù hợp",
+      "good": "Phù hợp",
+      "worth": "Đáng xem",
+      "long": "Ít phù hợp"
+    },
+    "remoteAccess": {
+      "worldwide": "Remote · Toàn cầu",
+      "only": "Remote · chỉ {{places}}",
+      "unknown": "Remote · chưa ghi vùng",
+      "openToYou": "Nhận ứng viên ở {{country}}",
+      "notOpenToYou": "Không nhận ứng viên ở {{country}}",
+      "regions": {
+        "EUROPE": "Châu Âu",
+        "EMEA": "EMEA",
+        "APAC": "APAC",
+        "ASIA": "Châu Á",
+        "SEA": "Đông Nam Á",
+        "LATAM": "Mỹ Latinh",
+        "NORTH_AMERICA": "Bắc Mỹ",
+        "AMERICAS": "Châu Mỹ",
+        "OCEANIA": "Châu Đại Dương",
+        "MIDDLE_EAST": "Trung Đông",
+        "AFRICA": "Châu Phi"
+      }
+    }
   },
-  "language": { "label": "Ngôn ngữ" },
-  "brand": { "homeAriaLabel": "Trang chủ {{name}}" },
+  "language": {
+    "label": "Ngôn ngữ"
+  },
+  "brand": {
+    "homeAriaLabel": "Trang chủ {{name}}"
+  },
   "nav": {
     "jobs": "Việc làm",
     "liveSearch": "Tìm trực tiếp",

@@ -3,13 +3,14 @@
 import { useState } from "react";
 import type { ElementType, MouseEvent, ReactNode } from "react";
 import type { Job } from "@ujc/core";
-import { openToLabel, sortTech } from "@ujc/core";
+import { sortTech } from "@ujc/core";
 import { cx } from "../cx";
 import { EN_UI_STRINGS, useUiStrings } from "../strings";
 import type { UiStrings } from "../strings";
 import { CheckIcon, ChevronRightIcon, ClockIcon, GlobeIcon, MapPinIcon } from "../icons";
 import { Badge, MatchBadge, SourceBadge, SourceDot } from "./badges";
 import { Avatar } from "./feedback";
+import { RemoteAccessBadge } from "./remote-access";
 import { LocationText } from "./location-text";
 import { TechStackRow } from "./tech-icon";
 
@@ -39,6 +40,8 @@ export interface JobCardProps {
   actions?: ReactNode;
   /** Application status badge (tracker), shown next to the source. */
   status?: ReactNode;
+  /** Candidate's country (ISO): colours the remote region for "open to you or not". */
+  basedIn?: string | null;
   className?: string;
 }
 
@@ -46,11 +49,10 @@ export interface JobCardProps {
  * One job in a list. Hierarchy: title > company/location > fit + source > reasons > meta.
  * The title links to the original posting (new tab); the source badge is always visible.
  */
-export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, status, className }: JobCardProps) {
+export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, status, basedIn, className }: JobCardProps) {
   const [scoreExpanded, setScoreExpanded] = useState(false);
   const strings = useUiStrings();
   const posted = timeAgo(job.postedAt ?? job.firstSeenAt, Date.now(), strings);
-  const openTo = openToLabel(job.openTo);
   const employment = employmentLabel(job.employmentType);
   return (
     <article
@@ -94,8 +96,8 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
       <div className="flex flex-wrap items-center gap-1.5">
         <SourceBadge source={job.source} />
         {job.remote ? (
-          <Badge tone="info" icon={<GlobeIcon size={12} strokeWidth={2.25} />}>
-            {openTo ? strings.remoteOpenTo(openTo) : strings.remote}
+          <Badge tone="neutral" className="max-w-full">
+            <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} />
           </Badge>
         ) : null}
         {status}
@@ -182,6 +184,8 @@ export interface JobListItemProps {
   meta?: ReactNode;
   /** Already read: dimmed with a "Read" mark so unread jobs stand out. */
   viewed?: boolean;
+  /** Candidate's country (ISO): colours the remote region green / red for "open to you or not". */
+  basedIn?: string | null;
   className?: string;
 }
 
@@ -199,6 +203,7 @@ export function JobListItem({
   actions,
   meta,
   viewed = false,
+  basedIn,
   className,
 }: JobListItemProps) {
   const strings = useUiStrings();
@@ -253,12 +258,7 @@ export function JobListItem({
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-footnote">
           {job.salaryText ? <span className="truncate font-semibold text-success-ink">{job.salaryText}</span> : null}
-          {job.remote ? (
-            <span className="inline-flex items-center gap-1 font-medium text-info-ink">
-              <GlobeIcon size={12} strokeWidth={2.25} aria-hidden />
-              {strings.remote}
-            </span>
-          ) : null}
+          {job.remote ? <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} /> : null}
         </div>
         {job.techStack?.length ? <TechStackRow ids={sortTech(job.techStack)} className="mt-2" /> : null}
         {meta ? <div className="mt-2 flex flex-wrap items-center gap-1.5">{meta}</div> : null}

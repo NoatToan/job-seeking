@@ -94,7 +94,15 @@
     },
     "readHistory_one": "Read {{count}} job",
     "readHistory_other": "Read {{count}} jobs",
-    "clearReadHistory": "Clear read history"
+    "clearReadHistory": "Clear read history",
+    "access": {
+      "label": "Remote region",
+      "any": "Any region",
+      "open": "Open to {{you}} (+ not stated)",
+      "openWorldwide": "Hide region-locked",
+      "confirmed": "Confirmed open to {{you}}",
+      "confirmedWorldwide": "Worldwide only"
+    }
   },
   "country": {
     "label": "Country",

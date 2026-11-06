@@ -23,6 +23,15 @@ export interface UiStrings {
   mainNav: string;
   remote: string;
   remoteOpenTo: (openTo: string) => string;
+  /** Remote eligibility ("who can apply"), see `RemoteAccessBadge`. */
+  remoteAccess: {
+    worldwide: string;
+    only: (places: string) => string;
+    unknown: string;
+    openToYou: (country: string) => string;
+    notOpenToYou: (country: string) => string;
+    regions: Record<string, string>;
+  };
   read: string;
   viewDetails: string;
   opensInNewTab: string;
@@ -47,6 +56,26 @@ export const EN_UI_STRINGS: UiStrings = {
   mainNav: "Main",
   remote: "Remote",
   remoteOpenTo: (openTo) => `Remote · ${openTo}`,
+  remoteAccess: {
+    worldwide: "Remote · Worldwide",
+    only: (places) => `Remote · ${places} only`,
+    unknown: "Remote · region not stated",
+    openToYou: (country) => `Open to candidates in ${country}`,
+    notOpenToYou: (country) => `Not open to candidates in ${country}`,
+    regions: {
+      EUROPE: "Europe",
+      EMEA: "EMEA",
+      APAC: "APAC",
+      ASIA: "Asia",
+      SEA: "Southeast Asia",
+      LATAM: "Latin America",
+      NORTH_AMERICA: "North America",
+      AMERICAS: "Americas",
+      OCEANIA: "Oceania",
+      MIDDLE_EAST: "Middle East",
+      AFRICA: "Africa",
+    },
+  },
   read: "Read",
   viewDetails: "View details",
   opensInNewTab: "(opens original posting in a new tab)",

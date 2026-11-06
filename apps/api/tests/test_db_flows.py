@@ -536,3 +536,30 @@ def test_public_jobs_posted_within_days(client: TestClient, migrated_database_ur
     assert titles(7) == ["Days new", "Days week"]
     assert titles(30) == ["Days new", "Days week"]
     assert titles(None) == ["Days new", "Days old", "Days week"]
+
+
+def test_public_jobs_remote_region_filter(client: TestClient, migrated_database_url: str):
+    rows = (
+        ("ww", True, ["WORLDWIDE"]),
+        ("apac", True, ["APAC"]),
+        ("us", True, ["US"]),
+        ("unknown", True, None),
+        ("onsite", False, None),
+    )
+    with psycopg.connect(migrated_database_url, autocommit=True) as conn:
+        for ext, remote, open_to in rows:
+            conn.execute(
+                "INSERT INTO jobs (source, external_id, url, title, company, remote, open_to)"
+                " VALUES ('access-test', %s, %s, %s, 'Acme', %s, %s)",
+                (ext, f"https://example.test/{ext}", f"Access {ext}", remote, open_to),
+            )
+
+    def titles(**params: str) -> list[str]:
+        resp = client.get("/api/jobs", params={"source": "access-test", **params})
+        assert resp.status_code == 200, resp.text
+        return sorted(i["title"].removeprefix("Access ") for i in resp.json()["items"])
+
+    assert titles() == ["apac", "onsite", "unknown", "us", "ww"]
+    assert titles(access="open", based_in="VN") == ["apac", "onsite", "unknown", "ww"]
+    assert titles(access="confirmed", based_in="VN") == ["apac", "ww"]
+    assert titles(access="confirmed", based_in="US") == ["us", "ww"]

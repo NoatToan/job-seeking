@@ -28,7 +28,7 @@ DERIVED_COLUMNS = (
     "salary_source",
 )
 
-_ISO = set(eligibility.COUNTRIES.values())
+_ISO = set(eligibility.COUNTRIES.values()) | set(eligibility.EXTRA_COUNTRIES.values())
 
 
 def structured_locations(raw: dict[str, Any] | None) -> list[str]:

@@ -11,6 +11,7 @@ import { useApi } from "@/lib/use-api";
 import { readViewCache, useViewState, writeViewCache } from "@/lib/view-cache";
 import { JobDetail } from "@/app/jobs/job-detail";
 import { WorkHoursBadge } from "@/app/work-hours";
+import { useBasedIn } from "@/lib/based-in";
 import { markViewed, useMarkViewedAfterDwell, useViewedJobs } from "@/lib/viewed";
 
 /** Matches Tailwind's `lg` breakpoint (64rem): the width where the detail panel is shown. */
@@ -156,6 +157,7 @@ export function JobBrowser({
 
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null;
   const viewed = useViewedJobs();
+  const { country: basedIn } = useBasedIn();
   const scrollKey = `list-scroll:${stateKey}`;
 
   // Back navigation: put the list's own scroll position back (the window's is restored by the
@@ -315,6 +317,7 @@ export function JobBrowser({
                 actions={renderActions?.(job)}
                 meta={<WorkHoursBadge job={job} />}
                 viewed={viewed.has(job.id)}
+                basedIn={basedIn}
               />
             </div>
           ))}

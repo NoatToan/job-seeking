@@ -4,11 +4,25 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Job } from "@ujc/core";
 import type { ReactNode } from "react";
 import { sourceMeta, techInfo } from "@ujc/core";
-import { Chip, ClockIcon, cx, FloatingPanel, GlobeIcon, RangeSlider, SearchField, SlidersIcon, TechIcon } from "@ujc/ui";
+import {
+  Chip,
+  ClockIcon,
+  countryName,
+  cx,
+  flagEmoji,
+  FloatingPanel,
+  GlobeIcon,
+  RangeSlider,
+  SearchField,
+  SlidersIcon,
+  TechIcon,
+  useUiStrings,
+} from "@ujc/ui";
 import { useQueryStates } from "nuqs";
 import { useTranslation } from "react-i18next";
 import { useViewState } from "@/lib/view-cache";
-import { jobFilterParsers, POSTED_DAYS, postedParams } from "@/lib/url-state";
+import { jobFilterParsers, POSTED_DAYS, postedParams, REMOTE_ACCESS } from "@/lib/url-state";
+import { useBasedIn } from "@/lib/based-in";
 import { CountryFilter } from "@/app/country-filter";
 import { pillClasses, PillSelect, PillToggle } from "@/app/pill-controls";
 import { TechFilter } from "@/app/tech-filter";
@@ -18,6 +32,7 @@ import { useUserTimezone } from "@/lib/user-timezone";
 import { jobFitsHours, shortZoneName } from "@/lib/work-hours";
 
 type PostedDays = (typeof POSTED_DAYS)[number];
+type RemoteAccessMode = (typeof REMOTE_ACCESS)[number];
 
 /** "Posted within" options (Slack: past hour, today, 3 days, 7 days, 1 month). "" = any. */
 function usePostedOptions(): { value: string; label: string }[] {
@@ -47,10 +62,25 @@ export interface JobFilterState {
   setTech: (v: string[]) => void;
   posted: string;
   setPosted: (v: string) => void;
+  /** Remote region: "" = any, "open" = accepts my country or not stated, "confirmed" = stated and accepts me. */
+  access: string;
+  setAccess: (v: string) => void;
+  /** Candidate's country used by `access` (saved choice, else guessed from the time zone). */
+  basedIn: string | null;
   /** Stable key of every applied filter (list cache key / effect deps). */
   key: string;
   /** Query params for `GET /api/jobs` / `GET /api/feed`. */
-  params: { q?: string; source?: string; remote?: boolean; country?: string; tech?: string; days?: number };
+  params: {
+    q?: string;
+    source?: string;
+    remote?: boolean;
+    country?: string;
+    tech?: string;
+    days?: number;
+    hours?: number;
+    access?: RemoteAccessMode;
+    based_in?: string;
+  };
   activeCount: number;
   clear: () => void;
   /** "Unread only": the ids read when it was switched on (a snapshot, so the job you are reading
@@ -72,7 +102,8 @@ export interface JobFilterState {
  */
 export function useJobFilters(prefix: string): JobFilterState {
   const [url, setUrl] = useQueryStates(jobFilterParsers);
-  const { q, source, remote: remoteOnly, country, tech, posted, hours } = url;
+  const { q, source, remote: remoteOnly, country, tech, posted, hours, access } = url;
+  const { country: basedIn } = useBasedIn();
   // The search box shows keystrokes at once; the URL (and the request) follow 300 ms later
   // (SCREENS.md §4). An outside change of `q` (Clear, Back) resets the box.
   const [draftQ, setDraftQ] = useState(q);
@@ -109,7 +140,11 @@ export function useJobFilters(prefix: string): JobFilterState {
     setTech: (v) => void setUrl({ tech: v }),
     posted: postedValue,
     setPosted: (v) => void setUrl({ posted: (POSTED_DAYS as readonly string[]).includes(v) ? (v as PostedDays) : null }),
-    key: JSON.stringify([q, source, remoteOnly, country, techKey, postedValue]),
+    access: access ?? "",
+    setAccess: (v) =>
+      void setUrl({ access: (REMOTE_ACCESS as readonly string[]).includes(v) ? (v as RemoteAccessMode) : null }),
+    basedIn,
+    key: JSON.stringify([q, source, remoteOnly, country, techKey, postedValue, access ?? "", access ? basedIn : ""]),
     params: {
       q: q || undefined,
       source: source || undefined,
@@ -117,8 +152,9 @@ export function useJobFilters(prefix: string): JobFilterState {
       country: country || undefined,
       tech: techKey || undefined,
       ...postedParams(posted),
+      ...(access ? { access, based_in: basedIn ?? undefined } : {}),
     },
-    activeCount: [q, source, remoteOnly, country, posted, hours].filter(Boolean).length + tech.length,
+    activeCount: [q, source, remoteOnly, country, posted, hours, access].filter(Boolean).length + tech.length,
     hours,
     setHours: (v) => void setUrl({ hours: v }),
     hiddenIds: hidden ? new Set(hidden) : null,
@@ -317,6 +353,9 @@ export interface JobFilterBarProps {
 export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
   const { t } = useTranslation("home");
   const postedOptions = usePostedOptions();
+  const strings = useUiStrings();
+  // Native <option> text can't hold markup: flag emoji + short country code ("🇻🇳 VN").
+  const accessYou = f.basedIn ? `${flagEmoji(f.basedIn)} ${countryName(f.basedIn, strings.locale)}` : null;
   const [moreOpen, setMoreOpen] = useState(false);
   const panelId = useId();
   return (
@@ -354,6 +393,13 @@ export function JobFilterBar({ filters: f, sources, extra }: JobFilterBarProps) 
           onChange={f.setRemoteOnly}
           icon={<GlobeIcon size={15} strokeWidth={2} aria-hidden />}
         />
+        <PillSelect label={t("filters.access.label")} value={f.access} onChange={f.setAccess}>
+          <option value="">{t("filters.access.any")}</option>
+          <option value="open">{accessYou ? t("filters.access.open", { you: accessYou }) : t("filters.access.openWorldwide")}</option>
+          <option value="confirmed">
+            {accessYou ? t("filters.access.confirmed", { you: accessYou }) : t("filters.access.confirmedWorldwide")}
+          </option>
+        </PillSelect>
         <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
         <button

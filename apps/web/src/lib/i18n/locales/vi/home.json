@@ -92,7 +92,15 @@
       "done": "Xong"
     },
     "readHistory_other": "Đã đọc {{count}} việc làm",
-    "clearReadHistory": "Xoá lịch sử đã đọc"
+    "clearReadHistory": "Xoá lịch sử đã đọc",
+    "access": {
+      "label": "Vùng remote",
+      "any": "Mọi vùng",
+      "open": "Nhận {{you}} (+ chưa ghi vùng)",
+      "openWorldwide": "Ẩn job giới hạn vùng",
+      "confirmed": "Chắc chắn nhận {{you}}",
+      "confirmedWorldwide": "Chỉ job toàn cầu"
+    }
   },
   "country": {
     "label": "Quốc gia",

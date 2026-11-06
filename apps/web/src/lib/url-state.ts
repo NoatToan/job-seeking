@@ -29,6 +29,10 @@ export function postedParams(posted: string | null, now: Date = new Date()): { d
   return { days: Number(posted) };
 }
 
+/** "Remote region": open = hide remote jobs that don't accept my country (keep "not stated");
+ * confirmed = only remote jobs whose stated region includes my country. */
+export const REMOTE_ACCESS = ["open", "confirmed"] as const;
+
 /** "9-17" ⇄ [9, 17]: whole hours on the user's clock, 0 ≤ from < to ≤ 24. */
 export const parseAsHourRange = createParser<[number, number]>({
   parse: (v) => {
@@ -50,6 +54,7 @@ export const jobFilterParsers = {
   country: parseAsString.withDefault(""),
   tech: parseAsArrayOf(parseAsString).withDefault([]),
   posted: parseAsStringLiteral(POSTED_DAYS),
+  access: parseAsStringLiteral(REMOTE_ACCESS),
   hours: parseAsHourRange,
 };
 
