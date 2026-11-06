@@ -11,6 +11,7 @@ import {
   employmentLabel,
   ExternalLinkIcon,
   GlobeIcon,
+  LocationText,
   MapPinIcon,
   matchBand,
   MatchBadge,
@@ -64,7 +65,9 @@ export function JobDetail({
           {job.location ? (
             <p className="mt-1 inline-flex items-center gap-1 text-subheadline text-label-secondary">
               <MapPinIcon size={14} aria-hidden />
-              {job.location}
+              <span>
+                <LocationText text={job.location} />
+              </span>
             </p>
           ) : null}
         </div>
