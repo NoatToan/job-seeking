@@ -16,6 +16,7 @@ export * from "./components/surfaces";
 export * from "./components/badges";
 export * from "./components/feedback";
 export * from "./components/sheet";
+export * from "./components/modal-view";
 export * from "./components/toast";
 export * from "./components/navigation";
 export * from "./components/job-card";

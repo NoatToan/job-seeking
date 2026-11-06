@@ -13,7 +13,8 @@ friend who is good at this and is on your side.
 - **Job-site layout, not a back office.** A sticky top navigation (brand, a few text tabs, account) replaces the
   left sidebar on desktop. The home page opens with a `HomeHero`: a soft sunrise wash (`hero-wash`), a friendly
   headline, one big search pill (`SearchField variant="hero"`) and a single row of filter pills (`PillSelect`,
-  `PillToggle` in `apps/web/src/app/pill-controls.tsx`).
+  `PillToggle` in `apps/web/src/app/pill-controls.tsx`). That pill row is the ≥ 768 layout; phones get the search
+  pill plus ONE "Filters" button that opens every filter in a single `ModalView` (see §5.1).
 - **Operational detail stays one click away.** Per-source crawl status lives in the "N sources" pill, not in an
   always-visible strip of `ok` / `error` badges.
 - **Rows are cards, quietly.** White cards with a hairline border, pastel company avatars, salary in green,
@@ -201,11 +202,18 @@ that fits it — a phone is not a small desktop. Design both, and write the per-
 
 | Class | Width (Tailwind) | Navigation | Lists and detail | Secondary UI |
 |---|---|---|---|---|
-| Phone | `< 640` (base) | Tab bar (bottom) | One column; detail is a pushed page with a sticky bottom action bar | Bottom sheets; filter pills scroll sideways |
-| Large phone | `640–767` (`sm`) | Tab bar | One column, roomier cards | Bottom sheets |
+| Phone | `< 640` (base) | Tab bar (bottom) | One column; detail is a pushed page with a sticky bottom action bar | Bottom sheets; filters open in ONE modal view (`ModalView`, opened by a "Filters (n)" button) — no sideways pill row, no popover per pill, no popup inside it |
+| Large phone | `640–767` (`sm`) | Tab bar | One column, roomier cards | Bottom sheets; the same filter modal view |
 | Tablet | `768–1023` (`md`) | Top nav | One column list; detail is a page or sheet | Popovers anchored to the control |
 | Desktop | `≥ 1024` (`lg`) | Top nav | List + detail split, each scrolling on its own | Popovers, keyboard shortcuts, hover reveals |
 | Wide | `≥ 1440` | Top nav | Panels grow; text keeps its reading width (`max-w-2xl`) | — |
+
+**Phone filters and secondary flows (< 768).** One trigger with the active count opens one `ModalView`. Inside it:
+switch rows, 44px option chips that wrap, slider + presets, and *steps* (a row "Country — Germany ›" swaps the
+body to a searchable list with Back) for long lists — never a `FuzzySelect`/`FloatingPanel` on top of it. The view
+edits a draft; Apply writes the URL (nuqs) once, Reset clears the draft, closing discards it. Esc and the phone's Back
+gesture step out of a sub-step, then close. Other popovers on a phone screen (the sources list) open as a `Sheet`.
+Render the phone tree or the desktop tree (`usePhoneLayout()`), not both hidden with CSS.
 
 Adapt to the **input** as well as the width:
 - `pointer-coarse:` (touch): every target ≥ 44px, no action that only appears on hover, no drag-only control
@@ -306,7 +314,8 @@ Shadows are warm-tinted (brown, not grey). In dark mode, separate surfaces by li
 | `Card`, `GroupedList`, `ListRow` | `components/surfaces.tsx` | Settings-style rows with icon tile, detail, accessory |
 | `Badge`, `Chip`, `SourceBadge`, `MatchBadge`, `matchBand()` | `components/badges.tsx` | MatchBadge `variant="ring"` (Activity ring) or `"pill"` |
 | `Skeleton`, `JobCardSkeleton`, `EmptyState`, `SpotIllustration`, `Avatar`, `ProgressSteps` | `components/feedback.tsx` | Illustrations: search, cv, tracker, error, celebrate, connect |
-| `Sheet` | `components/sheet.tsx` | Bottom sheet on phones, centred card ≥ 640; `variant="alert"` |
+| `Sheet` | `components/sheet.tsx` | Bottom sheet on phones, centred card ≥ 640; `variant="alert"`; `size="tall"`, `leading` (Back), `onEscape` |
+| `ModalView`, `ModalViewHandle` | `components/modal-view.tsx` | Self-owned `Sheet` opened through a ref (`open()` / `close(then)`); one history entry while open so Back closes it; `onBack` for steps |
 | `ToastProvider`, `useToast`, `Toast` | `components/toast.tsx` | Top-centre stack, max 3, auto-dismiss 4s (errors 7s) |
 | `JobCard`, `timeAgo()`, `employmentLabel()` | `components/job-card.tsx` | `{ job }` API unchanged; optional `detailsHref`, `actions`, `status`, `linkAs` |
 

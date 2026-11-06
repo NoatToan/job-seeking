@@ -100,6 +100,26 @@
       "openWorldwide": "Ẩn job giới hạn vùng",
       "confirmed": "Chắc chắn nhận {{you}}",
       "confirmedWorldwide": "Chỉ job toàn cầu"
+    },
+    "mobile": {
+      "button": "Bộ lọc",
+      "buttonLabel_one": "Bộ lọc, đang bật {{count}}",
+      "buttonLabel_other": "Bộ lọc, đang bật {{count}}",
+      "title": "Bộ lọc",
+      "keywords": "Từ khoá",
+      "where": "Nguồn và quốc gia",
+      "remote": "Làm từ xa",
+      "remoteOnly": "Chỉ việc làm từ xa",
+      "reading": "Đã đọc",
+      "unreadOnly": "Chỉ việc chưa đọc",
+      "tech": "Công nghệ",
+      "techAny": "Bất kỳ",
+      "techCount_one": "Đã chọn {{count}}",
+      "techCount_other": "Đã chọn {{count}}",
+      "show": "Xem việc làm",
+      "reset": "Đặt lại",
+      "back": "Quay lại",
+      "done": "Xong"
     }
   },
   "country": {

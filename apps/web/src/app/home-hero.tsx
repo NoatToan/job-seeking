@@ -5,10 +5,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { SourceInfo } from "@ujc/core";
 import { SOURCES, sourceMeta } from "@ujc/core";
-import { BrandMark, ChevronDownIcon, cx, FloatingPanel } from "@ujc/ui";
+import { BrandMark, ChevronDownIcon, cx, FloatingPanel, Sheet } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
 import { LanguageSwitch, useLanguage } from "@/lib/i18n/provider";
+import { usePhoneLayout } from "@/lib/use-phone-layout";
 
 /**
  * Top of the home page (public catalogue and signed-in feed): a warm "sunrise" band with a
@@ -69,6 +70,7 @@ function statusColor(status: SourceInfo["status"]): string {
  * "11 sources · live" pill that opens a small list of every source with its crawl status and job
  * count. Replaces the always-visible "Adzuna ok · Arc ok · …" strip, which read like a monitoring
  * dashboard; the information is one click away and still honest about sources that are down.
+ * Phones get the same list in a sheet instead of a popover over the filters.
  */
 export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
   const { t } = useTranslation("home");
@@ -78,9 +80,11 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const phone = usePhoneLayout();
 
   useEffect(() => {
-    if (!open) return;
+    // The sheet handles its own Esc and outside taps.
+    if (!open || phone) return;
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
       if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false);
@@ -94,11 +98,51 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
       document.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, phone]);
 
   if (sources.length === 0) return null;
   const down = sources.filter((s) => s.status === "error").length;
   const total = sources.reduce((sum, s) => sum + (s.total || 0), 0);
+  const details = (
+    <>
+      <p className="px-2 pt-1 pb-2 text-footnote text-label-secondary">
+        {total
+          ? t("sources.summary", { total: total.toLocaleString(dateLocale) })
+          : t("sources.summaryNoTotal")}
+      </p>
+      <ul className="flex flex-col">
+        {sources.map((s) => (
+          <li key={s.source} className="flex items-center gap-2.5 rounded-control px-2 py-1.5 text-subheadline">
+            <span aria-hidden className={cx("size-2 shrink-0 rounded-full", statusColor(s.status))} />
+            <span className="flex-1 truncate text-label">{sourceMeta(s.source).label}</span>
+            <span className="text-footnote text-label-tertiary tabular-nums">
+              {s.status === "error"
+                ? t("sources.rowPaused")
+                : s.status === "running"
+                  ? t("sources.rowUpdating")
+                  : (s.total || 0).toLocaleString(dateLocale)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {/* Attribution (Adzuna's terms ask for a visible "Jobs by Adzuna" link) + privacy, which
+          used to sit in the site footer. */}
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 hairline-t px-2 pt-2 pb-1 text-caption text-label-tertiary">
+        <a
+          href={SOURCES.adzuna.homepage}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
+        >
+          {t("sources.attribution")}
+        </a>
+        <span aria-hidden>·</span>
+        <Link href="/privacy/" className="rounded-control-sm hover:underline focus-ring">
+          {t("sources.privacy")}
+        </Link>
+      </p>
+    </>
+  );
 
   return (
     <div ref={rootRef} className="relative">
@@ -107,6 +151,7 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
+        aria-haspopup={phone ? "dialog" : undefined}
         onClick={() => setOpen((o) => !o)}
         className="inline-flex h-9 items-center gap-2 rounded-full border border-separator bg-background/80 px-3.5 text-subheadline font-medium text-label transition-colors duration-150 hover:bg-fill-tertiary focus-ring"
       >
@@ -123,53 +168,24 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
           className={cx("text-label-tertiary transition-transform duration-200", open && "rotate-180")}
         />
       </button>
-      <FloatingPanel
-        anchorRef={triggerRef}
-        open={open}
-        panelRef={panelRef}
-        align="end"
-        id={panelId}
-        role="status"
-        aria-label={t("sources.ariaLabel")}
-        className="w-72 rounded-[18px] border border-separator bg-background p-2 shadow-overlay"
-      >
-          <p className="px-2 pt-1 pb-2 text-footnote text-label-secondary">
-            {total
-              ? t("sources.summary", { total: total.toLocaleString(dateLocale) })
-              : t("sources.summaryNoTotal")}
-          </p>
-          <ul className="flex flex-col">
-            {sources.map((s) => (
-              <li key={s.source} className="flex items-center gap-2.5 rounded-control px-2 py-1.5 text-subheadline">
-                <span aria-hidden className={cx("size-2 shrink-0 rounded-full", statusColor(s.status))} />
-                <span className="flex-1 truncate text-label">{sourceMeta(s.source).label}</span>
-                <span className="text-footnote text-label-tertiary tabular-nums">
-                  {s.status === "error"
-                    ? t("sources.rowPaused")
-                    : s.status === "running"
-                      ? t("sources.rowUpdating")
-                      : (s.total || 0).toLocaleString(dateLocale)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {/* Attribution (Adzuna's terms ask for a visible "Jobs by Adzuna" link) + privacy, which
-              used to sit in the site footer. */}
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 hairline-t px-2 pt-2 pb-1 text-caption text-label-tertiary">
-            <a
-              href={SOURCES.adzuna.homepage}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
-            >
-              {t("sources.attribution")}
-            </a>
-            <span aria-hidden>·</span>
-            <Link href="/privacy/" className="rounded-control-sm hover:underline focus-ring">
-              {t("sources.privacy")}
-            </Link>
-          </p>
-      </FloatingPanel>
+      {phone ? (
+        <Sheet open={open} onClose={() => setOpen(false)} title={t("sources.ariaLabel")}>
+          <div id={panelId}>{details}</div>
+        </Sheet>
+      ) : (
+        <FloatingPanel
+          anchorRef={triggerRef}
+          open={open}
+          panelRef={panelRef}
+          align="end"
+          id={panelId}
+          role="status"
+          aria-label={t("sources.ariaLabel")}
+          className="w-72 rounded-[18px] border border-separator bg-background p-2 shadow-overlay"
+        >
+          {details}
+        </FloatingPanel>
+      )}
     </div>
   );
 }
