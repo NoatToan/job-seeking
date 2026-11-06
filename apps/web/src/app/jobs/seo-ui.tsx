@@ -6,7 +6,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { sortTech, sourceMeta, techInfo } from "@ujc/core";
-import { Avatar, ChevronRightIcon, flagEmoji } from "@ujc/ui";
+import { Avatar, ChevronRightIcon, flagEmoji, SourceIcon, sourceIconId } from "@ujc/ui";
 import { jobPagePath } from "@/lib/job-url";
 import { jsonLdString } from "@/lib/job-posting";
 import { SITE_URL } from "@/lib/site";
@@ -21,10 +21,13 @@ export function formatDate(iso: string | null | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : DATE.format(d);
 }
 
-/** The source's colour dot (like the UI kit's source dot, minus its translated "via" text, which
- * needs the client-side strings context). */
+/** The source's mark (like the UI kit's source dot, minus its translated "via" text, which needs
+ * the client-side strings context). The image lives in the stylesheet, so a 60-row listing adds
+ * one tiny <span> per row, not 60 copies of the logo. Brand-colour dot for an unknown source. */
 function SourceSwatch({ source }: { source: string }) {
-  return (
+  return sourceIconId(source) ? (
+    <SourceIcon source={source} size={14} decorative />
+  ) : (
     <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: sourceMeta(source).color }} />
   );
 }

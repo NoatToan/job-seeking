@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { sourceMeta } from "@ujc/core";
+import { SourceIcon, sourceIconId } from "./source-icon";
 import { cx } from "../cx";
 import { EN_UI_STRINGS, useUiStrings } from "../strings";
 import type { UiStrings } from "../strings";
@@ -99,25 +100,30 @@ export function Chip({ children, selected, onClick, onRemove, removeLabel, icon,
 }
 
 /**
- * Where a job came from. Brand colour is kept for the dot (identity) while the label stays in
- * `label` colour on a 12% wash of the brand hue, so every source passes AA in light and dark.
+ * Where a job came from: the source's official mark (a brand-coloured dot for an unknown source)
+ * + its name. The name stays in `label` colour on a 12% wash of the brand hue, so every source
+ * passes AA in light and dark.
  */
 export function SourceBadge({ source, className }: { source: string; className?: string }) {
   const meta = sourceMeta(source);
   return (
     <span
       className={cx(
-        "inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-2.5 text-caption font-semibold text-label",
+        "inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-1.5 pr-2.5 text-caption font-semibold text-label",
         "bg-[color-mix(in_srgb,var(--src)_12%,transparent)] dark:bg-[color-mix(in_srgb,var(--src)_24%,transparent)]",
         className,
       )}
       style={{ ["--src" as string]: meta.color }}
       title={`Crawled from ${meta.label}`}
     >
-      <span
-        aria-hidden
-        className="size-2 rounded-full bg-[var(--src)] dark:bg-[color-mix(in_oklab,var(--src)_70%,white)]"
-      />
+      {sourceIconId(source) ? (
+        <SourceIcon source={source} size={14} decorative />
+      ) : (
+        <span
+          aria-hidden
+          className="size-2 rounded-full bg-[var(--src)] dark:bg-[color-mix(in_oklab,var(--src)_70%,white)]"
+        />
+      )}
       {meta.label}
     </span>
   );
@@ -204,7 +210,7 @@ export function MatchBadge({ score, variant = "pill", size = 40, showLabel = fal
   );
 }
 
-/** Quiet source label for dense rows: brand-coloured dot + "via Himalayas" in secondary text. */
+/** Quiet source label for dense rows: the source's mark (brand-coloured dot if it has none) + "via Himalayas". */
 export function SourceDot({ source, className }: { source: string; className?: string }) {
   const meta = sourceMeta(source);
   return (
@@ -213,7 +219,11 @@ export function SourceDot({ source, className }: { source: string; className?: s
       style={{ ["--src" as string]: meta.color }}
       title={`Crawled from ${meta.label}`}
     >
-      <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--src)]" />
+      {sourceIconId(source) ? (
+        <SourceIcon source={source} size={14} decorative />
+      ) : (
+        <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-[var(--src)]" />
+      )}
       <span className="truncate">{useUiStrings().via(meta.label)}</span>
     </span>
   );

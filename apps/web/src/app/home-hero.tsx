@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { SourceInfo } from "@ujc/core";
 import { SOURCES, sourceMeta } from "@ujc/core";
-import { BrandMark, ChevronDownIcon, cx, FloatingPanel, Sheet } from "@ujc/ui";
+import { BrandMark, ChevronDownIcon, cx, FloatingPanel, Sheet, SourceIcon } from "@ujc/ui";
 import { useTranslation } from "react-i18next";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
 import { LanguageSwitch, useLanguage } from "@/lib/i18n/provider";
@@ -193,6 +193,7 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
         {sources.map((s) => (
           <li key={s.source} className="flex items-center gap-2.5 rounded-control px-2 py-1.5 text-subheadline">
             <span aria-hidden className={cx("size-2 shrink-0 rounded-full", statusColor(s.status))} />
+            <SourceIcon source={s.source} size={16} decorative />
             <span className="flex-1 truncate text-label">{sourceMeta(s.source).label}</span>
             <span className="text-footnote text-label-tertiary tabular-nums">
               {s.status === "error"
