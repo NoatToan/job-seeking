@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { SourceInfo } from "@ujc/core";
-import { sourceMeta } from "@ujc/core";
+import { SOURCES, sourceMeta } from "@ujc/core";
 import { BrandMark, ChevronDownIcon, cx } from "@ujc/ui";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
 
@@ -133,6 +133,22 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
               </li>
             ))}
           </ul>
+          {/* Attribution (Adzuna's terms ask for a visible "Jobs by Adzuna" link) + privacy, which
+              used to sit in the site footer. */}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 hairline-t px-2 pt-2 pb-1 text-caption text-label-tertiary">
+            <a
+              href={SOURCES.adzuna.homepage}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-control-sm font-medium text-tint hover:underline focus-ring"
+            >
+              Jobs by Adzuna
+            </a>
+            <span aria-hidden>·</span>
+            <Link href="/privacy/" className="rounded-control-sm hover:underline focus-ring">
+              Privacy
+            </Link>
+          </p>
         </div>
       ) : null}
     </div>
