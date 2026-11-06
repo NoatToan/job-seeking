@@ -11,7 +11,7 @@ import { useInfiniteList } from "@/lib/use-infinite";
 import { useScrollRestoration } from "@/lib/view-cache";
 import { HomeHero, SourcesSummary } from "@/app/home-hero";
 import { JobBrowser } from "@/app/job-browser";
-import { JobFilterBar, useJobFilters } from "@/app/job-filters";
+import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
 /**
@@ -38,6 +38,7 @@ export function PublicJobs() {
     PublicJobsPage
   >(fetchPage, [filters.key], { cacheKey: listKey });
   useScrollRestoration(listKey, restored);
+  const visible = useVisibleJobs(filters, items);
 
   return (
     <>
@@ -104,7 +105,7 @@ export function PublicJobs() {
           />
         ) : (
           <JobBrowser
-            jobs={filters.hiddenIds ? items.filter((j) => !filters.hiddenIds?.has(j.id)) : items}
+            jobs={visible}
             stateKey="public"
             highlight={highlightTerms({ q: filters.q, tech: filters.tech })}
             signedIn={false}

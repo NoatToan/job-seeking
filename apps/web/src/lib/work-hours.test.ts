@@ -111,3 +111,17 @@ describe("workHoursFit (user in Sydney)", () => {
     expect(fit.level).toBe("partial");
   });
 });
+
+describe("jobFitsHours", () => {
+  const at = new Date("2026-01-15T12:00:00Z");
+  it("keeps jobs whose 9–5 overlaps the chosen hours by 4h+", async () => {
+    const { jobFitsHours } = await import("./work-hours");
+    // Singapore 9–5 = 08:00–16:00 in Ho Chi Minh: fits a 9–17 day, not an 18–24 evening.
+    expect(jobFitsHours(["Asia/Singapore"], "Asia/Ho_Chi_Minh", 9 * 60, 17 * 60, 240, at)).toBe(true);
+    expect(jobFitsHours(["Asia/Singapore"], "Asia/Ho_Chi_Minh", 18 * 60, 24 * 60, 240, at)).toBe(false);
+    // London 9–5 = 16:00–00:00 VNT in winter: fits the evening.
+    expect(jobFitsHours(["Europe/London"], "Asia/Ho_Chi_Minh", 18 * 60, 24 * 60, 240, at)).toBe(true);
+    // Unknown zone: always kept.
+    expect(jobFitsHours(null, "Asia/Ho_Chi_Minh", 9 * 60, 10 * 60, 240, at)).toBe(true);
+  });
+});

@@ -24,7 +24,7 @@ import { HomeHero } from "@/app/home-hero";
 import { pillClasses, PillToggle } from "@/app/pill-controls";
 import { SaveJobButton } from "@/app/save-job-button";
 import { JobBrowser } from "@/app/job-browser";
-import { JobFilterBar, useJobFilters } from "@/app/job-filters";
+import { JobFilterBar, useJobFilters, useVisibleJobs } from "@/app/job-filters";
 import { highlightTerms } from "@/lib/highlight";
 
 /** "linh@example.com" -> "Linh" (we only have an email, not a display name yet). */
@@ -65,6 +65,7 @@ function FeedInner() {
     FeedPage
   >(fetchPage, [filters.key, bestMatches], { onPage, cacheKey: listKey });
   useScrollRestoration(listKey, restored);
+  const visible = useVisibleJobs(filters, items);
 
   async function handleRefreshScores() {
     setRefreshing(true);
@@ -183,7 +184,7 @@ function FeedInner() {
           />
         ) : (
           <JobBrowser
-            jobs={filters.hiddenIds ? items.filter((j) => !filters.hiddenIds?.has(j.id)) : items}
+            jobs={visible}
             stateKey="feed"
             highlight={highlightTerms({ q: filters.q, tech: filters.tech, keywords: feedKeywords })}
             signedIn={true}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Job } from "@ujc/core";
-import { Badge, Card, ClockIcon } from "@ujc/ui";
+import { Badge, Card, ClockIcon, FuzzySelect } from "@ujc/ui";
+import type { SelectOption } from "@ujc/ui";
 import { timezoneOptions, useUserTimezone } from "@/lib/user-timezone";
 import {
   clockLabel,
@@ -18,35 +19,42 @@ import {
   zoneOffsetMinutes,
 } from "@/lib/work-hours";
 
-/** "Your time zone" picker. Changing it re-labels every job's hours at once. */
+/** "Your time zone" picker (fuzzy search over every zone, all in the browser). Changing it
+ * re-labels every job's hours at once. */
 export function TimezonePicker({ className }: { className?: string }) {
   const { zone, setZone } = useUserTimezone();
   const [saving, setSaving] = useState(false);
-  const id = useId();
   const offset = zoneOffsetMinutes(zone);
+  const options = useMemo<SelectOption[]>(
+    () =>
+      timezoneOptions(zone).map((z) => {
+        const o = zoneOffsetMinutes(z);
+        return {
+          value: z,
+          label: z.replace(/_/g, " "),
+          hint: o === null ? undefined : offsetLabel(o),
+          keywords: shortZoneName(z),
+        };
+      }),
+    [zone],
+  );
   return (
-    <label htmlFor={id} className={`flex items-center gap-2 text-subheadline text-label-secondary ${className ?? ""}`}>
+    <span className={`flex items-center gap-2 text-subheadline text-label-secondary ${className ?? ""}`}>
       <ClockIcon size={15} aria-hidden />
       <span>Your time zone</span>
-      <select
-        id={id}
-        aria-label="Your time zone"
+      <FuzzySelect
+        label="Your time zone"
         value={zone}
         disabled={saving}
-        onChange={(e) => {
+        options={options}
+        searchPlaceholder="City, region or VNT/EST…"
+        onChange={(next) => {
           setSaving(true);
-          void setZone(e.target.value).finally(() => setSaving(false));
+          void setZone(next).finally(() => setSaving(false));
         }}
-        className="max-w-[16rem] truncate rounded-control-sm bg-fill-tertiary px-2 py-1 text-subheadline text-label focus-ring disabled:opacity-60"
-      >
-        {timezoneOptions(zone).map((z) => (
-          <option key={z} value={z}>
-            {z.replace(/_/g, " ")}
-          </option>
-        ))}
-      </select>
+      />
       {offset !== null ? <span className="text-footnote">{offsetLabel(offset)}</span> : null}
-    </label>
+    </span>
   );
 }
 

@@ -259,10 +259,12 @@ describe("Home", () => {
 
     renderHome();
     await waitFor(() => expect(screen.getByText("Any Job")).toBeTruthy(), { timeout: 5000 });
-    const select = await screen.findByRole("combobox", { name: "Country" });
-    await waitFor(() => expect(select.textContent).toContain("Germany (3)"));
-
-    fireEvent.change(select, { target: { value: "DE" } });
+    fireEvent.click(await screen.findByRole("combobox", { name: "Country" }));
+    // Fuzzy search runs in the browser: "grmny" still finds Germany.
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search country" }), { target: { value: "grmny" } });
+    const option = await screen.findByRole("option", { name: /Germany/ });
+    expect(option.textContent).toContain("3");
+    fireEvent.click(option);
     await waitFor(() => expect(screen.getByText("Berlin Job")).toBeTruthy(), { timeout: 5000 });
   });
 
