@@ -1,7 +1,8 @@
 """FastAPI router factory. The host injects its own auth, CSRF, admin check and DB access through
 `FeedbackDeps`; this module owns the endpoints, validation and authorisation rules.
 
-Every endpoint requires a signed-in user. Every admin action is checked here, server-side, with
+Every endpoint requires a signed-in user unless the host opts in to anonymous submissions or a
+public board (both below). Every admin action is checked here, server-side, with
 `require_admin` (403 for a signed-in non-admin); every read goes through `policy.can_view` (404 for
 an item the viewer may not see). Unsafe methods require the host's CSRF dependency.
 
@@ -16,6 +17,14 @@ anonymous caller always gets 401.
 Anonymous submissions (opt-in, `allow_anonymous=True`): `POST <prefix>` then also accepts a caller
 with no session, still behind the host's CSRF check, rate-limited per anonymous key (see
 `anonymous_key_dependency`) and across all anonymous visitors. Everything else stays signed-in only.
+
+Public board (opt-in, `public_board=True`): the read side of the public board works without a
+session, for a public roadmap page: `GET <prefix>?scope=board`, `GET <prefix>/stats` and
+`GET <prefix>/{id}` for a public-status item. A signed-out viewer gets public fields only (no
+`voted`, `canVote` false, no context, no author, public notes only) and gets 401 for `scope=mine`
+or `scope=all`. Voting, screenshots, "my feedback" and every admin action stay signed-in only. The
+two flags are independent: a host can show the board publicly without accepting anonymous
+submissions, or the other way round.
 """
 
 import hashlib
@@ -63,14 +72,16 @@ class FeedbackDeps:
       submissions on, it must also pass for a visitor without a session (the host has to give
       anonymous visitors a CSRF token).
 
-    Only needed with `create_feedback_router(..., allow_anonymous=True)`:
+    Only needed with `create_feedback_router(..., allow_anonymous=True)` or `public_board=True`:
 
-    - `optional_user`: like `current_user`, but returns None instead of raising 401.
+    - `optional_user`: like `current_user`, but returns None instead of raising 401. (Both flags.)
     - `optional_viewer_is_admin`: whether the (optional) user is an admin; False when anonymous.
-      Must depend on `optional_user`. Defaults to "never admin" (admins then hit the per-author
-      rate limit like everyone else).
+      Must depend on `optional_user`. With `allow_anonymous` alone it defaults to "never admin"
+      (admins then hit the per-author rate limit like everyone else); `public_board` requires it,
+      because the reads it opens up are also how admins read private items.
     - `anonymous_key`: a stable, non-reversible key for the anonymous caller, used only for rate
       limiting. Build one with `anonymous_key_dependency(secret)` (HMAC of the client IP).
+      (`allow_anonymous` only.)
     """
 
     current_user: Callable[..., Any]
@@ -121,20 +132,47 @@ def _not_found() -> HTTPException:
 
 
 def create_feedback_router(
-    deps: FeedbackDeps, *, prefix: str = "/api/feedback", allow_anonymous: bool = False
+    deps: FeedbackDeps,
+    *,
+    prefix: str = "/api/feedback",
+    allow_anonymous: bool = False,
+    public_board: bool = False,
 ) -> APIRouter:
     """`allow_anonymous=True` lets visitors without a session submit feedback (create only); it
-    needs `deps.optional_user` and `deps.anonymous_key`."""
+    needs `deps.optional_user` and `deps.anonymous_key`.
+
+    `public_board=True` lets visitors without a session read the public board (list with
+    `scope=board`, stats, detail of a public item); it needs `deps.optional_user` and
+    `deps.optional_viewer_is_admin`."""
     if allow_anonymous and (deps.optional_user is None or deps.anonymous_key is None):
         raise ValueError("allow_anonymous needs FeedbackDeps.optional_user and .anonymous_key")
+    if public_board and (deps.optional_user is None or deps.optional_viewer_is_admin is None):
+        raise ValueError(
+            "public_board needs FeedbackDeps.optional_user and .optional_viewer_is_admin"
+        )
     router = APIRouter(prefix=prefix, tags=["feedback"])
+
+    # Dependencies for the board reads: optional with `public_board`, signed-in otherwise.
+    if public_board:
+        assert deps.optional_user is not None and deps.optional_viewer_is_admin is not None
+        read_user: Callable[..., Any] = deps.optional_user
+        read_is_admin: Callable[..., bool] = deps.optional_viewer_is_admin
+    else:
+        read_user = deps.current_user
+        read_is_admin = deps.viewer_is_admin
+
+    def viewer_id_of(user: Any) -> int | None:
+        return None if user is None else user.id
+
+    def unauthorized() -> HTTPException:
+        return _error(401, "unauthorized", "Sign in required")
 
     def require_admin(is_admin: bool = Depends(deps.viewer_is_admin)) -> None:
         if not is_admin:
             raise _error(403, "forbidden", "Admin role required")
 
     def load_visible(
-        item_id: int, viewer_id: int, is_admin: bool, repo: FeedbackRepository
+        item_id: int, viewer_id: int | None, is_admin: bool, repo: FeedbackRepository
     ) -> dict[str, Any]:
         item = repo.get(item_id, viewer_id)
         if item is None or not policy.can_view(item, viewer_id, is_admin):
@@ -142,8 +180,9 @@ def create_feedback_router(
         return item
 
     def detail(
-        item_id: int, viewer_id: int, is_admin: bool, repo: FeedbackRepository
+        item_id: int, viewer_id: int | None, is_admin: bool, repo: FeedbackRepository
     ) -> dict[str, Any]:
+        is_admin = is_admin and viewer_id is not None
         item = load_visible(item_id, viewer_id, is_admin, repo)
         out = item_dto(item, viewer_id, is_admin)
         out["notes"] = [
@@ -250,10 +289,17 @@ def create_feedback_router(
         sort: Literal["new", "top"] = "new",
         limit: int = Query(default=LIST_LIMIT_DEFAULT, ge=1, le=LIST_LIMIT_MAX),
         offset: int = Query(default=0, ge=0, le=100_000),
-        user: Any = Depends(deps.current_user),
-        is_admin: bool = Depends(deps.viewer_is_admin),
+        user: Any = Depends(read_user),
+        is_admin: bool = Depends(read_is_admin),
         repo: FeedbackRepository = Depends(deps.get_repo),
     ) -> dict[str, Any]:
+        viewer_id = viewer_id_of(user)
+        if viewer_id is None:
+            # Only reachable with `public_board`: a signed-out visitor reads the board, nothing
+            # else.
+            if scope != "board":
+                raise unauthorized()
+            is_admin = False
         if scope == "all" and not is_admin:
             raise _error(403, "forbidden", "Admin role required")
         if scope == "board" and status is not None and status not in PUBLIC_STATUSES:
@@ -262,7 +308,7 @@ def create_feedback_router(
             return {"items": [], "total": 0, "limit": limit, "offset": offset}
         q = q.strip() if q else None
         rows, total = repo.list_items(
-            viewer_id=user.id,
+            viewer_id=viewer_id,
             scope=scope,
             kind=kind,
             status=status,
@@ -272,7 +318,7 @@ def create_feedback_router(
             offset=offset,
         )
         return {
-            "items": [item_dto(r, user.id, is_admin) for r in rows],
+            "items": [item_dto(r, viewer_id, is_admin) for r in rows],
             "total": total,
             "limit": limit,
             "offset": offset,
@@ -288,14 +334,24 @@ def create_feedback_router(
             "isAdmin": is_admin,
         }
 
+    @router.get("/stats")
+    def stats(
+        _user: Any = Depends(read_user),
+        repo: FeedbackRepository = Depends(deps.get_repo),
+    ) -> dict[str, Any]:
+        """Item counts per public status (the board's columns), the same for every viewer."""
+        counts = repo.public_counts()
+        by_status = {s: int(counts.get(s, 0)) for s in PUBLIC_STATUSES}
+        return {"counts": by_status, "total": sum(by_status.values())}
+
     @router.get("/{item_id}")
     def get_item(
         item_id: int = ItemId,
-        user: Any = Depends(deps.current_user),
-        is_admin: bool = Depends(deps.viewer_is_admin),
+        user: Any = Depends(read_user),
+        is_admin: bool = Depends(read_is_admin),
         repo: FeedbackRepository = Depends(deps.get_repo),
     ) -> dict[str, Any]:
-        return detail(item_id, user.id, is_admin, repo)
+        return detail(item_id, viewer_id_of(user), is_admin, repo)
 
     @router.get("/{item_id}/screenshot")
     def get_screenshot(
@@ -334,7 +390,7 @@ def create_feedback_router(
         repo: FeedbackRepository = Depends(deps.get_repo),
     ) -> dict[str, Any]:
         item = load_visible(item_id, user.id, is_admin, repo)
-        if not policy.can_vote(item):
+        if not policy.can_vote(item, user.id):
             raise _error(409, "not_votable", "Only items on the board can be voted on")
         repo.vote(item_id, user.id)
         refreshed = repo.get(item_id, user.id)

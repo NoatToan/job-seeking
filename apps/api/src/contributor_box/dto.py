@@ -1,6 +1,8 @@
 """Row -> JSON (camelCase). What a viewer gets depends on `policy`: context fields (page URL,
 selector, region, screenshot flag, user agent) only for the author and admins; the author's email
-(or an anonymous submitter's chosen name) and internal notes only for admins."""
+(or an anonymous submitter's chosen name) and internal notes only for admins. A signed-out viewer
+(`viewer_id` None) gets the public fields only: `voted`, `isMine`, `canVote` and `canDelete` are
+false, `context` and `author` null."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -10,6 +12,8 @@ from contributor_box.repository import iso
 
 
 def item_dto(item: Mapping[str, Any], viewer_id: int | None, is_admin: bool) -> dict[str, Any]:
+    # Without a session nobody is an admin, whatever the caller passes.
+    is_admin = is_admin and viewer_id is not None
     mine = policy.is_author(item, viewer_id)
     out: dict[str, Any] = {
         "id": str(item["id"]),
@@ -19,9 +23,9 @@ def item_dto(item: Mapping[str, Any], viewer_id: int | None, is_admin: bool) -> 
         "status": item["status"],
         "adminResponse": item["admin_response"],
         "voteCount": int(item["vote_count"]),
-        "voted": bool(item["voted"]),
+        "voted": viewer_id is not None and bool(item["voted"]),
         "isMine": mine,
-        "canVote": policy.can_vote(item),
+        "canVote": policy.can_vote(item, viewer_id),
         "canDelete": policy.can_delete(item, viewer_id, is_admin),
         "createdAt": iso(item["created_at"]),
         "updatedAt": iso(item["updated_at"]),

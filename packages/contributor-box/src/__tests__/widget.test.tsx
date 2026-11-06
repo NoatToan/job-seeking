@@ -74,6 +74,18 @@ describe("FeedbackWidget", () => {
     expect(screen.getByRole("link", { name: "See all ideas" }).getAttribute("href")).toBe("/contribute/");
   });
 
+  it("keeps the form compact: screenshot hint only once the screenshot is on, two-line details field", async () => {
+    render(<FeedbackWidget capture={vi.fn(async () => SHOT)} />, { wrapper: wrap(fakeApi(), false, true) });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    expect(screen.getByLabelText("Your name (optional)")).toBeTruthy();
+    expect(screen.getByLabelText("Details (optional)").getAttribute("rows")).toBe("2");
+    expect(screen.queryByText(/Only the visible part/)).toBeNull();
+    const toggle = screen.getByLabelText(/Attach a screenshot/);
+    fireEvent.click(toggle);
+    const hint = await screen.findByText(/Only the visible part/);
+    expect(toggle.getAttribute("aria-describedby")).toBe(hint.id);
+  });
+
   it("drags to select an area and keeps working when the screenshot fails", async () => {
     document.elementsFromPoint = vi.fn(() => []);
     const api = fakeApi();

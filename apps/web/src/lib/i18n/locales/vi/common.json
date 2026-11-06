@@ -64,7 +64,8 @@
     "accountOf": "Tài khoản: {{email}}",
     "accountOptions": "Tuỳ chọn tài khoản",
     "accountPrivacy": "Tài khoản & quyền riêng tư",
-    "signOut": "Đăng xuất"
+    "signOut": "Đăng xuất",
+    "roadmap": "Lộ trình"
   },
   "loading": "Đang tải…",
   "tryAgain": "Thử lại",

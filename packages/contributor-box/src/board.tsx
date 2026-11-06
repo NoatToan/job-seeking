@@ -147,18 +147,45 @@ function ItemCard({
   );
 }
 
-function ItemDetail({
+/**
+ * Vote count for a viewer who cannot vote. Signed out (and a sign-in link configured): a pill
+ * linking to sign-in, so the count doubles as the "sign in to vote" hint. Otherwise plain text.
+ */
+export function VoteCount({ item }: { item: FeedbackItem }) {
+  const { strings: s, signedIn, signInHref, linkAs: Link } = useContributor();
+  if (!signedIn && signInHref) {
+    return (
+      <Link
+        href={signInHref}
+        className="flex min-h-11 min-w-11 shrink-0 flex-col items-center justify-center rounded-control bg-fill-tertiary px-2 text-footnote font-semibold text-label-secondary tabular-nums transition-colors duration-150 hover:bg-fill-secondary focus-ring"
+      >
+        <span className="sr-only">{`${s.signInToVote} (${s.votes(item.voteCount)})`}</span>
+        <span aria-hidden="true" className="flex flex-col items-center" title={s.signInToVote}>
+          <UpIcon size={14} />
+          {item.voteCount}
+        </span>
+      </Link>
+    );
+  }
+  return <span className="shrink-0 text-caption text-label-tertiary tabular-nums">{s.votes(item.voteCount)}</span>;
+}
+
+/** Detail of one item (body, team reply, public history; context for the author and admins). */
+export function ItemDetail({
   id,
   onBack,
   onChange,
   onDeleted,
+  backLabel,
 }: {
   id: string;
   onBack: () => void;
   onChange: (item: FeedbackItem) => void;
   onDeleted: (id: string) => void;
+  /** Label of the button that calls `onBack`. Default "‹ Back". */
+  backLabel?: string;
 }) {
-  const { api, strings: s } = useContributor();
+  const { api, strings: s, signedIn } = useContributor();
   const [item, setItem] = useState<FeedbackItem | null>(null);
   const [error, setError] = useState(false);
 
@@ -183,7 +210,7 @@ function ItemDetail({
     <section className="flex flex-col gap-4">
       <div>
         <Button size="sm" variant="plain" onClick={onBack}>
-          ‹ {s.back}
+          {backLabel ?? `‹ ${s.back}`}
         </Button>
       </div>
       {error ? <p role="alert" className="text-subheadline text-danger">{s.errorGeneric}</p> : null}
@@ -192,6 +219,8 @@ function ItemDetail({
         <article className="flex flex-col gap-4 rounded-card border border-separator bg-grouped-secondary p-4 shadow-card">
           <div className="flex items-start gap-3">
             <VoteButton item={item} onChange={update} />
+            {/* Signed out on a public item: the count, linking to sign-in. */}
+            {!item.canVote && !signedIn ? <VoteCount item={item} /> : null}
             <div className="min-w-0 flex-1">
               <h2 className="break-words text-title3 text-label">{item.title}</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">

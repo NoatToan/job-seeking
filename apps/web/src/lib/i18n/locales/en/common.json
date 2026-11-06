@@ -65,7 +65,8 @@
     "accountOf": "Account: {{email}}",
     "accountOptions": "Account options",
     "accountPrivacy": "Account & privacy",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "roadmap": "Roadmap"
   },
   "loading": "Loading…",
   "tryAgain": "Try again",

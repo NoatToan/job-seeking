@@ -31,7 +31,12 @@ export function ContributePage() {
         }
       />
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-24 sm:px-6">
-        <p className="text-callout text-label-secondary">{t("page.subtitle")}</p>
+        <p className="text-callout text-label-secondary">
+          {t("page.subtitle")}{" "}
+          <Link href="/roadmap/" className="font-medium text-tint hover:underline focus-ring rounded-sm">
+            {t("roadmap.seeRoadmap")}
+          </Link>
+        </p>
         <ContributorBoard />
       </div>
     </RequireAuth>

@@ -1,11 +1,31 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useContributor } from "./context";
 import { FeedbackForm, type CaptureFn } from "./form";
 import { WIDGET_ATTR } from "./selector";
-import type { FeedbackItem } from "./types";
+import type { FeedbackItem, FeedbackKind } from "./types";
 import { Button, ChatIcon, cx, XIcon } from "./ui";
+
+/** Space kept between the open panel and the top of the viewport. */
+const PANEL_TOP_MARGIN_PX = 16;
+
+/** Window event the widget listens for; dispatch it with `openFeedbackWidget()`. */
+export const OPEN_WIDGET_EVENT = "contributor-box:open";
+
+export interface OpenFeedbackWidgetOptions {
+  /** Type preselected in the form. Default "bug" (the widget's usual default). */
+  kind?: FeedbackKind;
+}
+
+/**
+ * Opens the mounted `FeedbackWidget` from anywhere (e.g. a "Suggest an idea" button on a roadmap
+ * page), with an optional preselected type. No-op when no widget is mounted.
+ */
+export function openFeedbackWidget(options: OpenFeedbackWidgetOptions = {}): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<OpenFeedbackWidgetOptions>(OPEN_WIDGET_EVENT, { detail: options }));
+}
 
 export interface FeedbackWidgetProps {
   /** Extra classes for the fixed container, e.g. to lift it above a phone tab bar. */
@@ -23,6 +43,9 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
   const [sent, setSent] = useState<FeedbackItem | null>(null);
+  // Bumped by every `openFeedbackWidget()` call: remounts the form with the requested type and
+  // re-runs the focus effect even if the panel was already open.
+  const [request, setRequest] = useState<{ n: number; kind: FeedbackKind }>({ n: 0, kind: "bug" });
   const panelRef = useRef<HTMLDivElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -38,7 +61,18 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
       panel?.querySelector<HTMLElement>("[role=status] button, [role=status] a, a, input") ??
       panel?.querySelector<HTMLElement>("button");
     first?.focus();
-  }, [open, sent]);
+  }, [open, sent, request.n]);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const kind = (e as CustomEvent<OpenFeedbackWidgetOptions | undefined>).detail?.kind ?? "bug";
+      setSent(null);
+      setRequest((prev) => ({ n: prev.n + 1, kind }));
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_WIDGET_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_WIDGET_EVENT, onOpen);
+  }, []);
 
   useEffect(() => {
     if (!open || picking) return;
@@ -47,6 +81,26 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [open, picking]);
+
+  // The panel sits above the button, so its bottom edge is fixed: it may grow up to the top of the
+  // viewport (minus a margin). Measured rather than guessed because hosts lift the widget above
+  // their own bottom bars. Re-measured on resize and when the on-screen keyboard changes the
+  // visual viewport.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!open || picking || !panel) return;
+    const fit = () => {
+      const bottom = panel.getBoundingClientRect().bottom;
+      panel.style.maxHeight = `${Math.max(240, Math.floor(bottom - PANEL_TOP_MARGIN_PX))}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+    };
   }, [open, picking]);
 
   function close() {
@@ -68,9 +122,11 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
           aria-labelledby={titleId}
           // Hidden (not unmounted) while picking, so the form keeps its state.
           hidden={picking}
-          className="flex max-h-[min(80dvh,40rem)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-sheet border border-separator bg-grouped-secondary text-label shadow-overlay animate-pop-in"
+          // Sized to its content; `maxHeight` (set by the layout effect above) only bites when the
+          // viewport is too short for the whole form, and then the body scrolls.
+          className="flex max-h-[calc(100dvh-2rem)] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-sheet border border-separator bg-grouped-secondary text-label shadow-overlay animate-pop-in"
         >
-          <div className="flex items-center justify-between gap-2 border-b border-separator px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-separator py-2 pr-2 pl-4">
             <h2 id={titleId} className="text-headline">
               {s.panelTitle}
             </h2>
@@ -78,7 +134,7 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
               <XIcon size={18} />
             </Button>
           </div>
-          <div className="overflow-y-auto px-4 py-4">
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-3">
             {!signedIn && !allowAnonymous ? (
               <div className="flex flex-col gap-3">
                 <p className="text-subheadline text-label-secondary">{s.signInPrompt}</p>
@@ -116,7 +172,7 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
             ) : (
               <>
                 {!signedIn ? (
-                  <p className="mb-3 text-footnote text-label-secondary">
+                  <p className="mb-2 text-footnote text-label-secondary">
                     {s.guestHint}
                     {signInHref ? (
                       <>
@@ -128,7 +184,13 @@ export function FeedbackWidget({ className, capture }: FeedbackWidgetProps) {
                     ) : null}
                   </p>
                 ) : null}
-                <FeedbackForm capture={capture} onPickingChange={setPicking} onSubmitted={setSent} />
+                <FeedbackForm
+                  key={request.n}
+                  defaultKind={request.kind}
+                  capture={capture}
+                  onPickingChange={setPicking}
+                  onSubmitted={setSent}
+                />
               </>
             )}
           </div>

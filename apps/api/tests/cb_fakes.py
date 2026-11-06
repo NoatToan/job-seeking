@@ -113,6 +113,13 @@ class InMemoryFeedbackRepository:
             rows.sort(key=lambda r: r["vote_count"], reverse=True)
         return rows[offset : offset + limit], len(rows)
 
+    def public_counts(self):
+        counts = dict.fromkeys(PUBLIC_STATUSES, 0)
+        for item in self.items.values():
+            if item["status"] in counts:
+                counts[item["status"]] += 1
+        return counts
+
     def get(self, item_id, viewer_id):
         return self._row(item_id, viewer_id) if item_id in self.items else None
 
@@ -175,11 +182,13 @@ def build_app(
     admin_ids: frozenset[int] = frozenset({1}),
     *,
     allow_anonymous: bool = False,
+    public_board: bool = False,
 ) -> FastAPI:
     """Users are picked with an `X-User` header (absent = anonymous -> 401). User 1 is an admin.
 
     With `allow_anonymous`, anonymous callers may create items; their rate-limit key comes from
-    `X-Forwarded-For` (via `anonymous_key_dependency`)."""
+    `X-Forwarded-For` (via `anonymous_key_dependency`). With `public_board`, anonymous callers may
+    read the public board."""
 
     def optional_user(request: Request) -> FakeUser | None:
         raw = request.headers.get("x-user")
@@ -214,6 +223,7 @@ def build_app(
                 anonymous_key=anonymous_key_dependency("test-secret"),
             ),
             allow_anonymous=allow_anonymous,
+            public_board=public_board,
         )
     )
     return app

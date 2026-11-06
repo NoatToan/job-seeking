@@ -1,7 +1,9 @@
-import type { FeedbackKind, FeedbackStatus } from "./types";
+import type { FeedbackKind, FeedbackStatus, RoadmapStatus } from "./types";
 
 /** Every user-visible string. Hosts pass `strings.en`/`strings.vi` or their own translation. */
 export interface ContributorStrings {
+  /** BCP 47 tag for dates and relative times ("en", "vi"). */
+  locale: string;
   fabLabel: string;
   panelTitle: string;
   close: string;
@@ -69,6 +71,18 @@ export interface ContributorStrings {
   deleteItem: string;
   deleteConfirm: string;
   back: string;
+  // Roadmap
+  roadmapTitle: string;
+  roadmapSubtitle: string;
+  roadmapColumn: Record<RoadmapStatus, string>;
+  roadmapColumnHint: Record<RoadmapStatus, string>;
+  roadmapEmpty: Record<RoadmapStatus, string>;
+  roadmapTotal: (n: number) => string;
+  /** Vote pill for a signed-out visitor (links to sign-in). */
+  signInToVote: string;
+  /** Short label before the team's public reply on a roadmap card. */
+  teamReplyShort: string;
+  loadError: string;
   // Admin
   adminTitle: string;
   adminSubtitle: string;
@@ -105,6 +119,7 @@ export interface ContributorStrings {
 }
 
 const en: ContributorStrings = {
+  locale: "en",
   fabLabel: "Send feedback",
   panelTitle: "Send feedback",
   close: "Close",
@@ -178,6 +193,23 @@ const en: ContributorStrings = {
   deleteItem: "Delete",
   deleteConfirm: "Delete this item? This can't be undone.",
   back: "Back",
+  roadmapTitle: "Roadmap",
+  roadmapSubtitle: "What we're considering, what's planned and what has shipped. Vote for what matters to you.",
+  roadmapColumn: { approved: "Under consideration", planned: "Planned", done: "Done" },
+  roadmapColumnHint: {
+    approved: "Ideas we've accepted. Votes help us decide.",
+    planned: "On the list to build.",
+    done: "Shipped.",
+  },
+  roadmapEmpty: {
+    approved: "Nothing under consideration right now.",
+    planned: "Nothing planned yet.",
+    done: "Nothing shipped yet.",
+  },
+  roadmapTotal: (n) => (n === 1 ? "1 item on the roadmap" : `${n} items on the roadmap`),
+  signInToVote: "Sign in to vote",
+  teamReplyShort: "Team",
+  loadError: "We couldn't load this. Please try again.",
   adminTitle: "Review feedback",
   adminSubtitle: "Approve, plan and answer what people send.",
   allStatuses: "All statuses",
@@ -214,6 +246,7 @@ const en: ContributorStrings = {
 
 const vi: ContributorStrings = {
   ...en,
+  locale: "vi",
   fabLabel: "Gửi góp ý",
   panelTitle: "Gửi góp ý",
   close: "Đóng",
@@ -286,6 +319,23 @@ const vi: ContributorStrings = {
   deleteItem: "Xóa",
   deleteConfirm: "Xóa mục này? Không thể hoàn tác.",
   back: "Quay lại",
+  roadmapTitle: "Lộ trình",
+  roadmapSubtitle: "Những gì chúng tôi đang cân nhắc, đã lên kế hoạch và đã hoàn thành. Bình chọn cho điều bạn quan tâm.",
+  roadmapColumn: { approved: "Đang cân nhắc", planned: "Đã lên kế hoạch", done: "Đã xong" },
+  roadmapColumnHint: {
+    approved: "Ý tưởng đã được chấp nhận. Bình chọn giúp chúng tôi quyết định.",
+    planned: "Đã vào danh sách sẽ làm.",
+    done: "Đã ra mắt.",
+  },
+  roadmapEmpty: {
+    approved: "Hiện chưa có gì đang cân nhắc.",
+    planned: "Chưa có gì trong kế hoạch.",
+    done: "Chưa có gì hoàn thành.",
+  },
+  roadmapTotal: (n) => `${n} mục trên lộ trình`,
+  signInToVote: "Đăng nhập để bình chọn",
+  teamReplyShort: "Đội ngũ",
+  loadError: "Chưa tải được. Vui lòng thử lại.",
   adminTitle: "Duyệt góp ý",
   adminSubtitle: "Duyệt, lên kế hoạch và trả lời những gì người dùng gửi.",
   allStatuses: "Mọi trạng thái",

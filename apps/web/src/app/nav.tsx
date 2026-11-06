@@ -39,6 +39,15 @@ function NewspaperIcon({ size = 22 }: { size?: number }) {
   );
 }
 
+/** Roadmap tab icon (a folded map; same stroke style). */
+function RoadmapIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14" />
+    </svg>
+  );
+}
+
 /** Product name shown in the chrome (the repo is "job-seeking"; "crawler" read like an internal tool). */
 export const BRAND_NAME = "JobSeeking";
 
@@ -52,6 +61,7 @@ function useNavItems(): NavItem[] {
       { key: "cv", label: t("nav.myCv"), href: "/cv/", icon: <DocumentIcon size={22} /> },
       { key: "connections", label: t("nav.connections"), href: "/connections/", icon: <LinkIcon size={22} /> },
       { key: "blog", label: t("nav.blog"), href: "/blog/", icon: <NewspaperIcon /> },
+      { key: "roadmap", label: t("nav.roadmap"), href: "/roadmap/", icon: <RoadmapIcon /> },
     ],
     // `t` keeps its identity across language changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,12 +69,16 @@ function useNavItems(): NavItem[] {
   );
 }
 
+/** Nav items a signed-out visitor sees (their pages work without a session). */
+const PUBLIC_NAV_KEYS = new Set(["feed", "blog", "roadmap"]);
+
 function activeKeyFor(pathname: string): string {
   if (pathname.startsWith("/search")) return "search";
   if (pathname.startsWith("/tracker")) return "tracker";
   if (pathname.startsWith("/cv")) return "cv";
   if (pathname.startsWith("/connections")) return "connections";
   if (pathname.startsWith("/blog")) return "blog";
+  if (pathname.startsWith("/roadmap")) return "roadmap";
   if (pathname === "/") return "feed";
   return "";
 }
@@ -143,6 +157,7 @@ export function AccountMenu({ variant = "icon" }: { variant?: "icon" | "row" | "
           {/* The phone tab bar has no room for a sixth tab when signed in: the blog is reached here
               (and from the TopNav on >= md). */}
           <ListRow title={t("nav.blog")} href="/blog/" linkAs={Link} onClick={() => setOpen(false)} />
+          <ListRow title={t("nav.roadmap")} href="/roadmap/" linkAs={Link} onClick={() => setOpen(false)} />
           <ListRow
             title={tc("nav.contribute")}
             href="/contribute/"
@@ -189,11 +204,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const bareRoute =
     pathname.startsWith("/login") || pathname.startsWith("/design") || pathname.startsWith("/onboarding");
   const showChrome = !loading && !bareRoute && (Boolean(me) || isPublicRoute(pathname));
-  // Signed out: the public pages only (jobs, blog).
-  const navItems = me ? allItems : allItems.filter((item) => item.key === "feed" || item.key === "blog");
-  // The phone tab bar keeps its five signed-in tabs; the blog stays reachable from the TopNav
-  // (>= md) and the account sheet (phones).
-  const tabItems = me ? navItems.filter((item) => item.key !== "blog") : navItems;
+  // Signed out: the public pages only (jobs, blog, roadmap).
+  const navItems = me ? allItems : allItems.filter((item) => PUBLIC_NAV_KEYS.has(item.key));
+  // The phone tab bar keeps its five signed-in tabs; the blog and the roadmap stay reachable from
+  // the TopNav (>= md) and the account sheet (phones).
+  const tabItems = me ? navItems.filter((item) => item.key !== "blog" && item.key !== "roadmap") : navItems;
   const activeKey = activeKeyFor(pathname);
   // Pushed detail screens (job detail) own the bottom of the phone viewport for their own
   // sticky action bar, like a navigation push hiding the tab bar on iOS. The TopNav stays on

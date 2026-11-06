@@ -155,16 +155,37 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     item = resp.json()
     assert item["isMine"] is False and item["context"] is None and item["author"] is None
 
-    # Create only: reading, listing and voting still need a session.
-    assert guest.get(f"/api/feedback/{item['id']}").status_code == 401
+    # A guest cannot read their own item back (it is `new`, so not on the public board), and has
+    # no "my feedback".
+    assert guest.get(f"/api/feedback/{item['id']}").status_code == 404
     assert guest.get("/api/feedback?scope=mine").status_code == 401
 
     admin = make_client()
-    _sign_in(admin, "anon-reviewer@example.com")
+    admin_csrf = _sign_in(admin, "anon-reviewer@example.com")
     with psycopg.connect(migrated_database_url, autocommit=True) as conn:
         assert set_role(conn, "anon-reviewer@example.com", "admin") is True
     seen = admin.get(f"/api/feedback/{item['id']}").json()
     assert seen["author"] == {"id": None, "email": None, "name": "Minh", "anonymous": True}
+
+    # Public board (the /roadmap/ page): once approved, guests read it without signing in, with
+    # public fields only, and still cannot vote.
+    before = guest.get("/api/feedback/stats").json()
+    approved = admin.patch(
+        f"/api/feedback/{item['id']}",
+        json={"status": "approved", "adminResponse": "Good idea"},
+        headers=admin_csrf,
+    )
+    assert approved.status_code == 200, approved.text
+    after = guest.get("/api/feedback/stats").json()
+    assert after["counts"]["approved"] == before["counts"]["approved"] + 1
+    assert after["total"] == before["total"] + 1
+    board = guest.get("/api/feedback?scope=board&status=approved&sort=top&limit=50")
+    assert board.status_code == 200, board.text
+    listed = next(i for i in board.json()["items"] if i["id"] == item["id"])
+    assert listed["canVote"] is False and listed["voted"] is False and listed["author"] is None
+    detail = guest.get(f"/api/feedback/{item['id']}").json()
+    assert detail["adminResponse"] == "Good idea" and detail["context"] is None
+    assert guest.put(f"/api/feedback/{item['id']}/vote", headers=csrf).status_code == 401
 
     # Signed-in users keep their account as the author; a sent name is ignored.
     user = make_client()

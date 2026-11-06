@@ -7,6 +7,10 @@ only plugs in job-seeking's session auth, CSRF check, admin role and pooled conn
 Anonymous feedback is on (`allow_anonymous=True`): signed-out visitors can submit (create only),
 CSRF-protected with the cookie from `GET /api/auth/csrf`, rate-limited by contributor-box per
 `anonymous_key` (HMAC of the client IP with `UJC_SECRET_KEY`; the raw IP is never stored).
+
+The public board is on too (`public_board=True`), for the public `/roadmap/` page: signed-out
+visitors can read `GET /api/feedback?scope=board`, `GET /api/feedback/stats` and the detail of an
+approved / planned / done item, with public fields only. Voting and everything else need a session.
 """
 
 import hashlib
@@ -53,4 +57,5 @@ router = create_feedback_router(
         anonymous_key=anonymous_key,
     ),
     allow_anonymous=True,
+    public_board=True,
 )

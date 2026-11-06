@@ -41,7 +41,7 @@ class FeedbackRepository(Protocol):
     def list_items(
         self,
         *,
-        viewer_id: int,
+        viewer_id: int | None,
         scope: Scope,
         kind: str | None,
         status: str | None,
@@ -52,6 +52,10 @@ class FeedbackRepository(Protocol):
     ) -> tuple[list[Row], int]: ...
 
     def get(self, item_id: int, viewer_id: int | None) -> Row | None: ...
+
+    def public_counts(self) -> dict[str, int]:
+        """Number of items in each public status (every public status present, 0 if none)."""
+        ...
 
     def notes(self, item_id: int, *, include_internal: bool) -> list[Row]: ...
 
@@ -195,7 +199,7 @@ class PgFeedbackRepository:
     def list_items(
         self,
         *,
-        viewer_id: int,
+        viewer_id: int | None,
         scope: Scope,
         kind: str | None,
         status: str | None,
@@ -234,6 +238,17 @@ class PgFeedbackRepository:
             params,
         )
         return rows, int(total_row["n"]) if total_row else 0
+
+    def public_counts(self) -> dict[str, int]:
+        rows = self._all(
+            "SELECT status, count(*)::int AS n FROM feedback_items"
+            " WHERE status = ANY(%s) GROUP BY status",
+            (list(PUBLIC_STATUSES),),
+        )
+        counts = dict.fromkeys(PUBLIC_STATUSES, 0)
+        for row in rows:
+            counts[row["status"]] = int(row["n"])
+        return counts
 
     def get(self, item_id: int, viewer_id: int | None) -> Row | None:
         return self._one(

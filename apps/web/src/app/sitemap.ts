@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/`, changeFrequency: "daily", priority: 1 },
     { url: `${SITE_URL}/jobs/`, lastModified: built, changeFrequency: "daily", priority: 0.8 },
     ...listingUrls,
+    { url: `${SITE_URL}/roadmap/`, changeFrequency: "weekly", priority: 0.4 },
     { url: `${SITE_URL}/privacy/`, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

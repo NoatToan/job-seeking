@@ -15,6 +15,9 @@ export const STATUSES: readonly FeedbackStatus[] = [
 ];
 /** Statuses shown on the public board. Mirrors `PUBLIC_STATUSES` on the server (which decides). */
 export const PUBLIC_STATUSES: readonly FeedbackStatus[] = ["approved", "planned", "done"];
+/** Roadmap columns, in order: the public statuses (private ones never leave the admin queue). */
+export const ROADMAP_STATUSES = ["approved", "planned", "done"] as const;
+export type RoadmapStatus = (typeof ROADMAP_STATUSES)[number];
 
 export interface Region {
   x: number;
@@ -57,8 +60,10 @@ export interface FeedbackItem {
   status: FeedbackStatus;
   adminResponse: string | null;
   voteCount: number;
+  /** Always false for a signed-out viewer. */
   voted: boolean;
   isMine: boolean;
+  /** False for a signed-out viewer (voting needs a session). */
   canVote: boolean;
   canDelete: boolean;
   createdAt: string;
@@ -76,6 +81,12 @@ export interface FeedbackPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+/** `GET /stats`: items per public status (the roadmap columns). */
+export interface FeedbackStats {
+  counts: Record<RoadmapStatus, number>;
+  total: number;
 }
 
 export interface FeedbackMeta {
