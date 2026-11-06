@@ -1,5 +1,4 @@
 import i18n from "i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 import en_common from "./locales/en/common.json";
 import vi_common from "./locales/vi/common.json";
@@ -32,7 +31,8 @@ export const LANGUAGES = [
 export type Language = (typeof LANGUAGES)[number]["code"];
 
 /** Cookie that remembers the visitor's choice (Slack request: "save it so they don't pick again"). */
-export const LANGUAGE_COOKIE = "ujc_lang";
+// Renamed from `ujc_lang`: the first release wrote "en" there for every visitor before detection ran.
+export const LANGUAGE_COOKIE = "ujc_locale";
 
 /** One namespace per area, as in `useTranslation(["cv"])`. Every key exists in en; vi falls back to en. */
 export const NAMESPACES = ["common", "home", "job", "auth", "cv", "tracker", "account", "connections", "onboarding", "search", "privacy"] as const;
@@ -44,14 +44,13 @@ export const resources = {
 
 if (!i18n.isInitialized) {
   void i18n
-    .use(LanguageDetector)
     .use(initReactI18next)
     .init({
       resources,
       ns: [...NAMESPACES],
       defaultNS: "common",
       // Always start in English: that is what the static export prerendered, so the first client
-      // render matches the HTML. `I18nSync` then switches to the detected language after mount.
+      // render matches the HTML. `I18nProvider` then switches to the detected language after mount.
       lng: "en",
       fallbackLng: "en",
       supportedLngs: LANGUAGES.map((l) => l.code),
@@ -61,15 +60,27 @@ if (!i18n.isInitialized) {
       interpolation: { escapeValue: false }, // React escapes already
       returnNull: false,
       react: { useSuspense: false },
-      detection: {
-        // 1) what the visitor picked before, 2) the browser's language list.
-        order: ["cookie", "navigator"],
-        lookupCookie: LANGUAGE_COOKIE,
-        caches: ["cookie"],
-        cookieMinutes: 60 * 24 * 365,
-        cookieOptions: { path: "/", sameSite: "lax" },
-      },
     });
+}
+
+/** The visitor's saved choice (`ujc_lang` cookie), else the first supported browser language, else "en". */
+export function detectLanguage(): Language {
+  const supported = (code: string | undefined | null): Language | null =>
+    LANGUAGES.find((l) => code?.toLowerCase().startsWith(l.code))?.code ?? null;
+  const cookie = document.cookie.split("; ").find((c) => c.startsWith(`${LANGUAGE_COOKIE}=`));
+  const saved = supported(cookie?.slice(LANGUAGE_COOKIE.length + 1));
+  if (saved) return saved;
+  for (const lng of navigator.languages ?? [navigator.language]) {
+    const match = supported(lng);
+    if (match) return match;
+  }
+  return "en";
+}
+
+/** Remembers an explicit choice for a year (only the switch writes it, so browser detection keeps
+ * working for visitors who never picked). */
+export function saveLanguage(lng: Language): void {
+  document.cookie = `${LANGUAGE_COOKIE}=${lng}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
 export default i18n;
