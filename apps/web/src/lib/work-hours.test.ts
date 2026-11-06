@@ -39,6 +39,9 @@ describe("labels", () => {
     expect(clockLabel(21 * 60)).toBe("21:00");
     expect(clockLabel(29 * 60)).toBe("05:00");
     expect(jobZonesLabel(["UTC-08:00", "UTC-07:00", "UTC-06:00", "UTC-05:00"])).toBe("UTC-8 … UTC-5");
+    expect(jobZonesLabel(["Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Rome", "Asia/Tokyo", "Asia/Seoul"])).toBe(
+      "London, Paris, Berlin, Rome +2 more",
+    );
   });
 });
 
