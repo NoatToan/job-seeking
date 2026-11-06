@@ -2,8 +2,9 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useHeroCollapse } from "./use-hero-collapse";
 
-function setup() {
+function setup(extra?: (root: HTMLElement) => void) {
   const root = document.createElement("section");
+  extra?.(root);
   document.body.appendChild(root);
   const list = document.createElement("div");
   list.setAttribute("data-collapses-hero", "");
@@ -14,7 +15,7 @@ function setup() {
       list.scrollTop = top;
       list.dispatchEvent(new Event("scroll"));
     });
-  return { hook, list, scrollTo };
+  return { hook, list, scrollTo, root };
 }
 
 beforeEach(() => {
@@ -80,5 +81,27 @@ describe("useHeroCollapse", () => {
     act(() => hook.result.current.toggle());
     expect(hook.result.current.collapsed).toBe(false);
     expect(window.localStorage.getItem("ujc:hero-collapsed")).toBeNull();
+  });
+
+  it("still folds while the hero's own toggle reports aria-expanded=true (regression)", () => {
+    const { hook, scrollTo } = setup((root) => {
+      const toggle = document.createElement("button");
+      toggle.setAttribute("data-hero-toggle", "");
+      toggle.setAttribute("aria-expanded", "true");
+      root.appendChild(toggle);
+      toggle.focus();
+    });
+    scrollTo(400);
+    expect(hook.result.current.collapsed).toBe(true);
+  });
+
+  it("does not fold while a picker opened from the hero is open", () => {
+    const { hook, scrollTo } = setup((root) => {
+      const picker = document.createElement("button");
+      picker.setAttribute("aria-expanded", "true");
+      root.appendChild(picker);
+    });
+    scrollTo(400);
+    expect(hook.result.current.collapsed).toBe(false);
   });
 });

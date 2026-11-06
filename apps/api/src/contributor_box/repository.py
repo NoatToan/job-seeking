@@ -38,6 +38,7 @@ class FeedbackRepository(Protocol):
         screenshot: Screenshot | None,
         anon_key: str | None = None,
         visitor_key: str | None = None,
+        status: str = "new",
     ) -> int: ...
 
     def list_items(
@@ -301,6 +302,7 @@ class PgFeedbackRepository:
         screenshot: Screenshot | None,
         anon_key: str | None = None,
         visitor_key: str | None = None,
+        status: str = "new",
     ) -> int:
         anonymous = author_id is None
         if anonymous and not anon_key:
@@ -310,8 +312,9 @@ class PgFeedbackRepository:
         row = self._conn.execute(
             "INSERT INTO feedback_items (kind, title, body, page_url, page_title,"
             " element_selector, element_text, region, viewport_width, viewport_height,"
-            " user_agent, author_id, author_name, anon_key, visitor_key)"
-            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+            " user_agent, author_id, author_name, anon_key, visitor_key, status, status_changed_at)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,"
+            " CASE WHEN %s = 'new' THEN NULL ELSE now() END) RETURNING id",
             (
                 req.kind,
                 req.title,
@@ -328,6 +331,8 @@ class PgFeedbackRepository:
                 author_name,
                 anon_key if anonymous else None,
                 visitor_key if anonymous else None,
+                status,
+                status,
             ),
         ).fetchone()
         assert row is not None

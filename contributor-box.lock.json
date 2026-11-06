@@ -1,7 +1,7 @@
 {
   "upstream": "https://github.com/NoatToan/contributor-box.git",
   "ref": "main",
-  "commit": "03b40e9ad9eb0682a7c7f16747c47779e11b90f4",
+  "commit": "1a44330bebb9c7206ddb75c93659d2a4d430b0ef",
   "files": [
     "apps/api/src/contributor_box/VENDORED.md",
     "apps/api/src/contributor_box/__init__.py",

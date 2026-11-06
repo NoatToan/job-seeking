@@ -44,6 +44,19 @@ function subscribe(onChange: () => void): () => void {
   return () => listeners.delete(onChange);
 }
 
+/**
+ * Whether folding now would yank the hero from under the user: they are typing in it (a focused
+ * button or pill doesn't count, focus stays there after a click), or a picker/popover opened from
+ * it is open. The hero's own fold toggle also carries aria-expanded (true while unfolded), so it
+ * is excluded, or the hero could never fold.
+ */
+function heroBusy(root: HTMLElement | null): boolean {
+  if (!root) return false;
+  const active = document.activeElement;
+  const typing = active instanceof HTMLElement && root.contains(active) && active.matches("input, textarea, [contenteditable]");
+  return typing || Boolean(root.querySelector('[aria-expanded="true"]:not([data-hero-toggle])'));
+}
+
 export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
   const pinned = useSyncExternalStore(subscribe, readPinned, () => false);
   const [scrolled, setScrolled] = useState(false);
@@ -53,10 +66,7 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     // Never fold the hero out from under the user: not while focus is in it (typing, a select)
     // or while a picker/popover opened from it is open (its panel is anchored to a control there).
-    const busy = () => {
-      const root = rootRef.current;
-      return Boolean(root?.contains(document.activeElement) || root?.querySelector('[aria-expanded="true"]'));
-    };
+    const busy = () => heroBusy(rootRef.current);
     const lastTop = new WeakMap<Element, number>();
     const onScroll = (e: Event) => {
       const el = e.target === document ? document.scrollingElement : (e.target as Element | null);
@@ -88,8 +98,7 @@ export function useHeroCollapse(rootRef: RefObject<HTMLElement | null>) {
     const close = () => {
       // Keep it open while the user is typing or picking in it (focus inside), or while a popover
       // opened from it (sources list, a filter panel) is open; those are portaled outside the hero.
-      const root = rootRef.current;
-      if (root?.querySelector('[data-hero-headline] [aria-expanded="true"]') || root?.contains(document.activeElement)) {
+      if (heroBusy(rootRef.current)) {
         timer.current = setTimeout(close, PEEK_CLOSE_MS);
       } else setPeek(false);
     };

@@ -90,10 +90,10 @@ describe("Roadmap page", () => {
     expect(await screen.findByText("Salary filter in VND")).toBeTruthy();
     const urls = vi.mocked(fetch).mock.calls.map(([u]) => String(u));
     expect(urls).toContain("/api/feedback?scope=board&status=planned&sort=top&limit=20&offset=0");
-    // New and under-review feedback is public too (only `rejected` is hidden).
-    expect(urls).toContain("/api/feedback?scope=board&status=new&sort=top&limit=20&offset=0");
-    expect(urls).toContain("/api/feedback?scope=board&status=under_review&sort=top&limit=20&offset=0");
-    expect(screen.getByRole("heading", { name: "New" })).toBeTruthy();
+    // Submissions start as "approved" (no admin step), so the page shows three columns and no
+    // New / Under review ones.
+    expect(urls).toContain("/api/feedback?scope=board&status=approved&sort=top&limit=20&offset=0");
+    expect(screen.queryByRole("heading", { name: "New" })).toBeNull();
     expect(screen.getByText("2 comments")).toBeTruthy();
     expect(screen.getByText("Brave Otter")).toBeTruthy();
     expect(urls).toContain("/api/feedback/stats");

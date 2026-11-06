@@ -80,6 +80,7 @@ class InMemoryFeedbackRepository:
         screenshot: Screenshot | None,
         anon_key: str | None = None,
         visitor_key: str | None = None,
+        status: str = "new",
     ):
         anonymous = author_id is None
         if anonymous and not anon_key:
@@ -91,7 +92,7 @@ class InMemoryFeedbackRepository:
             "kind": req.kind,
             "title": req.title,
             "body": req.body,
-            "status": "new",
+            "status": status,
             "page_url": req.page_url,
             "page_title": req.page_title,
             "element_selector": req.element_selector,
@@ -449,6 +450,7 @@ def build_app(
     public_board: bool = False,
     allow_anonymous_comments: bool = False,
     visitor_cookies: bool = True,
+    initial_status: str = "new",
 ) -> FastAPI:
     """Users are picked with an `X-User` header (absent = anonymous -> 401). User 1 is an admin.
 
@@ -496,6 +498,7 @@ def build_app(
             allow_anonymous=allow_anonymous,
             public_board=public_board,
             allow_anonymous_comments=allow_anonymous_comments,
+            initial_status=initial_status,
         )
     )
     return app

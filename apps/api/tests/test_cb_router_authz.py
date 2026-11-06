@@ -758,3 +758,21 @@ def test_bad_cursors_are_400(public_client: TestClient):
     for junk in ("x", "eyJzIjoibmV3In0", "!!!"):
         resp = public_client.get("/api/feedback", params={"sort": "new", "cursor": junk})
         assert resp.status_code == 400
+
+
+# --- initial status ------------------------------------------------------------------------
+
+
+def test_initial_status_puts_new_items_straight_on_the_public_board():
+    repo = InMemoryFeedbackRepository()
+    c = TestClient(build_app(repo, public_board=True, initial_status="approved"))
+    item = create(c)
+    assert item["status"] == "approved"
+    board = c.get("/api/feedback?scope=board&status=approved").json()
+    assert [i["id"] for i in board["items"]] == [item["id"]]
+
+
+def test_default_initial_status_is_new():
+    repo = InMemoryFeedbackRepository()
+    item = create(TestClient(build_app(repo)))
+    assert item["status"] == "new"

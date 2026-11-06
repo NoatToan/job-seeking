@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CommentCount, ItemDetail, ItemVotes, useFeedbackList } from "./board";
 import { useContributor } from "./context";
+import type { CSSProperties } from "react";
 import type { FeedbackItem, FeedbackKind, FeedbackStats, RoadmapStatus } from "./types";
 import { KINDS, ROADMAP_STATUSES } from "./types";
 import { Button, Choice, displayName, formatDate, KindBadge, relativeTime, StatusBadge } from "./ui";
@@ -14,6 +15,11 @@ export interface RoadmapProps {
    * preselected (`openFeedbackWidget({ kind: "idea" })`). `false` hides the button.
    */
   onSuggest?: (() => void) | false;
+  /**
+   * Which columns to show, in order. Default: every public status. A host whose new items start
+   * as `approved` (router `initial_status`) shows `["approved", "planned", "done"]`.
+   */
+  statuses?: ReadonlyArray<RoadmapStatus>;
 }
 
 /** Done shows the newest first; the open columns show what people want most first. */
@@ -184,7 +190,7 @@ function DetailDialog({
  * Signed-out visitors need the server's `public_board=True`; `rejected` (how admins take an item
  * off the board) never appears here.
  */
-export function Roadmap({ onSuggest }: RoadmapProps = {}) {
+export function Roadmap({ onSuggest, statuses = ROADMAP_STATUSES }: RoadmapProps = {}) {
   const { api, strings: s } = useContributor();
   const [kind, setKind] = useState<FeedbackKind | "all">("all");
   const k = kind === "all" ? {} : { kind };
@@ -233,9 +239,9 @@ export function Roadmap({ onSuggest }: RoadmapProps = {}) {
 
   const suggest = onSuggest === false ? null : (onSuggest ?? (() => openFeedbackWidget({ kind: "idea" })));
   // With a kind filter the stats (all kinds) no longer match; sum the filtered columns instead.
-  const columnsTotal = ROADMAP_STATUSES.reduce((n, st) => n + lists[st].total, 0);
+  const columnsTotal = statuses.reduce((n, st) => n + lists[st].total, 0);
   const total = kind === "all" && stats ? stats.total : columnsTotal;
-  const loadingAny = ROADMAP_STATUSES.some((st) => lists[st].loading);
+  const loadingAny = statuses.some((st) => lists[st].loading);
 
   return (
     <section className="flex flex-col gap-4">
@@ -258,8 +264,11 @@ export function Roadmap({ onSuggest }: RoadmapProps = {}) {
       />
       {/* `contain-paint`: without it mobile browsers widen the layout viewport to the columns'
           full width (page-level horizontal scroll) despite the row's own overflow scrolling. */}
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 contain-paint xl:grid xl:snap-none xl:grid-cols-5 xl:items-start xl:overflow-visible xl:pb-0 xl:contain-none">
-        {ROADMAP_STATUSES.map((status) => (
+      <div
+        style={{ "--cb-roadmap-cols": statuses.length } as CSSProperties}
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2 contain-paint xl:grid xl:snap-none xl:grid-cols-[repeat(var(--cb-roadmap-cols),minmax(0,1fr))] xl:items-start xl:overflow-visible xl:pb-0 xl:contain-none"
+      >
+        {statuses.map((status) => (
           <Column
             key={status}
             status={status}

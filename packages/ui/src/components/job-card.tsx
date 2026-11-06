@@ -252,7 +252,9 @@ export function JobListItem({
         <div className="flex items-start gap-2">
           <h3
             className={cx(
-              "line-clamp-2 min-w-0 flex-1 text-subheadline font-semibold leading-snug",
+              // 80% wide: a long title wraps to a second line instead of running under the sky scene
+              // (sun / moon) in the row's top-right corner.
+              "line-clamp-2 min-w-0 max-w-[80%] flex-1 text-subheadline font-semibold leading-snug",
               viewed && !selected ? "text-label-secondary" : "text-label",
             )}
           >

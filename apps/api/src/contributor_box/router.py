@@ -202,8 +202,13 @@ def create_feedback_router(
     allow_anonymous: bool = False,
     public_board: bool = False,
     allow_anonymous_comments: bool = False,
+    initial_status: Literal["new", "under_review", "approved", "planned", "done"] = "new",
 ) -> APIRouter:
-    """`allow_anonymous=True` lets visitors without a session submit feedback (create only); it
+    """`initial_status` is the status a newly submitted item starts in (default `new`, which waits
+    for an admin). A host that wants submissions on the public board straight away passes
+    `approved` ("under consideration"); admins can still move or reject them.
+
+    `allow_anonymous=True` lets visitors without a session submit feedback (create only); it
     needs `deps.optional_user` and `deps.anonymous_key`.
 
     `public_board=True` lets visitors without a session read the public board (list with
@@ -309,6 +314,7 @@ def create_feedback_router(
             body,
             user_agent=clip_user_agent(request.headers.get("user-agent")),
             screenshot=screenshot,
+            status=initial_status,
         )
         return detail(item_id, user.id, is_admin, repo)
 
@@ -367,6 +373,7 @@ def create_feedback_router(
                 screenshot=screenshot,
                 anon_key=anon_key,
                 visitor_key=visitor.key if visitor else None,
+                status=initial_status,
             )
             item = repo.get(item_id, None)
             assert item is not None

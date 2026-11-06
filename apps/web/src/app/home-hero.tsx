@@ -127,6 +127,7 @@ function HeroToggle({
   return (
     <button
       type="button"
+      data-hero-toggle
       onClick={onClick}
       aria-expanded={!collapsed}
       aria-controls={controls}

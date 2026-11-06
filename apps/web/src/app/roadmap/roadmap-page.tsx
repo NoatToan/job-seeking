@@ -36,7 +36,8 @@ export function RoadmapPage() {
       />
       <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 pb-24">
         <p className="max-w-2xl text-callout text-label-secondary">{t("roadmap.subtitle")}</p>
-        <Roadmap />
+        {/* Submissions start as "approved" (no admin step), so New / Under review stay empty. */}
+        <Roadmap statuses={["approved", "planned", "done"]} />
       </div>
     </>
   );

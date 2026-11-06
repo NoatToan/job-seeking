@@ -76,4 +76,7 @@ router = create_feedback_router(
     allow_anonymous=True,
     public_board=True,
     allow_anonymous_comments=True,
+    # No admin step: a submission lands on the roadmap's "Under consideration" column at once
+    # (owner, 2026-11-07); admins can still move or reject it.
+    initial_status="approved",
 )
