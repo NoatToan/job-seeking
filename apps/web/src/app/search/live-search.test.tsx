@@ -106,6 +106,9 @@ describe("LiveSearch", () => {
     expect(firstCall[0]).toContain("q=golang");
     expect(firstCall[0]).toContain("sources=seek%2Chimalayas%2Cremotive%2Cwwr%2Carc");
 
+    // The first page renders a microtask before `loading` clears and the sentinel starts
+    // observing; fire it only once the observer exists.
+    await waitFor(() => expect(ioCallback).not.toBeNull());
     act(() => {
       ioCallback?.([{ isIntersecting: true }]);
     });
