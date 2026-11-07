@@ -121,7 +121,10 @@
       "back": "Quay lại",
       "done": "Xong",
       "zoneError": "Không lưu được múi giờ vào tài khoản. Múi giờ đã được đặt trên thiết bị này; hãy thử lại sau.",
-      "hideReported": "Ẩn job người khác đã báo cáo"
+      "hideReported": "Ẩn job người khác đã báo cáo",
+      "relocation": "Relocation",
+      "relocation_support": "Công ty hỗ trợ chuyển chỗ ở",
+      "relocation_required": "Phải sống ở đó hoặc chuyển đến"
     },
     "collapsedAll": "Tất cả việc làm",
     "collapsedFilters_one": "{{count}} bộ lọc",
@@ -134,7 +137,11 @@
       "salary": "Lương cao nhất",
       "match": "Hợp CV nhất"
     },
-    "hideReported": "Ẩn job bị báo cáo"
+    "hideReported": "Ẩn job bị báo cáo",
+    "relocation": {
+      "support": "Hỗ trợ relocation",
+      "required": "Yêu cầu relocation"
+    }
   },
   "country": {
     "label": "Quốc gia",

@@ -11,7 +11,7 @@ JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
     " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source,"
     " tech_stack, salary_min, salary_max, salary_currency, salary_period, salary_source,"
-    " level, level_source"
+    " level, level_source, relocation_support, relocation_required"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
@@ -68,6 +68,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         salary_source,
         level,
         level_source,
+        relocation_support,
+        relocation_required,
     ) = row
     salary = (
         Salary(
@@ -114,6 +116,10 @@ def job_dto(row: tuple) -> dict[str, Any]:
         # board's own field), "title" or "description". null = not stated.
         "level": level,
         "levelSource": level_source if level else None,
+        # Relocation (job_crawler.relocation): `support` = the employer helps you move (false = the
+        # posting says it doesn't), `required` = you must live there or move there (false = "no
+        # relocation required"); null = the posting doesn't say.
+        "relocation": {"support": relocation_support, "required": relocation_required},
     }
 
 

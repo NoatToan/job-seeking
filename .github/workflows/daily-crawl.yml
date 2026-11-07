@@ -30,6 +30,22 @@ jobs:
       - name: Test
         run: uv run pytest
 
+      # The crawler writes every derived column, so a new column (e.g. 032 relocation) must exist
+      # before the first crawl after a release. The Vercel build also applies migrations, but it
+      # runs after the crawl (rebuild job). migrate.mjs is idempotent: applied files are skipped.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Apply database migrations
+        working-directory: .
+        run: pnpm install --frozen-lockfile && node scripts/migrate.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Crawl
         run: uv run python -m job_crawler --profiles
         env:

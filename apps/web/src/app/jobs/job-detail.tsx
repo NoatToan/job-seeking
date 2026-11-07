@@ -101,6 +101,12 @@ export function JobDetail({
             <RemoteAccessBadge openTo={job.openTo} basedIn={basedIn} />
           </Badge>
         ) : null}
+        {job.relocation?.support != null ? (
+          <Badge tone={job.relocation.support ? "success" : "neutral"}>
+            {t(job.relocation.support ? "relocation.support" : "relocation.noSupport")}
+          </Badge>
+        ) : null}
+        {job.relocation?.required ? <Badge tone="info">{t("relocation.required")}</Badge> : null}
         {employmentLabel(job.employmentType) ? <Badge>{employmentLabel(job.employmentType)}</Badge> : null}
         {job.salaryText ? (
           <Badge title={job.salary?.source === "description" ? "Found in the job description" : undefined}>

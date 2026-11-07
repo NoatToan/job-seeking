@@ -121,5 +121,10 @@
       "evergreen": "Evergreen",
       "other": "Other"
     }
+  },
+  "relocation": {
+    "support": "Relocation support",
+    "noSupport": "No relocation support",
+    "required": "Must relocate"
   }
 }

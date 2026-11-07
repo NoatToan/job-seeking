@@ -40,6 +40,21 @@ def parse_tech(tech: str | None) -> list[str]:
     return list(dict.fromkeys(ids))[:10]
 
 
+# "Relocation" filter (`relocation` param, comma-separated): `support` = the employer helps the
+# hire move, `required` = the hire must live in / move to the job's location (job_crawler.
+# relocation, migration 032). Several values all apply (AND), like the other filters.
+RELOCATION_CLAUSES = {
+    "support": "relocation_support IS TRUE",
+    "required": "relocation_required IS TRUE",
+}
+
+
+def relocation_clauses(relocation: str | None) -> list[str]:
+    """ "support,required" -> their `WHERE` clauses; unknown values are ignored."""
+    wanted = {v.strip().lower() for v in (relocation or "").split(",")}
+    return [clause for key, clause in RELOCATION_CLAUSES.items() if key in wanted]
+
+
 def accepted_open_to_tokens(candidate_country: str | None) -> list[str]:
     """Open-to tokens that make a remote job eligible for this candidate (or just WORLDWIDE when
     they haven't set a country)."""

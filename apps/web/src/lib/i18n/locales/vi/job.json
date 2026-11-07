@@ -121,5 +121,10 @@
       "evergreen": "Đăng lại mãi",
       "other": "Khác"
     }
+  },
+  "relocation": {
+    "support": "Hỗ trợ relocation",
+    "noSupport": "Không hỗ trợ relocation",
+    "required": "Yêu cầu relocation"
   }
 }

@@ -15,6 +15,7 @@ from ujc_api.feed_query import (
     feed_filter_clauses,
     parse_tech,
     posted_within_clause,
+    relocation_clauses,
 )
 from ujc_api.job_sort import FEED_SORTS, fetch_page, resolve_sort
 from ujc_api.job_votes import (
@@ -62,6 +63,7 @@ def get_feed(
     based_in: str | None = Query(default=None),
     tz: str | None = Query(default=None),
     hide_reported: bool = Query(default=False),
+    relocation: str | None = Query(default=None),
     user: AuthedUser = Depends(require_jobs_read),
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
@@ -106,6 +108,8 @@ def get_feed(
 
     if hide_reported:
         clauses.append(HIDE_REPORTED_CLAUSE)
+
+    clauses.extend(relocation_clauses(relocation))
 
     page, next_cursor = fetch_page(
         conn,

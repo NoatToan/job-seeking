@@ -186,7 +186,8 @@ export interface PublicJobsFilters {
   /** The viewer's IANA time zone, for `sort: "timezone"`. */
   tz?: string;
   /** Drop jobs the community flagged as not worth applying (`job_vote_stats.flagged`). */
-  hide_reported?: boolean;
+  hide_reported?: boolean;  /** "support" and/or "required", comma-separated: relocation offered / relocation required. */
+  relocation?: string;
 }
 
 /**
@@ -398,7 +399,8 @@ export interface FeedFilters {
   access?: "open" | "confirmed";
   based_in?: string;
   /** Drop jobs the community flagged as not worth applying. */
-  hide_reported?: boolean;
+  hide_reported?: boolean;  /** "support" and/or "required", comma-separated: relocation offered / relocation required. */
+  relocation?: string;
 }
 
 /** `GET /api/feed` — jobs matching the user's keywords, newest first, keyset-paginated. */

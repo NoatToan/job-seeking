@@ -142,6 +142,31 @@ describe("Home", () => {
     expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("react");
   });
 
+  it("sends ?relocation=… to the API in a fixed order, and the pills toggle it", async () => {
+    useSessionMock.mockReturnValue(signedOutSession());
+    const fetchMock = vi.fn((url: string) => {
+      if (url.startsWith("/api/sources")) return Promise.resolve(jsonResponse(200, []));
+      if (url.startsWith("/api/jobs")) {
+        return Promise.resolve(jsonResponse(200, { items: [job("1", "Berlin Dev")], nextCursor: null }));
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
+
+    renderHome("?relocation=required,support", onUrlUpdate);
+
+    await waitFor(() => expect(screen.getByText("Berlin Dev")).toBeTruthy(), { timeout: 5000 });
+    const first = fetchMock.mock.calls.map(([u]) => u as string).filter(isJobsListCall)[0];
+    expect(new URL(first, "http://x").searchParams.get("relocation")).toBe("support,required");
+
+    const pill = screen.getByRole("switch", { name: "Relocation support" });
+    expect(pill.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(pill);
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get("relocation")).toBe("required");
+  });
+
   it("writes the typed search to the URL after the debounce", async () => {
     useSessionMock.mockReturnValue(signedOutSession());
     vi.stubGlobal(

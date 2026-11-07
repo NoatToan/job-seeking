@@ -30,6 +30,7 @@ from ujc_api.feed_query import (
     access_clause,
     parse_tech,
     posted_within_clause,
+    relocation_clauses,
 )
 from ujc_api.job_sort import PUBLIC_SORTS, fetch_page, resolve_sort
 from ujc_api.job_votes import (
@@ -98,6 +99,7 @@ def list_jobs(
     sort: str | None = None,
     tz: str | None = None,
     hide_reported: bool = False,
+    relocation: str | None = None,
     conn: psycopg.Connection = Depends(get_conn),
 ) -> dict:
     """The public job catalogue: every job we've crawled, no sign-in required, newest first unless
@@ -141,6 +143,8 @@ def list_jobs(
 
     if hide_reported:
         clauses.append(HIDE_REPORTED_CLAUSE)
+
+    clauses.extend(relocation_clauses(relocation))
 
     page, next_cursor = fetch_page(
         conn,

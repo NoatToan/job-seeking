@@ -574,3 +574,38 @@ Protection Law / Decree 13/2023, Australian Privacy Act).
   180 days, then the banner asks again. Bump `CONSENT_VERSION` when a new optional cookie or
   purpose is added so everyone is asked again. The privacy page lists every cookie, purpose and
   lifetime; keep it in step with the API.
+
+## Relocation filter: support offered / relocation required (2026-11-07)
+
+Status: accepted. Code: `apps/crawler/src/job_crawler/relocation.py`, `db/migrations/
+032_job_relocation.sql`, `apps/api/src/ujc_api/feed_query.py` (`relocation_clauses`),
+`apps/web/src/app/job-filters.tsx`, `apps/web/src/app/mobile-filters.tsx`.
+
+Request: filter jobs that offer relocation support and jobs that require relocation; backfill old
+jobs with regex.
+
+- **Two signals, three states each.** `relocation_support` (true = the employer helps you move,
+  false = the posting says it doesn't, NULL = silent) and `relocation_required` (true = you must
+  live there or move there, false = "no relocation required", NULL = silent). Keeping "says no"
+  apart from "silent" lets the job page show "No relocation support" and leaves room for a
+  "hide jobs without support" filter later.
+- **Regex only, sentence by sentence.** The text is cut into sentences and bullet lines (form
+  labels like "Relocation Assistance Eligible:" are joined to the value on the next line). In a
+  sentence a negative rule wins; over the posting a positive support sentence wins (support exists
+  for someone), and any requirement wins over "no relocation required". A bare "relocation" never
+  counts: mobility / moving-industry roles ("relocation management services", "relocating
+  employees", "office relocations") stay NULL. Visa sponsorship alone is not relocation support.
+  Rules were tuned on 1,348 live postings fetched from the public API (biased towards ones that
+  mention relocation / visa); every sentence they flagged was reviewed, with no false positive
+  left. On that sample: 178 support, 40 refused, 35 required.
+- **Derived column, so the backfill is the existing nightly step.** Both are in
+  `derived.DERIVED_COLUMNS`: written on every upsert, and `--recompute-derived` (daily-crawl.yml,
+  after the crawl) re-applies them to every stored job, writing only changed rows. 1,348 jobs take
+  about 8 s.
+- **Migrations before the crawl.** The Vercel project isn't Git-connected and its build (which
+  applies migrations) runs after the crawl, so a crawl writing a new column would fail on the
+  first night. daily-crawl.yml now runs `scripts/migrate.mjs` (idempotent) before crawling.
+- **Filter semantics.** `relocation=support,required` on `GET /api/jobs` and `/api/feed`; several
+  values all apply (AND), like the other filters; unknown values are ignored. Partial indexes
+  `WHERE relocation_support` / `WHERE relocation_required`. URL key `relocation`, two pills on
+  desktop and two switches in the phone filter view; the job page shows badges.

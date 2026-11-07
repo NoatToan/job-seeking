@@ -101,6 +101,7 @@ describe("phone filters (one modal view)", () => {
     const dialog = screen.getByRole("dialog", { name: "Filters" });
     fireEvent.click(within(dialog).getByRole("radio", { name: "Past 7 days" }));
     fireEvent.click(within(dialog).getByRole("switch", { name: "Remote jobs only" }));
+    fireEvent.click(within(dialog).getByRole("switch", { name: "Employer helps you relocate" }));
 
     // A sub-choice is a step inside the same dialog, not a popover.
     fireEvent.click(within(dialog).getByRole("button", { name: /^Country/ }));
@@ -122,6 +123,7 @@ describe("phone filters (one modal view)", () => {
     expect(params.get("posted")).toBe("7");
     expect(params.get("remote")).toBe("true");
     expect(params.get("country")).toBe("DE");
+    expect(params.get("relocation")).toBe("support");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 

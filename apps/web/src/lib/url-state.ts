@@ -15,6 +15,10 @@ import { JOB_SORTS } from "./api";
  * the URL (`clearOnDefault`, also the default).
  */
 
+/** Relocation filter values: the employer helps you move / you must live there or move there. */
+export const RELOCATION_FILTERS = ["support", "required"] as const;
+export type RelocationFilter = (typeof RELOCATION_FILTERS)[number];
+
 /** "Posted within" values: "1h" = past hour, "today" = since local midnight, else days; "" = any time. */
 export const POSTED_DAYS = ["1h", "today", "3", "7", "30"] as const;
 
@@ -59,6 +63,8 @@ export const jobFilterParsers = {
   hours: parseAsHourRange,
   /** Hide jobs the community flagged as not worth applying (`hide_reported` on the API). */
   hideReported: parseAsBoolean.withDefault(false),
+  /** `relocation=support,required` (both must hold). */
+  relocation: parseAsArrayOf(parseAsStringLiteral(RELOCATION_FILTERS)).withDefault([]),
   /** List order; "newest" (the default) is never written to the URL. */
   sort: parseAsStringLiteral(JOB_SORTS).withDefault("newest"),
 };

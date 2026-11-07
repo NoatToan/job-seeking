@@ -9,6 +9,7 @@ jobs (backfill after a rule change: `python -m job_crawler --recompute-derived`)
 - `countries`       ISO codes of the countries the job is in / open to, for the country filter
 - `tech_stack`      technologies the job asks for (techstack.py), for icons and the tech filter
 - `salary_*`        structured salary (salary.py) from the source's salary text, else the posting
+- `relocation_*`    relocation support offered / relocation required (relocation.py)
 
 `PARSED_COLUMNS` (description sections and seniority level) are written on every upsert too, but
 re-applied by a version-gated backfill instead (`sections.VERSION`, `db.backfill_sections`).
@@ -18,7 +19,7 @@ from typing import Any
 
 from psycopg.types.json import Jsonb
 
-from job_crawler import eligibility, level, salary, sections, techstack, timezones
+from job_crawler import eligibility, level, relocation, salary, sections, techstack, timezones
 
 DERIVED_COLUMNS = (
     "open_to",
@@ -31,6 +32,8 @@ DERIVED_COLUMNS = (
     "salary_currency",
     "salary_period",
     "salary_source",
+    "relocation_support",
+    "relocation_required",
 )
 
 # Written by `parse_posting`; `sections_version` says which rules wrote the other three.
@@ -65,6 +68,7 @@ def derive(
 ) -> dict[str, Any]:
     extra = structured_locations(raw)
     zones, zone_source = timezones.job_timezones(location, description, extra, raw)
+    support, required = relocation.job_relocation(title, description)
     return {
         "open_to": eligibility.open_to(location, remote, extra),
         "timezones": zones,
@@ -72,6 +76,8 @@ def derive(
         "countries": job_countries(location, extra),
         "tech_stack": techstack.tech_stack(title, description, tags),
         **job_salary(salary_text, title, description),
+        "relocation_support": support,
+        "relocation_required": required,
     }
 
 

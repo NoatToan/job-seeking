@@ -32,6 +32,7 @@ import { shortZoneName } from "@/lib/work-hours";
 import { useTechGroups } from "@/app/tech-filter";
 import { timezoneSelectOptions } from "@/app/work-hours";
 import { pillClasses } from "@/app/pill-controls";
+import { RELOCATION_FILTERS } from "@/lib/url-state";
 import type { JobFilterBarProps, JobFilterState, JobFilterValues } from "@/app/job-filters";
 import { hourLabel, ReadHistory, useHourPresets, usePostedOptions, useSortOptions } from "@/app/job-filters";
 
@@ -59,6 +60,7 @@ function valuesOf(f: JobFilterState): JobFilterValues {
     unreadOnly: f.hiddenIds !== null,
     sort: f.sort,
     hideReported: f.hideReported,
+    relocation: f.relocation,
   };
 }
 
@@ -74,6 +76,7 @@ const EMPTY: JobFilterValues = {
   unreadOnly: false,
   sort: "newest",
   hideReported: false,
+  relocation: [],
 };
 
 /**
@@ -507,6 +510,24 @@ export function FilterModal({
               }
               onOpen={go}
             />
+          </div>
+        </Section>
+        <Section title={t("filters.mobile.relocation")}>
+          <div className="flex flex-col gap-1 rounded-card bg-background py-1">
+            {RELOCATION_FILTERS.map((r) => (
+              <SwitchRow
+                key={r}
+                label={t(`filters.mobile.relocation_${r}`)}
+                checked={(draft.relocation ?? []).includes(r)}
+                onChange={(on) =>
+                  set({
+                    relocation: on
+                      ? [...new Set([...(draft.relocation ?? []), r])]
+                      : (draft.relocation ?? []).filter((x) => x !== r),
+                  })
+                }
+              />
+            ))}
           </div>
         </Section>
         <Section title={t("filters.mobile.reading")}>

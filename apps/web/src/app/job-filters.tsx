@@ -24,7 +24,8 @@ import { useQueryStates } from "nuqs";
 import { useTranslation } from "react-i18next";
 import { useViewState } from "@/lib/view-cache";
 import { usePhoneLayout } from "@/lib/use-phone-layout";
-import { jobFilterParsers, POSTED_DAYS, postedParams, REMOTE_ACCESS } from "@/lib/url-state";
+import { jobFilterParsers, POSTED_DAYS, postedParams, RELOCATION_FILTERS, REMOTE_ACCESS } from "@/lib/url-state";
+import type { RelocationFilter } from "@/lib/url-state";
 import type { JobSort } from "@/lib/api";
 import { useBasedIn } from "@/lib/based-in";
 import { CountryFilter } from "@/app/country-filter";
@@ -79,6 +80,8 @@ export interface JobFilterValues {
   sort: JobSort;
   /** Optional so callers that predate it keep compiling; `apply` leaves it unchanged when absent. */
   hideReported?: boolean;
+  /** Same: absent = unchanged. */
+  relocation?: RelocationFilter[];
 }
 
 export interface JobFilterState {
@@ -117,10 +120,14 @@ export interface JobFilterState {
     sort?: JobSort;
     tz?: string;
     hide_reported?: boolean;
+    relocation?: string;
   };
   /** Hide jobs the community flagged as not worth applying (server-side, `hide_reported`). */
   hideReported: boolean;
   setHideReported: (v: boolean) => void;
+  /** Relocation: "support" = the employer helps you move, "required" = you must move there. */
+  relocation: RelocationFilter[];
+  toggleRelocation: (v: RelocationFilter, on: boolean) => void;
   /** Filters on (what "Clear all" undoes); the sort is not counted here — see `sortActive`. */
   activeCount: number;
   /** List order. Not a filter: it never empties the list, so it isn't in `activeCount`. */
@@ -152,7 +159,7 @@ export interface JobFilterState {
  */
 export function useJobFilters(prefix: string, { matchSort = false }: { matchSort?: boolean } = {}): JobFilterState {
   const [url, setUrl] = useQueryStates(jobFilterParsers);
-  const { q, source, remote: remoteOnly, country, tech, posted, hours, access, hideReported } = url;
+  const { q, source, remote: remoteOnly, country, tech, posted, hours, access, hideReported, relocation } = url;
   // `?sort=match` is shared with the feed; the public catalogue can't score jobs, so it shows newest.
   const sort: JobSort = url.sort === "match" && !matchSort ? "newest" : url.sort;
   // The time-zone sort ranks against the viewer's own zone (saved preference, else the browser's).
@@ -180,6 +187,8 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
   }, [draftQ, q, setUrl]);
 
   const techKey = tech.join(",");
+  // Fixed order, so "required,support" and "support,required" are one cache key.
+  const relocationKey = RELOCATION_FILTERS.filter((r) => relocation.includes(r)).join(",");
   const postedValue = posted ?? "";
   return {
     draftQ,
@@ -211,6 +220,7 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
       sort,
       sortTz,
       hideReported,
+      relocationKey,
     ]),
     params: {
       q: q || undefined,
@@ -223,10 +233,17 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
       ...(sort !== "newest" ? { sort } : {}),
       ...(sortTz ? { tz: sortTz } : {}),
       ...(hideReported ? { hide_reported: true } : {}),
+      ...(relocationKey ? { relocation: relocationKey } : {}),
     },
     hideReported,
     setHideReported: (v) => void setUrl({ hideReported: v }),
-    activeCount: [q, source, remoteOnly, country, posted, hours, access, hideReported].filter(Boolean).length + tech.length,
+    relocation,
+    toggleRelocation: (v, on) =>
+      void setUrl({ relocation: on ? [...new Set([...relocation, v])] : relocation.filter((r) => r !== v) }),
+    activeCount:
+      [q, source, remoteOnly, country, posted, hours, access, hideReported].filter(Boolean).length +
+      tech.length +
+      relocation.length,
     sort,
     setSort: (v) => void setUrl({ sort: v }),
     sortActive: sort !== "newest",
@@ -255,6 +272,7 @@ export function useJobFilters(prefix: string, { matchSort = false }: { matchSort
         hours: v.hours,
         sort: v.sort,
         ...(v.hideReported !== undefined ? { hideReported: v.hideReported } : {}),
+        ...(v.relocation !== undefined ? { relocation: v.relocation } : {}),
       });
     },
   };
@@ -525,6 +543,16 @@ function DesktopFilterBar({ filters: f, sources, extra }: JobFilterBarProps) {
         />
         <HoursFilter value={f.hours} onChange={f.setHours} />
         <PillToggle label={t("filters.unread")} checked={f.hiddenIds !== null} onChange={f.setUnreadOnly} />
+        <PillToggle
+          label={t("filters.relocation.support")}
+          checked={f.relocation.includes("support")}
+          onChange={(on) => f.toggleRelocation("support", on)}
+        />
+        <PillToggle
+          label={t("filters.relocation.required")}
+          checked={f.relocation.includes("required")}
+          onChange={(on) => f.toggleRelocation("required", on)}
+        />
         <PillToggle label={t("filters.hideReported")} checked={f.hideReported} onChange={f.setHideReported} />
         <PillSelect
           label={t("filters.sort.label")}

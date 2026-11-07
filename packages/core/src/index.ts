@@ -44,6 +44,10 @@ export interface Job {
   level?: JobLevel | null;
   /** Where `level` came from: the board's own field, the title, or the description text. */
   levelSource?: "source" | "title" | "description" | null;
+  /** Relocation (job_crawler.relocation): `support` = the employer helps you move (false = the
+   * posting says it doesn't), `required` = you must live there or move there (false = "no
+   * relocation required"); null = not stated. Absent on payloads that predate it. */
+  relocation?: { support: boolean | null; required: boolean | null } | null;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
   /** What other job seekers say about this posting (apps/api ujc_api/job_votes.py); null/absent =
