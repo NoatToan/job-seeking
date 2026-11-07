@@ -609,3 +609,26 @@ jobs with regex.
   values all apply (AND), like the other filters; unknown values are ignored. Partial indexes
   `WHERE relocation_support` / `WHERE relocation_required`. URL key `relocation`, two pills on
   desktop and two switches in the phone filter view; the job page shows badges.
+
+## Arc descriptions from the job page (2026-11-07)
+
+Status: accepted. Code: `apps/crawler/src/job_crawler/session/sites.py` (`parse_arc_detail`),
+`apps/crawler/src/job_crawler/session/__main__.py` (`fetch_details`), `apps/crawler/src/
+job_crawler/db.py` (`upsert_jobs`).
+
+Report: an Arc job showed no description at all, only title / company / location.
+
+- **Cause.** Not the section parser: when no heading is recognised it stores `sections = NULL`
+  and the app shows the raw description. Arc jobs had no description to show: the listing JSON
+  (`arcJobs` / `externalJobs`) carries none, and `parse_arc` never set one.
+- **Fix.** The job page's `__NEXT_DATA__` has `pageProps.job.description` (Markdown, which the
+  section parser already splits). After the result pages, the browser runner opens the pages of
+  jobs without a description: at most `Site.max_details` (25) per run, newest first, 3-7 s
+  apart, stopping at a login / human check. Still the user's own browser session, like the
+  listing (no server-side scraping). The session CLI skips jobs already described in the
+  database (`db.described_ids`); the paired runner has no database, so it relies on the cap.
+- **Keep what we read.** A later listing upsert (no description) keeps the stored description,
+  and the sections and derived columns are computed from it, not from NULL (one lookup per
+  batch, plus `COALESCE` in the SQL).
+- **Later.** Arc's job JSON also has `visaOrRelocationRequired`, a structured signal the
+  relocation columns could use.

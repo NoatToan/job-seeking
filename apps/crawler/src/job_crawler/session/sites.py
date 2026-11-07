@@ -175,6 +175,22 @@ def parse_arc(html: str) -> list[JobRecord]:
     return list(jobs.values())
 
 
+def parse_arc_detail(html: str) -> str | None:
+    """The job description on an Arc job page (`pageProps.job.description`, Markdown). The
+    listing JSON has none, so the runner opens each new job's page (`Site.parse_detail`)."""
+    m = _NEXT_DATA.search(html)
+    if not m:
+        return None
+    try:
+        job = json.loads(m.group(1))["props"]["pageProps"]["job"]
+    except (ValueError, KeyError, TypeError):
+        return None
+    description = job.get("description") if isinstance(job, dict) else None
+    if not isinstance(description, str):
+        return None
+    return description.strip() or None
+
+
 # --- Glassdoor (Cloudflare-protected: the user passes the check in a visible window) -----------
 
 GLASSDOOR = "glassdoor"
@@ -318,6 +334,10 @@ class Site:
     max_pages: int = 5
     #: False when the site ignored our search and showed a generic page (title-based)
     is_result_page: Callable[[str], bool] = lambda title: True
+    #: Job page HTML -> description, for sites whose result pages carry none (None = not needed)
+    parse_detail: Callable[[str], str | None] | None = None
+    #: job pages opened per run at most (slow, human pace), newest jobs first
+    max_details: int = 25
 
 
 #: Page titles of bot-check interstitials (Cloudflare, generic CAPTCHA pages).
@@ -344,6 +364,7 @@ SITES: dict[str, Site] = {
         login_url="https://arc.dev/login",
         search_url=arc_search_url,
         parse=parse_arc,
+        parse_detail=parse_arc_detail,
         block_markers=("captcha",),
         result_selector="#__NEXT_DATA__",
         # unknown categories fall back to the generic "Remote Jobs (<month>) - Arc" list

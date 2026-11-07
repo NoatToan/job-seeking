@@ -38,13 +38,23 @@ ON CONFLICT (source, external_id) DO UPDATE SET
   remote = EXCLUDED.remote,
   employment_type = EXCLUDED.employment_type,
   salary_text = EXCLUDED.salary_text,
-  description = EXCLUDED.description,
+  -- A result page without descriptions (Arc's listing) must not wipe one read from the job page.
+  description = COALESCE(EXCLUDED.description, jobs.description),
   tags = EXCLUDED.tags,
   posted_at = COALESCE(EXCLUDED.posted_at, jobs.posted_at),
   raw = EXCLUDED.raw,
 {_DERIVED_UPDATE}  last_seen_at = now()
 RETURNING (xmax = 0) AS inserted
 """
+
+
+def described_ids(conn: psycopg.Connection, source: str) -> set[str]:
+    """External ids of `source` jobs that already have a description (the session runner skips
+    their job pages)."""
+    rows = conn.execute(
+        "SELECT external_id FROM jobs WHERE source = %s AND description IS NOT NULL", (source,)
+    ).fetchall()
+    return {r[0] for r in rows}
 
 
 def connect(database_url: str) -> psycopg.Connection:
@@ -85,11 +95,34 @@ def job_params(job: JobRecord) -> dict[str, Any]:
     return params
 
 
+def _stored_descriptions(conn: psycopg.Connection, jobs: list[JobRecord]) -> dict[tuple, str]:
+    """Stored descriptions of the jobs that arrive without one, in one query."""
+    missing = [(j.source, j.external_id) for j in jobs if not j.description]
+    if not missing:
+        return {}
+    rows = conn.execute(
+        "SELECT source, external_id, description FROM jobs"
+        " WHERE (source, external_id) IN (SELECT * FROM unnest(%s::text[], %s::text[]))"
+        " AND description IS NOT NULL",
+        ([m[0] for m in missing], [m[1] for m in missing]),
+    ).fetchall()
+    return {(r[0], r[1]): r[2] for r in rows}
+
+
 def upsert_jobs(conn: psycopg.Connection, jobs: list[JobRecord]) -> int:
-    """Upsert jobs in one transaction; returns how many rows were newly inserted."""
+    """Upsert jobs in one transaction; returns how many rows were newly inserted. A job that
+    arrives without a description (Arc's listing; the runner reads job pages only for new ones)
+    keeps the stored one, and its sections / derived columns are computed from it too."""
     jobs = dedupe(jobs)
     if not jobs:
         return 0
+    stored = _stored_descriptions(conn, jobs)
+    jobs = [
+        j.model_copy(update={"description": stored[(j.source, j.external_id)]})
+        if not j.description and (j.source, j.external_id) in stored
+        else j
+        for j in jobs
+    ]
     new = 0
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany(UPSERT_SQL, [job_params(j) for j in jobs], returning=True)

@@ -85,10 +85,49 @@ def _scroll_results(page) -> None:
         page.wait_for_timeout(random.uniform(400, 900))
 
 
+def fetch_details(site: Site, page, jobs: list[JobRecord], skip: set[str] = frozenset()) -> int:
+    """Fills `description` from each job's own page, for sites whose result pages carry none
+    (`site.parse_detail`). At most `site.max_details` pages, in list order (newest first), at a
+    slow human pace; jobs already described (in `skip`, by external id) are not opened. A page
+    that fails or has no description is left as is. Returns descriptions filled."""
+    if site.parse_detail is None:
+        return 0
+    filled, opened, seen = 0, 0, set()
+    for job in jobs:
+        if opened >= site.max_details:
+            break
+        if job.description or job.external_id in skip or job.external_id in seen:
+            continue
+        seen.add(job.external_id)
+        opened += 1
+        try:
+            page.goto(job.url, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_timeout(random.uniform(1500, 3000))
+            if _blocked(site, page):
+                log.warning("%s: job pages need a check; stopped after %d", site.id, filled)
+                break
+            description = site.parse_detail(page.content())
+        except Exception as exc:  # noqa: BLE001 - one bad page doesn't stop the run
+            log.warning("%s: %s: %s", site.id, job.url, exc)
+            continue
+        if description:
+            job.description = description
+            filled += 1
+        time.sleep(random.uniform(3, 7))
+    log.info("%s: descriptions from %d of %d job pages", site.id, filled, opened)
+    return filled
+
+
 def crawl_site(
-    site: Site, profiles: list[SearchProfile], pages: int, headless: bool = False
+    site: Site,
+    profiles: list[SearchProfile],
+    pages: int,
+    headless: bool = False,
+    described: set[str] = frozenset(),
 ) -> tuple[dict[int, list[JobRecord]], str | None]:
-    """Jobs found per search profile id, plus an error if the run stopped early."""
+    """Jobs found per search profile id, plus an error if the run stopped early. For sites with
+    `parse_detail`, descriptions are then read from the job pages (`described` = external ids
+    that already have one in the database, so they are not opened again)."""
     context = _launch(site, headless)
     page = context.pages[0] if context.pages else context.new_page()
     jobs: dict[int, list[JobRecord]] = {}
@@ -132,6 +171,8 @@ def crawl_site(
                     if not found:
                         break
                     time.sleep(random.uniform(5, 12))  # slow, human pace between pages
+        # Same job objects as in `jobs`, so filling them here fills every profile's list.
+        fetch_details(site, page, [j for found in jobs.values() for j in found], described)
     except Exception as exc:  # noqa: BLE001 - keep what we already have
         error = f"{type(exc).__name__}: {exc}"
         log.error("%s: %s", site.id, error)
@@ -158,7 +199,8 @@ def crawl(args: argparse.Namespace) -> int:
             if not profiles:
                 continue
             run_id = None if args.dry_run else db.start_run(conn, site.id)
-            by_profile, error = crawl_site(site, profiles, args.pages, args.headless)
+            described = db.described_ids(conn, site.id) if site.parse_detail else set()
+            by_profile, error = crawl_site(site, profiles, args.pages, args.headless, described)
             jobs = [j for found_jobs in by_profile.values() for j in found_jobs]
             found = len(db.dedupe(jobs))
             if args.dry_run:
