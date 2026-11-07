@@ -65,7 +65,7 @@ flowchart LR
 
 - **Monorepo:** `pnpm` workspaces for the TypeScript packages, `uv` for the three Python apps (API, crawler, MCP server).
 - **CI on every PR:** typecheck, lint and tests for the web app; `ruff` and `pytest` for the Python apps; and every SQL migration applied from scratch against a real Postgres 17.
-- **Automated daily:** the crawl runs at 05:00 and the blog at 06:30 (Vietnam time), then production is rebuilt with the Vercel CLI.
+- **Automated daily:** the crawl runs at 05:00 and the blog at 06:30 (Vietnam time), then production is rebuilt on Vercel (every push to `main` also deploys).
 - **Security:** same-origin deployment behind Caddy, HttpOnly session cookies, double-submit CSRF tokens and a strict CSP. See [`docs/product/SECURITY.md`](docs/product/SECURITY.md).
 - **Decisions recorded:** architecture decisions with their reasons are kept in [`docs/product/ARCHITECTURE.md`](docs/product/ARCHITECTURE.md) and [`docs/DECISIONS.md`](docs/DECISIONS.md).
 

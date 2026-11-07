@@ -602,9 +602,11 @@ jobs with regex.
   `derived.DERIVED_COLUMNS`: written on every upsert, and `--recompute-derived` (daily-crawl.yml,
   after the crawl) re-applies them to every stored job, writing only changed rows. 1,348 jobs take
   about 8 s.
-- **Migrations before the crawl.** The Vercel project isn't Git-connected and its build (which
-  applies migrations) runs after the crawl, so a crawl writing a new column would fail on the
-  first night. daily-crawl.yml now runs `scripts/migrate.mjs` (idempotent) before crawling.
+- **Migrations before the crawl.** The Vercel build applies migrations, and a push to `main`
+  deploys at once (the project is Git-connected), but nothing guarantees that build has finished
+  before a crawl starts (a manual crawl, a failed deploy, the daily rebuild that only runs after
+  the crawl). A crawl writing a new column would then fail, so daily-crawl.yml runs
+  `scripts/migrate.mjs` (idempotent) before crawling.
 - **Filter semantics.** `relocation=support,required` on `GET /api/jobs` and `/api/feed`; several
   values all apply (AND), like the other filters; unknown values are ignored. Partial indexes
   `WHERE relocation_support` / `WHERE relocation_required`. URL key `relocation`, two pills on

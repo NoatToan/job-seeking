@@ -5,12 +5,12 @@ name: Rebuild production site
 # what the daily crawl / daily blog just wrote to Postgres. Called by daily-crawl.yml and
 # daily-blog.yml, or run by hand.
 #
-# The Vercel project is not connected to the GitHub repo (deployments are made with the Vercel CLI),
-# so the preferred path is a CLI deploy:
+# The Vercel project is connected to the GitHub repo (a push to main deploys production), but a
+# crawl or blog run writes to Postgres without a push, so this triggers a deploy explicitly:
 #   1. secret VERCEL_TOKEN set      -> `vercel deploy --prod` from this checkout. It is a remote
 #                                      build (not --prebuilt), so it runs with the Vercel project's
 #                                      own build env (DATABASE_URL), migrations and snapshots included.
-#   2. else VERCEL_DEPLOY_HOOK_URL  -> POST to that Deploy Hook (only works on a Git-connected project).
+#   2. else VERCEL_DEPLOY_HOOK_URL  -> POST to that Deploy Hook (Git-connected projects only).
 #   3. else                         -> skipped with a notice.
 # The org / project ids are not secrets; repository variables VERCEL_ORG_ID / VERCEL_PROJECT_ID
 # override the defaults below.
