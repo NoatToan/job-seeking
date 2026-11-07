@@ -120,7 +120,7 @@ def test_guest_and_member_conversation(make_client, migrated_database_url: str):
     [top] = thread["comments"]
     assert top["author"]["name"] == "Lan" and top["replies"][0]["body"].endswith("+1")
     assert top["isMine"] is False  # a different browser
-    board = reader.get("/api/feedback?scope=board&status=new&limit=50").json()
+    board = reader.get("/api/feedback?scope=board&status=approved&limit=50").json()
     listed = next(i for i in board["items"] if i["id"] == item_id)
     assert listed["commentCount"] == 2
 

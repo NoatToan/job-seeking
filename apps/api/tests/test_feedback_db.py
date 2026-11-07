@@ -186,8 +186,9 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     assert author["id"] is None and author["email"] is None and author["anonymous"] is True
     assert author["name"].startswith("Minh (")  # "Minh (Brave Otter #123)"
 
-    # Public board (the /roadmap/ page): once approved, guests read it without signing in, with
-    # public fields only, and still cannot vote.
+    # Public board (the /roadmap/ page): submissions start approved (no admin step, migration
+    # 031), so guests read it without signing in, with public fields only, and still cannot vote.
+    assert item["status"] == "approved"
     before = guest.get("/api/feedback/stats").json()
     approved = admin.patch(
         f"/api/feedback/{item['id']}",
@@ -196,9 +197,8 @@ def test_anonymous_feedback_through_host_csrf(make_client, migrated_database_url
     )
     assert approved.status_code == 200, approved.text
     after = guest.get("/api/feedback/stats").json()
-    assert after["counts"]["approved"] == before["counts"]["approved"] + 1
-    assert after["counts"]["new"] == before["counts"]["new"] - 1
-    assert after["total"] == before["total"]  # it was already public while new
+    assert after["counts"] == before["counts"]  # answering doesn't move it
+    assert after["total"] == before["total"]
     board = guest.get("/api/feedback?scope=board&status=approved&sort=top&limit=50")
     assert board.status_code == 200, board.text
     listed = next(i for i in board.json()["items"] if i["id"] == item["id"])

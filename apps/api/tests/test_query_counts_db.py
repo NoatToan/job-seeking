@@ -186,7 +186,8 @@ def test_list_endpoints_run_a_constant_number_of_queries(
     assert len(ids) == 42
     assert _queries(client, f"/api/me/job-votes?ids={ids[0]}") == 2  # session + one read
     assert _queries(client, "/api/me/job-votes?ids=" + ",".join(map(str, ids))) == 2
-    assert _queries(client, f"/api/jobs/{ids[0]}") == 2  # session + job with its aggregate
+    # Public (CDN-cacheable): no session lookup, one statement with the aggregate joined in.
+    assert _queries(client, f"/api/jobs/{ids[0]}") == 1
     QUERIES.clear()
     csrf = {"X-CSRF-Token": client.cookies.get("ujc_csrf") or ""}
     resp = client.put(f"/api/jobs/{ids[0]}/vote", json={"vote": "up"}, headers=csrf)
