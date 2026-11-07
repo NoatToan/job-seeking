@@ -1,0 +1,19 @@
+{
+  "title": "Cookies on JobSeeking",
+  "body": "We use strictly necessary cookies to sign you in, keep the site secure and remember your language. With your permission, we'd also like to use Google Analytics to see how the site is used. Analytics stays off unless you turn it on, and you can change your mind at any time from Cookie settings.",
+  "learnMore": "Privacy notice",
+  "acceptAll": "Accept all",
+  "rejectAll": "Reject all",
+  "customize": "Customize",
+  "save": "Save choices",
+  "settingsLink": "Cookie settings",
+  "necessary": {
+    "title": "Strictly necessary",
+    "description": "Sign-in session, security (CSRF and anti-spam) and your language and theme. The site can't work without them.",
+    "alwaysOn": "Always on"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "description": "Google Analytics 4 through Google Tag Manager: pages visited, device type and approximate location. Sets _ga cookies for up to 2 years. No ads, and your data is never sold."
+  }
+}

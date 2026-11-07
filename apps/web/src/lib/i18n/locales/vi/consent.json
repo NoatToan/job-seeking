@@ -1,0 +1,19 @@
+{
+  "title": "Cookie trên JobSeeking",
+  "body": "Chúng tôi dùng cookie thiết yếu để đăng nhập, bảo vệ trang và ghi nhớ ngôn ngữ của bạn. Nếu bạn cho phép, chúng tôi muốn dùng thêm Google Analytics để hiểu cách mọi người sử dụng trang. Analytics luôn tắt cho đến khi bạn bật, và bạn có thể đổi ý bất cứ lúc nào trong Cài đặt cookie.",
+  "learnMore": "Thông báo quyền riêng tư",
+  "acceptAll": "Chấp nhận tất cả",
+  "rejectAll": "Từ chối tất cả",
+  "customize": "Tuỳ chỉnh",
+  "save": "Lưu lựa chọn",
+  "settingsLink": "Cài đặt cookie",
+  "necessary": {
+    "title": "Thiết yếu",
+    "description": "Phiên đăng nhập, bảo mật (CSRF và chống spam), ngôn ngữ và giao diện bạn chọn. Trang không hoạt động được nếu thiếu chúng.",
+    "alwaysOn": "Luôn bật"
+  },
+  "analytics": {
+    "title": "Phân tích",
+    "description": "Google Analytics 4 qua Google Tag Manager: trang đã xem, loại thiết bị và vị trí gần đúng. Đặt cookie _ga tối đa 2 năm. Không quảng cáo, không bán dữ liệu của bạn."
+  }
+}

@@ -9,6 +9,7 @@ import { BrandMark, ChevronDownIcon, cx, FloatingPanel, Sheet, SourceIcon } from
 import { useTranslation } from "react-i18next";
 import { AccountMenu, BRAND_NAME } from "@/app/nav";
 import { LanguageSwitch, useLanguage } from "@/lib/i18n/provider";
+import { CookieSettingsButton } from "@/lib/consent";
 import { ThemeToggle } from "@/lib/theme";
 import { useHeroCollapse } from "@/lib/use-hero-collapse";
 import { usePhoneLayout } from "@/lib/use-phone-layout";
@@ -221,6 +222,8 @@ export function SourcesSummary({ sources }: { sources: SourceInfo[] }) {
         <Link href="/privacy/" className="rounded-control-sm hover:underline focus-ring">
           {t("sources.privacy")}
         </Link>
+        <span aria-hidden>·</span>
+        <CookieSettingsButton className="cursor-pointer rounded-control-sm hover:underline focus-ring" />
       </p>
     </>
   );

@@ -547,3 +547,30 @@ Request: let people mark a job as not worth applying to, so others don't waste t
   `GET /api/me/job-votes?ids=1,2` answers `{votes: {id: {vote, reason, note, updatedAt,
   counted}}, community: {id: … | null}}`; `GET /api/jobs` and `/api/feed` accept
   `hide_reported=true`.
+
+## Cookie consent (2026-11-07)
+
+Status: accepted. Code: `apps/web/src/lib/consent-core.ts`, `apps/web/src/lib/consent.tsx`,
+`apps/web/src/app/layout.tsx`, `apps/web/src/app/privacy/page.tsx` (`#cookies`).
+
+Request: a cookie banner that meets the rules (EU GDPR + ePrivacy, Vietnam's Personal Data
+Protection Law / Decree 13/2023, Australian Privacy Act).
+
+- **Only analytics needs consent.** Every first-party cookie (`ujc_session`, `ujc_csrf`,
+  `cb_visitor`, `ujc_upwork_oauth`, `ujc_locale`, `ujc_consent`) and local-storage key (theme,
+  timezone, viewed jobs) is strictly necessary or a preference the visitor set, so they stay on.
+  GTM → GA4 is the only optional purpose; there are no ad tags.
+- **Prior consent, "basic" Consent Mode.** GTM isn't injected at all until analytics is granted
+  (no cookieless pings either). A `<head>` script still sets Google Consent Mode v2 to "denied"
+  for every signal and re-grants `analytics_storage` for a returning visitor who accepted, so any
+  tag that does load respects the choice from its first hit. Ad signals are always denied.
+- **Refusing is as easy as accepting.** "Reject all" and "Accept all" are the same button style
+  on the first layer; "Customize" shows the two categories with analytics off by default. No
+  cookie wall: the site works while the banner is open.
+- **Withdraw any time.** "Cookie settings" (privacy page and the hero's sources popover) reopens
+  the panel. Withdrawing updates Consent Mode, deletes `_ga*`/`_gid`/`_gat*` on the host and its
+  parent domains, and reloads if GTM was already running (a loaded container can't be unloaded).
+- **Record and expiry.** The choice is the cookie `ujc_consent=v<version>.a<0|1>.<unix s>` for
+  180 days, then the banner asks again. Bump `CONSENT_VERSION` when a new optional cookie or
+  purpose is added so everyone is asked again. The privacy page lists every cookie, purpose and
+  lifetime; keep it in step with the API.

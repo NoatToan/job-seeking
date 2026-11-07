@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { GoogleTagManager } from "@next/third-parties/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ToastProvider } from "@ujc/ui";
 import "./globals.css";
@@ -9,6 +8,8 @@ import { LoginGateProvider } from "@/lib/login-modal";
 import { ThemeSync } from "@/lib/theme";
 import { THEME_COLORS, THEME_INIT_SCRIPT } from "@/lib/theme-core";
 import { LANGUAGE_INIT_SCRIPT } from "@/lib/i18n";
+import { CONSENT_INIT_SCRIPT } from "@/lib/consent-core";
+import { CookieConsent } from "@/lib/consent";
 import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 import { AppShell } from "./nav";
 import { ViewedSync } from "./viewed-sync";
@@ -47,8 +48,8 @@ export const viewport: Viewport = {
   ],
 };
 
-// Google Tag Manager container (GA4 is configured inside it). Build with NEXT_PUBLIC_GTM_ID="" to
-// turn it off, e.g. for local dev.
+// Google Tag Manager container (GA4 is configured inside it), loaded by `CookieConsent` only after
+// the visitor accepts analytics. Build with NEXT_PUBLIC_GTM_ID="" to turn it off, e.g. for local dev.
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-WSR78ZW4";
 
 // System font stack only (DESIGN_SYSTEM.md §4: no web font download; `--font-sans` in
@@ -62,8 +63,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Appearance (System/Light/Dark) applied before first paint, no flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_INIT_SCRIPT }} />
+        {/* Consent Mode v2 defaults ("denied") before any Google tag can run. */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_INIT_SCRIPT }} />
       </head>
-      {GTM_ID ? <GoogleTagManager gtmId={GTM_ID} /> : null}
       <body className="min-h-full bg-grouped text-label">
         <ThemeSync />
         <NuqsAdapter>
@@ -74,6 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <LoginGateProvider>
                   <AppShell>{children}</AppShell>
                 </LoginGateProvider>
+                <CookieConsent gtmId={GTM_ID} />
               </ToastProvider>
             </SessionProvider>
           </I18nProvider>
