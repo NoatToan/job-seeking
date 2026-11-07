@@ -15,6 +15,7 @@ dependencies = [
     "cryptography>=43",
     "job_crawler",
     "job_search_mcp",
+    "tzdata>=2025.2",
 ]
 
 [dependency-groups]
