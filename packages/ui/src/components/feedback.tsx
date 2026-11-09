@@ -1,8 +1,8 @@
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { cx } from "../cx";
 import { useUiStrings } from "../strings";
 import { CheckIcon } from "../icons";
+import { AvatarImage } from "./avatar-image";
 
 /* ------------------------------------------------------------------ Skeleton */
 
@@ -337,19 +337,24 @@ export function Avatar({ name, src, size = 36, shape = "circle", className }: Av
   const hash = Array.from(name).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
   const tone = avatarTones[hash % avatarTones.length];
   const style = { width: size, height: size, fontSize: Math.round(size * 0.4) };
-  // A logo that fails to load (dead link, unknown site) falls back to the initials.
-  const [failed, setFailed] = useState<string | null>(null);
-  if (src && failed !== src) {
+  const initialsTile = (
+    <span
+      role="img"
+      aria-label={name}
+      style={style}
+      className={cx("inline-flex shrink-0 select-none items-center justify-center font-semibold", radius, tone, className)}
+    >
+      <span aria-hidden>{initials(name)}</span>
+    </span>
+  );
+  if (src) {
+    // A logo that fails to load (dead link, unknown site) falls back to the initials.
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <AvatarImage
         src={src}
         alt={name}
         style={style}
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => setFailed(src)}
+        fallback={initialsTile}
         className={cx(
           "shrink-0",
           // Company logos come in every shape: fit them on a white tile instead of cropping.
@@ -360,16 +365,7 @@ export function Avatar({ name, src, size = 36, shape = "circle", className }: Av
       />
     );
   }
-  return (
-    <span
-      role="img"
-      aria-label={name}
-      style={style}
-      className={cx("inline-flex shrink-0 select-none items-center justify-center font-semibold", radius, tone, className)}
-    >
-      <span aria-hidden>{initials(name)}</span>
-    </span>
-  );
+  return initialsTile;
 }
 
 /* ------------------------------------------------------------------ ProgressSteps */
