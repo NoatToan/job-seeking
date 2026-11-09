@@ -52,7 +52,11 @@ export function jobPostingJsonLd(job: JobDetail, extras: JobPostingExtras = {}):
     datePosted: job.postedAt ?? job.firstSeenAt,
     url: `${SITE_URL}${jobPagePath(job)}`,
     identifier: { "@type": "PropertyValue", name: SITE_NAME, value: job.id },
-    hiringOrganization: { "@type": "Organization", name: job.company },
+    hiringOrganization: {
+      "@type": "Organization",
+      name: job.company,
+      ...(job.companyLogo ? { logo: job.companyLogo } : {}),
+    },
     directApply: false,
   };
   if (extras.lastSeenAt && extras.activeDays) {

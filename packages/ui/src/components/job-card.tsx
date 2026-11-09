@@ -63,7 +63,7 @@ export function JobCard({ job, detailsHref, linkAs: LinkAs = "a", actions, statu
       )}
     >
       <div className="flex items-start gap-3">
-        <Avatar name={job.company || job.title} shape="rounded" size={40} />
+        <Avatar name={job.company || job.title} src={job.companyLogo} shape="rounded" size={40} />
         <div className="min-w-0 flex-1">
           <h3 className="text-headline text-label">
             <a
@@ -243,7 +243,7 @@ export function JobListItem({
         </>
       ) : null}
       <Avatar
-        name={job.company || job.title}
+        name={job.company || job.title} src={job.companyLogo}
         shape="rounded"
         size={40}
         className={cx("rounded-xl", viewed && !selected && "opacity-60")}

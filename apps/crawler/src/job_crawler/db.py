@@ -18,7 +18,15 @@ ERROR_MAX_LEN = 2000
 _WRITTEN = (*DERIVED_COLUMNS, *PARSED_COLUMNS)
 _DERIVED_INSERT = ", ".join(_WRITTEN)
 _DERIVED_VALUES = ", ".join(f"%({c})s" for c in _WRITTEN)
-_DERIVED_UPDATE = "".join(f"  {c} = EXCLUDED.{c},\n" for c in _WRITTEN)
+# Columns whose stored value is kept when this crawl derives none (a logo shared from another
+# job of the same company, see `share_company_logos`).
+_KEEP_STORED = {"company_logo"}
+_DERIVED_UPDATE = "".join(
+    f"  {c} = COALESCE(EXCLUDED.{c}, jobs.{c}),\n"
+    if c in _KEEP_STORED
+    else f"  {c} = EXCLUDED.{c},\n"
+    for c in _WRITTEN
+)
 
 UPSERT_SQL = f"""
 INSERT INTO jobs (
@@ -89,6 +97,8 @@ def job_params(job: JobRecord) -> dict[str, Any]:
             raw=job.raw,
             tags=job.tags,
             salary_text=job.salary_text,
+            url=job.url,
+            apply_url=job.apply_url,
         )
     )
     params.update(parse_posting(title=job.title, description=params["description"], raw=job.raw))
@@ -245,10 +255,23 @@ def recompute_derived(conn: psycopg.Connection) -> int:
     # A server-side (named) cursor needs a transaction even on an autocommit connection.
     with conn.transaction(), conn.cursor(name="derived_recompute") as cur:
         cur.execute(
-            f"SELECT id, title, location, description, remote, raw, tags, salary_text, {cols}"
+            "SELECT id, title, location, description, remote, raw, tags, salary_text, url,"
+            f" apply_url, {cols}"
             " FROM jobs"
         )
-        for job_id, title, location, description, remote, raw, tags, salary_text, *current in cur:
+        for (
+            job_id,
+            title,
+            location,
+            description,
+            remote,
+            raw,
+            tags,
+            salary_text,
+            url,
+            apply_url,
+            *current,
+        ) in cur:
             fresh = derive(
                 title=title,
                 location=location,
@@ -257,16 +280,40 @@ def recompute_derived(conn: psycopg.Connection) -> int:
                 raw=raw,
                 tags=list(tags or []),
                 salary_text=salary_text,
+                url=url,
+                apply_url=apply_url,
             )
-            values = [fresh[c] for c in DERIVED_COLUMNS]
             # NUMERIC columns come back as Decimal; compare as floats.
             current = [float(v) if isinstance(v, Decimal) else v for v in current]
+            stored = dict(zip(DERIVED_COLUMNS, current, strict=True))
+            values = [
+                stored[c] if c in _KEEP_STORED and fresh[c] is None else fresh[c]
+                for c in DERIVED_COLUMNS
+            ]
             if values != current:
                 changed.append((*values, job_id))
     sets = ", ".join(f"{c} = %s" for c in DERIVED_COLUMNS)
     with conn.transaction(), conn.cursor() as cur:
         cur.executemany(f"UPDATE jobs SET {sets} WHERE id = %s", changed)
     return len(changed)
+
+
+def share_company_logos(conn: psycopg.Connection) -> int:
+    """Jobs without a logo (Lever, Ashby, WWR, Arc send none) borrow one found for the same
+    company name on another job, e.g. a Himalayas posting of the same employer. Logos derived from
+    the job's own data are never overwritten. Returns rows updated."""
+    cur = conn.execute(
+        """
+        UPDATE jobs j SET company_logo = s.logo
+        FROM (
+          SELECT lower(company) AS name, mode() WITHIN GROUP (ORDER BY company_logo) AS logo
+          FROM jobs WHERE company_logo IS NOT NULL AND btrim(company) <> ''
+          GROUP BY lower(company)
+        ) s
+        WHERE j.company_logo IS NULL AND lower(j.company) = s.name
+        """
+    )
+    return cur.rowcount
 
 
 BACKFILL_BATCH = 500

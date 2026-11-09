@@ -48,6 +48,9 @@ export interface Job {
    * posting says it doesn't), `required` = you must live there or move there (false = "no
    * relocation required"); null = not stated. Absent on payloads that predate it. */
   relocation?: { support: boolean | null; required: boolean | null } | null;
+  /** Company logo URL (job_crawler.logo): the source's logo or the employer's site icon.
+   * null/absent = unknown, the apps show the company's initials. */
+  companyLogo?: string | null;
   /** Claude's fit score for the profile's latest CV (job_crawler.matching), if scored */
   match?: { score: number; summary: string; missingSkills: string[] } | null;
   /** What other job seekers say about this posting (apps/api ujc_api/job_votes.py); null/absent =

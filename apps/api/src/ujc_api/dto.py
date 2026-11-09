@@ -11,7 +11,7 @@ JOB_COLUMNS = (
     "id, source, url, apply_url, title, company, location, remote, employment_type,"
     " salary_text, tags, open_to, posted_at, first_seen_at, timezones, timezone_source,"
     " tech_stack, salary_min, salary_max, salary_currency, salary_period, salary_source,"
-    " level, level_source, relocation_support, relocation_required"
+    " level, level_source, relocation_support, relocation_required, company_logo"
 )
 
 CV_COLUMNS = "id, filename, status, error, keywords, profile, created_at, processed_at"
@@ -70,6 +70,7 @@ def job_dto(row: tuple) -> dict[str, Any]:
         level_source,
         relocation_support,
         relocation_required,
+        company_logo,
     ) = row
     salary = (
         Salary(
@@ -120,6 +121,8 @@ def job_dto(row: tuple) -> dict[str, Any]:
         # posting says it doesn't), `required` = you must live there or move there (false = "no
         # relocation required"); null = the posting doesn't say.
         "relocation": {"support": relocation_support, "required": relocation_required},
+        # Company logo URL (job_crawler.logo); null = the app shows the company's initials.
+        "companyLogo": company_logo,
     }
 
 

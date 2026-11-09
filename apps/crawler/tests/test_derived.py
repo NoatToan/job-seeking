@@ -23,7 +23,9 @@ def test_derive_returns_every_derived_column():
 def test_upsert_writes_every_derived_column():
     for column in DERIVED_COLUMNS:
         assert f"%({column})s" in UPSERT_SQL
-        assert f"{column} = EXCLUDED.{column}" in UPSERT_SQL
+        assert f"{column} = EXCLUDED.{column}" in UPSERT_SQL or (
+            f"{column} = COALESCE(EXCLUDED.{column}, jobs.{column})" in UPSERT_SQL
+        )
 
 
 def test_salary_prefers_the_source_text_then_the_posting():
