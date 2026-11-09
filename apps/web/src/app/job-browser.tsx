@@ -21,6 +21,7 @@ import {
   OVERSCAN_ROWS,
   type RowWindow,
   layoutRows,
+  handoffProgress,
   nextSelection,
   offsetToReveal,
   refreshWindow,
@@ -314,6 +315,30 @@ export function JobBrowser({
     updateWindow();
   }, [layout, updateWindow]);
 
+  // Handoff progress (Slack: "animated progress showing it will move to the next job, like on
+  // mobile, only on the active item and the next one"): a bar on the selected row and on the row
+  // that takes over fills as the selected row scrolls out. Painted straight onto the two rows'
+  // style on each scroll frame, so it tracks the finger without re-rendering the list.
+  const painted = useRef<HTMLElement[]>([]);
+  const paintHandoff = useCallback((selectedIndex: number, vp: { offset: number; view: number }) => {
+    const list = listRef.current;
+    for (const row of painted.current) {
+      row.style.removeProperty("--handoff");
+      delete row.dataset.handoff;
+    }
+    painted.current = [];
+    const handoff = handoffProgress(layoutRef.current, selectedIndex, vp.offset, vp.view);
+    if (!list || !handoff) return;
+    const ids = [jobsRef.current[selectedIndex]?.id, jobsRef.current[handoff.next]?.id];
+    ids.forEach((id, i) => {
+      const row = id ? list.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`) : null;
+      if (!row) return;
+      row.style.setProperty("--handoff", handoff.progress.toFixed(3));
+      row.dataset.handoff = i === 0 ? "from" : "to";
+      painted.current.push(row);
+    });
+  }, []);
+
   // Scroll-spy: keep the selected job while at least half of it is still visible; once it
   // scrolls out, the nearest visible row on that side takes over (lib/windowed-list
   // `nextSelection`). No snapping and no scroll-to, so scrolling stays smooth.
@@ -325,7 +350,8 @@ export function JobBrowser({
     const current = list.findIndex((j) => j.id === (selectedRef.current ?? list[0]?.id));
     const next = nextSelection(layoutRef.current, current, vp.offset, vp.view);
     if (next !== null && list[next]) setSelectedId(list[next].id);
-  }, [setSelectedId, viewport]);
+    paintHandoff(next ?? current, vp);
+  }, [setSelectedId, viewport, paintHandoff]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -457,7 +483,7 @@ export function JobBrowser({
         <div ref={listRef} role="list" aria-label={t("list.jobsAriaLabel")} className="flex flex-col gap-2.5">
           {topSpacer > 0 ? <div aria-hidden="true" style={{ height: topSpacer }} /> : null}
           {jobs.slice(start, end).map((job) => (
-            <div role="listitem" key={job.id} data-row-id={job.id}>
+            <div role="listitem" key={job.id} data-row-id={job.id} className="handoff-row">
               <JobListItem
                 job={job}
                 href={jobHref(job.id)}

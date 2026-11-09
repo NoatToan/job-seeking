@@ -137,3 +137,28 @@ export function offsetToReveal(layout: RowLayout, index: number, offset: number,
   if (top + h > offset + view) return top + h - view;
   return null;
 }
+
+export interface Handoff {
+  /** Row that takes over when `progress` reaches 1 (the next one down, or up when scrolling back). */
+  next: number;
+  /** 0 = the selected row is fully in view, 1 = it is half out and the scroll-spy hands over. */
+  progress: number;
+}
+
+/**
+ * How close the scroll-spy is to moving the selection (Slack: "an animated progress showing it's
+ * about to switch to the next job, like on mobile, only on the active item and the next one").
+ * Mirrors `nextSelection`: the selected row hands over once half of it has left the viewport, so
+ * progress is the share of that half already scrolled out. `null` while it is fully visible.
+ */
+export function handoffProgress(layout: RowLayout, selected: number, offset: number, view: number): Handoff | null {
+  const n = layout.tops.length;
+  const top = layout.tops[selected];
+  const h = layout.heights[selected];
+  if (top === undefined || h === undefined || h <= 0) return null;
+  const outAbove = offset - top;
+  const outBelow = top + h - (offset + view);
+  const [out, next] = outAbove > 0 ? [outAbove, selected + 1] : [outBelow, selected - 1];
+  if (out <= 0 || next < 0 || next >= n) return null;
+  return { next, progress: Math.min(1, out / (h / 2)) };
+}

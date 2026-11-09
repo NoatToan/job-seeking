@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   OVERSCAN_ROWS,
   WINDOW_FROM_ROWS,
+  handoffProgress,
   layoutRows,
   nextSelection,
   offsetToReveal,
@@ -71,5 +72,20 @@ describe("offsetToReveal", () => {
     expect(offsetToReveal(layout, 2, 0, 660)).toBeNull();
     expect(offsetToReveal(layout, 6, 0, 660)).toBe(110 * 6 + 100 - 660);
     expect(offsetToReveal(layout, 1, 300, 660)).toBe(110);
+  });
+});
+
+describe("handoffProgress", () => {
+  const layout = grid(100);
+  it("is null while the selected row is fully visible", () => {
+    expect(handoffProgress(layout, 3, 110 * 3, 660)).toBeNull();
+  });
+  it("grows as the row scrolls out above, towards the next row", () => {
+    expect(handoffProgress(layout, 3, 110 * 3 + 25, 660)).toEqual({ next: 4, progress: 0.5 });
+    expect(handoffProgress(layout, 3, 110 * 3 + 80, 660)).toEqual({ next: 4, progress: 1 });
+  });
+  it("points at the previous row when the selection leaves at the bottom", () => {
+    // Row 6 spans 660..760; a viewport ending at 735 hides 25px of it.
+    expect(handoffProgress(layout, 6, 75, 660)).toEqual({ next: 5, progress: 0.5 });
   });
 });
