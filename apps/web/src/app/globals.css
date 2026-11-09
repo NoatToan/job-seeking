@@ -20,3 +20,33 @@ body:has([aria-modal="true"]) [data-contrib-widget]:not([data-testid="contrib-pi
 html[data-i18n-pending] body {
   visibility: hidden;
 }
+
+/* Job list handoff progress (JobBrowser `paintHandoff`): a thin bar along the bottom of the
+   selected row ("from") and of the row about to take over ("to", fainter) fills as the selected
+   row scrolls out. `--handoff` (0–1) is written per scroll frame; the bar follows it 1:1, only
+   its fade in/out is animated. */
+.handoff-row {
+  position: relative;
+}
+.handoff-row::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  right: 14px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--color-tint);
+  transform-origin: left center;
+  transform: scaleX(var(--handoff, 0));
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.handoff-row[data-handoff="from"]::after {
+  opacity: 1;
+}
+.handoff-row[data-handoff="to"]::after {
+  opacity: 0.45;
+}
