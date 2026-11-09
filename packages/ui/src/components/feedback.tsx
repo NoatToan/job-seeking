@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cx } from "../cx";
 import { useUiStrings } from "../strings";
 import { CheckIcon } from "../icons";
+import { AvatarImage } from "./avatar-image";
 
 /* ------------------------------------------------------------------ Skeleton */
 
@@ -336,11 +337,7 @@ export function Avatar({ name, src, size = 36, shape = "circle", className }: Av
   const hash = Array.from(name).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
   const tone = avatarTones[hash % avatarTones.length];
   const style = { width: size, height: size, fontSize: Math.round(size * 0.4) };
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={name} style={style} className={cx("shrink-0 object-cover", radius, className)} />;
-  }
-  return (
+  const initialsTile = (
     <span
       role="img"
       aria-label={name}
@@ -350,6 +347,25 @@ export function Avatar({ name, src, size = 36, shape = "circle", className }: Av
       <span aria-hidden>{initials(name)}</span>
     </span>
   );
+  if (src) {
+    // A logo that fails to load (dead link, unknown site) falls back to the initials.
+    return (
+      <AvatarImage
+        src={src}
+        alt={name}
+        style={style}
+        fallback={initialsTile}
+        className={cx(
+          "shrink-0",
+          // Company logos come in every shape: fit them on a white tile instead of cropping.
+          shape === "rounded" ? "bg-white object-contain p-0.5 ring-1 ring-separator" : "object-cover",
+          radius,
+          className,
+        )}
+      />
+    );
+  }
+  return initialsTile;
 }
 
 /* ------------------------------------------------------------------ ProgressSteps */

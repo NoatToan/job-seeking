@@ -86,7 +86,7 @@ export function SeoJobRow({ job }: { job: SeoJob }) {
   const posted = formatDate(job.postedAt ?? job.firstSeenAt);
   return (
     <article className="group relative flex gap-3 rounded-[18px] border border-separator bg-background p-3.5 transition-[border-color,box-shadow] duration-200 hover:border-control-border/50 hover:shadow-raised">
-      <Avatar name={job.company || job.title} shape="rounded" size={40} className="rounded-xl" />
+      <Avatar name={job.company || job.title} src={job.companyLogo} shape="rounded" size={40} className="rounded-xl" />
       <div className="min-w-0 flex-1">
         <h3 className="line-clamp-2 text-subheadline font-semibold leading-snug text-label">
           <Link

@@ -71,7 +71,7 @@ export function JobDetail({
       {/* The sky at the job's hours on your clock, bleeding to the panel's padded corner. */}
       {phase ? <SkyScene phase={phase} size={variant === "panel" ? "panel-bleed" : "panel"} /> : null}
       <header className="flex items-start gap-4">
-        <Avatar name={job.company || job.title} shape="rounded" size={56} className="rounded-2xl" />
+        <Avatar name={job.company || job.title} src={job.companyLogo} shape="rounded" size={56} className="rounded-2xl" />
         <div className="min-w-0 flex-1">
           <p className="text-subheadline font-semibold text-label">{job.company}</p>
           <h1

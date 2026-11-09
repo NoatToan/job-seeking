@@ -175,6 +175,7 @@ class FakeJobsConn:
                         j.get("level_source"),
                         j.get("relocation_support"),
                         j.get("relocation_required"),
+                        j.get("company_logo"),
                         *_NO_VOTE_STATS,
                     )
                     for j in rows
@@ -213,6 +214,7 @@ class FakeJobsConn:
                             job.get("level_source"),
                             job.get("relocation_support"),
                             job.get("relocation_required"),
+                            job.get("company_logo"),
                             job.get("description"),
                             job.get("sections"),
                             *_NO_VOTE_STATS,
