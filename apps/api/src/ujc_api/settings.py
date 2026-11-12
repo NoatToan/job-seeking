@@ -92,6 +92,15 @@ class Settings(BaseSettings):
     # admin without a database write; empty = only the `role` column counts.
     ujc_admin_emails: str = ""
 
+    # Feedback -> GitHub issue (ujc_api.feedback_github). Off until the token is set: a
+    # fine-grained token with "Issues: read and write" on `feedback_github_repo` only. When an
+    # admin moves a feedback item to `feedback_github_status`, the API opens one issue, labelled
+    # `ai:fix` (bug) or `ai:plan` (idea/feedback) for the local AI coder
+    # (docs/DEVELOPMENT.md "AI coder").
+    feedback_github_token: str | None = None
+    feedback_github_repo: str = "NoatToan/job-seeking"
+    feedback_github_status: Literal["approved", "planned"] = "planned"
+
     def admin_emails(self) -> frozenset[str]:
         return frozenset(e.strip().lower() for e in self.ujc_admin_emails.split(",") if e.strip())
 
