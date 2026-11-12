@@ -1,0 +1,254 @@
+name: AI coder
+
+# Feedback -> GitHub issue -> Claude (`claude -p`) -> pull request.
+#
+# The API opens an issue when an admin moves a feedback item to "Planned"
+# (apps/api/src/ujc_api/feedback_github.py); maintainers can also add the labels by hand.
+# - label `ai:fix` (bugs): Claude fixes it and opens a PR that closes the issue.
+# - label `ai:plan` (ideas): Claude posts a plan as a comment and labels the issue
+#   `ai:awaiting-approval`. A maintainer (OWNER / MEMBER / COLLABORATOR) then comments `/approve`
+#   (or adds the label `ai:approved`) and Claude implements it in a PR; `/replan` after correcting
+#   the plan in a comment writes a new one.
+# Nothing is merged automatically: every PR waits for a human review.
+#
+# Prompts: scripts/ai-issue/ (common.md + fix.md / plan.md / build.md).
+# Secret: ANTHROPIC_API_KEY (shared with the release notes). Optional secret AI_GITHUB_TOKEN: a
+# fine-grained token (contents + pull requests: write) to push and open the PR, so CI runs on it
+# (GitHub never starts workflows for a PR opened with the default GITHUB_TOKEN).
+# Variable (optional): AI_CODER_MODEL (default claude-sonnet-5).
+#
+# Safety: the issue can quote text from an anonymous visitor, so Claude runs without any GitHub
+# credentials (checkout does not persist them), with a short tool allowlist (plan mode is
+# read-only), and only this workflow's later steps push.
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ai-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: >-
+      !github.event.issue.pull_request && (
+        (github.event_name == 'issues'
+          && contains(fromJSON('["ai:fix","ai:plan","ai:approved"]'), github.event.label.name))
+        || (github.event_name == 'issue_comment'
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+          && (startsWith(github.event.comment.body, '/approve') || startsWith(github.event.comment.body, '/replan')))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Pick the mode
+        id: mode
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map((l) => l.name);
+            let mode = '';
+            if (context.eventName === 'issues') {
+              const label = context.payload.label.name;
+              if (label === 'ai:fix') mode = 'fix';
+              else if (label === 'ai:plan') mode = 'plan';
+              else if (label === 'ai:approved' && labels.includes('ai:plan')) mode = 'build';
+            } else if (labels.includes('ai:plan')) {
+              const body = context.payload.comment.body.trim();
+              if (body.startsWith('/approve')) mode = 'build';
+              else if (body.startsWith('/replan')) mode = 'plan';
+            }
+            if (issue.state !== 'open') mode = '';
+            core.info(`mode: ${mode || '(nothing to do)'}`);
+            core.setOutput('mode', mode);
+
+      - name: Check the Anthropic key
+        if: steps.mode.outputs.mode != ''
+        id: key
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::notice::ANTHROPIC_API_KEY is not set; the AI coder is off."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        if: steps.key.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ok == 'true'
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.key.outputs.ok == 'true' && steps.mode.outputs.mode != 'plan'
+
+      - name: Install dependencies
+        if: steps.key.outputs.ok == 'true' && steps.mode.outputs.mode != 'plan'
+        run: |
+          pnpm install --frozen-lockfile
+          (cd apps/api && uv sync)
+
+      - name: Write the prompt
+        if: steps.key.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const mode = process.env.MODE;
+            const issue = context.payload.issue;
+            const read = (f) => fs.readFileSync(path.join('scripts/ai-issue', f), 'utf8');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...context.repo,
+              issue_number: issue.number,
+              per_page: 100,
+            });
+            // Only maintainers and this workflow's own comments (the plan) reach the prompt.
+            const trusted = comments.filter(
+              (c) =>
+                ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(c.author_association) ||
+                c.user.login === 'github-actions[bot]',
+            );
+            const thread = trusted
+              .map((c) => `#### Comment by @${c.user.login} (${c.created_at})\n\n${c.body}`)
+              .join('\n\n');
+            const prompt = [
+              read('common.md'),
+              read(`${mode}.md`),
+              `## The issue: #${issue.number} ${issue.title}`,
+              issue.body || '(no description)',
+              thread ? `## Comments\n\n${thread}` : '',
+            ].join('\n\n');
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'prompt.md'), prompt);
+
+      - name: Run Claude
+        if: steps.key.outputs.ok == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ vars.AI_CODER_MODEL || 'claude-sonnet-5' }}
+          MODE: ${{ steps.mode.outputs.mode }}
+        run: |
+          if [ "$MODE" = "plan" ]; then
+            TOOLS="Read,Glob,Grep"
+          else
+            TOOLS="Read,Glob,Grep,Edit,Write,Bash(git status*),Bash(git diff*),Bash(ls *)"
+            TOOLS="$TOOLS,Bash(pnpm --filter web typecheck*),Bash(pnpm --filter web lint*),Bash(pnpm --filter web test*)"
+            TOOLS="$TOOLS,Bash(pnpm -r typecheck*),Bash(pnpm -r lint*),Bash(pnpm -r test*)"
+            TOOLS="$TOOLS,Bash(uv run pytest*),Bash(uv run ruff*),Bash(cd apps/*)"
+          fi
+          pnpm dlx @anthropic-ai/claude-code -p "$(cat "$RUNNER_TEMP/prompt.md")" \
+            --model "$MODEL" --max-turns 100 --permission-mode dontAsk \
+            --allowedTools "$TOOLS" > "$RUNNER_TEMP/out.md"
+
+      - name: Post the plan
+        if: steps.key.outputs.ok == 'true' && steps.mode.outputs.mode == 'plan'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const out = fs.readFileSync(`${process.env.RUNNER_TEMP}/out.md`, 'utf8').trim();
+            const body = [
+              '<!-- ai-plan -->',
+              '**AI plan**',
+              '',
+              out,
+              '',
+              '---',
+              'A maintainer replies `/approve` to start coding, or comments corrections and then `/replan`.',
+            ].join('\n');
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.payload.issue.number, body });
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.payload.issue.number,
+              labels: ['ai:awaiting-approval'],
+            });
+
+      - name: Commit and push
+        if: steps.key.outputs.ok == 'true' && steps.mode.outputs.mode != 'plan'
+        id: push
+        env:
+          GH_PUSH_TOKEN: ${{ secrets.AI_GITHUB_TOKEN || github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BRANCH="ai/issue-${ISSUE}-${RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "AI coder: issue #${ISSUE}"
+          git push "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Open the pull request
+        if: steps.key.outputs.ok == 'true' && steps.mode.outputs.mode != 'plan'
+        uses: actions/github-script@v7
+        env:
+          CHANGED: ${{ steps.push.outputs.changed }}
+          BRANCH: ${{ steps.push.outputs.branch }}
+          MODE: ${{ steps.mode.outputs.mode }}
+        with:
+          github-token: ${{ secrets.AI_GITHUB_TOKEN || github.token }}
+          script: |
+            const fs = require('fs');
+            const issue = context.payload.issue;
+            const out = fs.readFileSync(`${process.env.RUNNER_TEMP}/out.md`, 'utf8').trim();
+            let comment;
+            if (process.env.CHANGED === 'true') {
+              const prefix = process.env.MODE === 'fix' ? 'Fix' : 'Implement';
+              const { data: pr } = await github.rest.pulls.create({
+                ...context.repo,
+                head: process.env.BRANCH,
+                base: 'main',
+                title: `${prefix} #${issue.number}: ${issue.title}`.slice(0, 250),
+                body: `${out}\n\nCloses #${issue.number}\n\n🤖 Written by Claude (\`claude -p\`) in the AI coder workflow. Review before merging.`,
+              });
+              comment = `Opened ${pr.html_url} for review.`;
+            } else {
+              comment = `**AI coder** made no change.\n\n${out}`;
+            }
+            await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: comment });
+            if (process.env.MODE === 'build') {
+              await github.rest.issues
+                .removeLabel({ ...context.repo, issue_number: issue.number, name: 'ai:awaiting-approval' })
+                .catch(() => {});
+            }
+
+      - name: Report a failure
+        if: failure() && steps.mode.outputs.mode != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.issue.number,
+              body: `AI coder run failed: ${url}`,
+            });

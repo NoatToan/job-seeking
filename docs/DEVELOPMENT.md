@@ -100,6 +100,29 @@ through reported comments (hide, delete, dismiss).
   applied migration. Commit the result with the usual checks green. See
   `product/ARCHITECTURE.md` D14.
 
+## AI coder (feedback -> GitHub issue -> Claude -> PR)
+
+1. **Feedback -> issue** (`apps/api/src/ujc_api/feedback_github.py`): when an admin moves a
+   feedback item to `FEEDBACK_GITHUB_STATUS` (default `planned`) at `/admin/feedback/`, the API
+   opens one issue in `FEEDBACK_GITHUB_REPO` (default `NoatToan/job-seeking`), labelled
+   `feedback` + `bug` + `ai:fix` for a bug, or `feedback` + `enhancement` + `ai:plan` otherwise,
+   and records it in `feedback_github_issues` (later saves never open a second one). The visitor's
+   text is quoted in code blocks, without their identity or screenshot. Off until
+   `FEEDBACK_GITHUB_TOKEN` is set in Vercel: a fine-grained token with "Issues: read and write"
+   on this repo only. A GitHub error never fails the admin's save; the next save retries.
+2. **Issue -> Claude** (`.github/workflows/ai-issue.yml`, prompts in `scripts/ai-issue/`):
+   - `ai:fix`: `claude -p` fixes the bug with a test and opens a PR that closes the issue.
+   - `ai:plan`: `claude -p` (read-only tools) posts a plan as a comment and adds
+     `ai:awaiting-approval`. A maintainer comments `/approve` (or adds `ai:approved`) and Claude
+     implements it in a PR; comment corrections and `/replan` for a new plan.
+   - Labels can be added by hand to any issue too. Only comments from OWNER / MEMBER /
+     COLLABORATOR reach the prompt; Claude runs without GitHub credentials and with a short tool
+     allowlist. PRs are never merged automatically.
+   - Secrets: `ANTHROPIC_API_KEY` (already used by the release notes); optional
+     `AI_GITHUB_TOKEN` (contents + pull requests: write) so CI runs on the AI's PRs (a PR opened
+     with the default `GITHUB_TOKEN` starts no workflows). Variable `AI_CODER_MODEL` (default
+     `claude-sonnet-5`).
+
 ## Analytics
 
 - Google Tag Manager container `GTM-WSR78ZW4` loads on every page (`apps/web/src/app/layout.tsx`). Set `NEXT_PUBLIC_GTM_ID` at build time to use another container, or to an empty string to turn it off (e.g. local dev).
