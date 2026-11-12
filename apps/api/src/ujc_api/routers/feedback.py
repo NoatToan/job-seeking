@@ -16,13 +16,16 @@ Anonymous comments are on (`allow_anonymous_comments=True`): a signed-out visito
 a pseudonym ("Brave Otter #123") derived from the `cb_visitor` cookie, an HttpOnly random id
 signed with `UJC_SECRET_KEY` (`Secure` except in local development, like the session cookie).
 Votes always need a session.
+
+An admin moving an item to `FEEDBACK_GITHUB_STATUS` opens a GitHub issue for the AI coder
+workflow: `github_issue_hook` runs after the vendored routes (see `ujc_api.feedback_github`).
 """
 
 import hashlib
 import hmac
 
 import psycopg
-from fastapi import Depends, Request
+from fastapi import APIRouter, Depends, Request
 
 from contributor_box import (
     FeedbackDeps,
@@ -35,6 +38,7 @@ from ujc_api.auth.csrf import require_csrf
 from ujc_api.auth.deps import AuthedUser, current_user, optional_user
 from ujc_api.db import get_conn
 from ujc_api.deps import app_settings
+from ujc_api.feedback_github import github_issue_hook
 from ujc_api.net import client_ip
 from ujc_api.settings import Settings
 
@@ -62,7 +66,7 @@ def visitor_cookies(settings: Settings = Depends(app_settings)) -> VisitorCookie
     return VisitorCookies(settings.ujc_secret_key, secure=settings.ujc_env != "development")
 
 
-router = create_feedback_router(
+_vendored_router = create_feedback_router(
     FeedbackDeps(
         current_user=current_user,
         viewer_is_admin=viewer_is_admin,
@@ -80,3 +84,6 @@ router = create_feedback_router(
     # (owner, 2026-11-07); admins can still move or reject it.
     initial_status="approved",
 )
+
+router = APIRouter()
+router.include_router(_vendored_router, dependencies=[Depends(github_issue_hook)])

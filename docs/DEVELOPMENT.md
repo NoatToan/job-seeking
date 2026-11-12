@@ -100,6 +100,27 @@ through reported comments (hide, delete, dismiss).
   applied migration. Commit the result with the usual checks green. See
   `product/ARCHITECTURE.md` D14.
 
+## AI coder (feedback -> GitHub issue -> Claude -> PR)
+
+1. **Feedback -> issue** (`apps/api/src/ujc_api/feedback_github.py`): when an admin moves a
+   feedback item to `FEEDBACK_GITHUB_STATUS` (default `planned`) at `/admin/feedback/`, the API
+   opens one issue in `FEEDBACK_GITHUB_REPO` (default `NoatToan/job-seeking`), labelled
+   `feedback` + `bug` + `ai:fix` for a bug, or `feedback` + `enhancement` + `ai:plan` otherwise,
+   and records it in `feedback_github_issues` (later saves never open a second one). The visitor's
+   text is quoted in code blocks, without their identity or screenshot. Off until
+   `FEEDBACK_GITHUB_TOKEN` is set in Vercel: a fine-grained token with "Issues: read and write"
+   on this repo only. A GitHub error never fails the admin's save; the next save retries.
+2. **Issue -> Claude**: runs on the team's local Claude Code (AI Coworker, `claude -p`), not in
+   GitHub Actions. A GitHub repository webhook (events: Issues, Issue comments) points at AI
+   Coworker's public tunnel; AI Coworker checks the `X-Hub-Signature-256` HMAC and runs the job in
+   its own worktree of this repo, like a Slack request:
+   - `ai:fix`: fix the bug with a test and open a PR that closes the issue.
+   - `ai:plan`: post a plan as an issue comment and add `ai:awaiting-approval`; a maintainer
+     (OWNER / MEMBER / COLLABORATOR) comments `/approve` to start the coding, or corrects the plan
+     and comments `/replan`.
+   - Only maintainers' comments reach the prompt; the visitor's text is data, not instructions.
+   - The webhook receiver lives in AI Coworker, not here; this repo only opens and labels issues.
+
 ## Analytics
 
 - Google Tag Manager container `GTM-WSR78ZW4` loads on every page (`apps/web/src/app/layout.tsx`). Set `NEXT_PUBLIC_GTM_ID` at build time to use another container, or to an empty string to turn it off (e.g. local dev).
