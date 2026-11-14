@@ -130,10 +130,32 @@ Then restart Claude Code and approve the servers in `/mcp`.
 - SEO: per-page titles (`%s · JobSeeking`), description, Open Graph/Twitter card with a build-time preview image (`opengraph-image.tsx`), `robots.txt` and `sitemap.xml` (signed-in pages are `noindex` and disallowed), schema.org `WebSite` + `SearchAction` on `/`. `NEXT_PUBLIC_SITE_URL` sets the canonical domain (default: the Vercel URL).
 - Static job pages for search engines (docs/product/ARCHITECTURE.md D12, §13): `/jobs/<title>-<company>-<id>/` with `JobPosting` JSON-LD, plus listings `/jobs/`, `/jobs/tech/<id>/`, `/jobs/country/<cc>/`, `/jobs/source/<id>/` and job sitemaps `/jobs/sitemap/<n>.xml`. They are prerendered from a build-time snapshot (`scripts/seo-snapshot.mjs`, read-only, needs `DATABASE_URL`; without it the build has no job pages). `/jobs/view/?id=` stays the live, `noindex` job screen; the home detail panel links to the static page ("Open job page").
 
+## Google indexing
+
+The site is verified in Google Search Console (`google-site-verification` meta,
+`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` in `apps/web/src/lib/site.ts`). On top of the sitemaps,
+`scripts/google-indexing/notify.mjs` announces job pages to the **Google Indexing API** (allowed
+for pages with `JobPosting` markup): every day after the rebuild (`google-indexing` job in
+`daily-crawl.yml`, also runnable by hand with a dry-run option) it diffs the live job sitemaps
+with `seo_indexing_notices` (migration 035) and sends new pages as `URL_UPDATED`, newest first,
+and pages gone from the sitemap as `URL_DELETED`, at most `GOOGLE_INDEXING_DAILY_QUOTA` (default
+200, the API's default quota) per run; a backlog drains over the following days. It refuses to act
+when the live sitemaps look broken (empty, or under half of what is announced).
+
+One-time setup (until then the job ends with a notice):
+
+1. Google Cloud: enable the **Web Search Indexing API** in a project and create a service
+   account with a JSON key (no IAM role needed).
+2. Search Console → Settings → Users and permissions: add the service account's email as an
+   **Owner** of the property.
+3. GitHub repository secret `GOOGLE_INDEXING_SA_JSON` = the JSON key (with `DATABASE_URL`,
+   already there).
+4. Also in Search Console: submit `/sitemap.xml`, `/sitemap-blog.xml` and `/jobs/sitemap/0.xml`.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on push to `main`:
-- `web`: install (`pnpm install --frozen-lockfile`), `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test`, and `pnpm --filter web build` (static export).
+- `web`: install (`pnpm install --frozen-lockfile`), `pnpm -r typecheck`, `pnpm -r lint`, `pnpm -r test`, `node --test scripts/google-indexing/plan.test.mjs`, and `pnpm --filter web build` (static export).
 - `python`: for each of `apps/api`, `apps/crawler`, `apps/mcp`, `uv sync`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run pytest`.
 - `api-db`: runs `apps/api`'s database-backed tests against a `postgres:17` service, then applies every migration from scratch with `node scripts/migrate.mjs` to prove they apply cleanly.
 

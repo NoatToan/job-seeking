@@ -171,8 +171,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={cx("flex min-h-dvh flex-col", (showChrome || chromePending) && "md:[--ujc-shell-top:3.5rem]")}>
       {chromePending ? (
         <TopNav
-          items={[]}
-          activeKey=""
+          // The public links are in the prerendered HTML too, so crawlers (and visitors before
+          // the session check ends) get real links from every page, not just the brand.
+          items={publicItems}
+          activeKey={activeKey}
+          linkAs={Link}
           brand={<BrandMark name={BRAND_NAME} />}
           trailing={
             <div aria-busy="true" className="flex items-center gap-2">

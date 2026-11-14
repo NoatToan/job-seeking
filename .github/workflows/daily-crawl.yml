@@ -92,3 +92,12 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/vercel-rebuild.yml
     secrets: inherit
+
+  # Tell Google about today's new job pages and the ones that dropped out (Indexing API), after
+  # the rebuild published them. Reads the live sitemaps, so a deploy still building is simply
+  # caught up tomorrow. Skips with a notice without GOOGLE_INDEXING_SA_JSON.
+  google-indexing:
+    needs: rebuild
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/google-indexing.yml
+    secrets: inherit

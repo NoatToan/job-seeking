@@ -1,0 +1,43 @@
+name: Google Indexing API
+
+# Announces new static job pages to Google and withdraws removed ones
+# (scripts/google-indexing/notify.mjs). Called by the daily crawl after the rebuild; also runnable
+# by hand. Secrets: GOOGLE_INDEXING_SA_JSON (service account key; without it the run ends with a
+# notice) and DATABASE_URL. Setup: docs/DEVELOPMENT.md "Google indexing".
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the plan without sending anything
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the root package.json "packageManager" field.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Notify Google
+        env:
+          GOOGLE_INDEXING_SA_JSON: ${{ secrets.GOOGLE_INDEXING_SA_JSON }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_INDEXING_DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: node scripts/google-indexing/notify.mjs

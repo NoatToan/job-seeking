@@ -35,6 +35,9 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      - name: Test scripts
+        run: node --test scripts/google-indexing/plan.test.mjs
+
       - name: Build web (static export)
         run: pnpm --filter web build
 
