@@ -53,6 +53,15 @@ jobs:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
 
+      # Retention: delete jobs posted more than 30 days ago (job_crawler.db.JOB_RETENTION_DAYS), so
+      # the database keeps one month. Before the recompute so it skips them, and before the rebuild
+      # so their static pages drop out.
+      - name: Delete jobs older than 30 days
+        if: ${{ !cancelled() }}
+        run: uv run python -m job_crawler --purge-old-jobs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       # Re-apply derived columns (remote region, countries, time zones, tech, salary) to jobs that
       # were not re-crawled today, so rule changes reach old rows too. Only changed rows are written.
       # It then re-parses description sections + level on rows written by older rules

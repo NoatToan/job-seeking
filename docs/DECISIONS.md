@@ -634,3 +634,19 @@ Report: an Arc job showed no description at all, only title / company / location
   batch, plus `COALESCE` in the SQL).
 - **Later.** Arc's job JSON also has `visaOrRelocationRequired`, a structured signal the
   relocation columns could use.
+
+## Job retention: one month (2026-11-18)
+
+- **Why.** The shared Postgres database was filling up with postings nobody can still apply to.
+  The catalogue now keeps only the last **30 days** (`job_crawler.db.JOB_RETENTION_DAYS`).
+- **Age.** A job's age is its board `posted_at`; a job without one is aged by `first_seen_at`.
+  `last_seen_at` is not used: boards keep listing old postings for months.
+- **Nightly delete.** daily-crawl.yml runs `python -m job_crawler --purge-old-jobs` after the
+  crawl and before the recompute and the site rebuild, so the static pages of deleted jobs drop
+  out the same night. It deletes 1,000 rows per committed statement, so no long lock. Matches,
+  views, votes and profile links go with the job (`ON DELETE CASCADE`); a tracked application
+  keeps its `job_snapshot` (`ON DELETE SET NULL`, 008).
+- **No re-insert.** `upsert_jobs` skips postings older than the limit, so a board still listing
+  one does not bring it back each night (this also applies to live search and the runners).
+- **Disk.** Postgres reuses the freed space for new rows after (auto)vacuum; it does not give it
+  back to the OS. Shrinking the files needs a one-off `VACUUM FULL jobs` (locks the table).

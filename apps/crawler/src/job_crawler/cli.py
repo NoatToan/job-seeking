@@ -55,6 +55,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         " Idempotent and resumable; --recompute-derived runs it too",
     )
     parser.add_argument(
+        "--purge-old-jobs",
+        action="store_true",
+        help=f"delete jobs posted more than {db.JOB_RETENTION_DAYS} days ago, then exit",
+    )
+    parser.add_argument(
         "--batch",
         type=int,
         default=db.BACKFILL_BATCH,
@@ -86,6 +91,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.normalize_descriptions:
             log.info("descriptions normalised on %d jobs", db.normalize_descriptions(conn))
+            conn.close()
+            return 0
+        if args.purge_old_jobs:
+            log.info(
+                "deleted %d jobs older than %d days",
+                db.purge_old_jobs(conn),
+                db.JOB_RETENTION_DAYS,
+            )
             conn.close()
             return 0
         if args.backfill_sections:

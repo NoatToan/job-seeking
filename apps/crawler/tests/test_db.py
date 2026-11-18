@@ -1,4 +1,6 @@
-from job_crawler.db import ERROR_MAX_LEN, dedupe, truncate_error
+from datetime import UTC, datetime, timedelta
+
+from job_crawler.db import ERROR_MAX_LEN, JOB_RETENTION_DAYS, dedupe, is_too_old, truncate_error
 from job_crawler.models import JobRecord
 
 
@@ -41,3 +43,18 @@ def test_truncate_error():
     assert long is not None
     assert len(long) == ERROR_MAX_LEN
     assert long.endswith("...")
+
+
+def test_is_too_old_by_posting_date_only():
+    now = datetime(2026, 11, 18, tzinfo=UTC)
+    old = _job("lever", "a", "old").model_copy(
+        update={"posted_at": now - timedelta(days=JOB_RETENTION_DAYS, hours=1)}
+    )
+    recent = _job("lever", "b", "recent").model_copy(
+        update={"posted_at": now - timedelta(days=JOB_RETENTION_DAYS - 1)}
+    )
+    naive_old = _job("lever", "c", "naive").model_copy(update={"posted_at": datetime(2026, 9, 1)})
+    assert is_too_old(old, now)
+    assert not is_too_old(recent, now)
+    assert is_too_old(naive_old, now)
+    assert not is_too_old(_job("lever", "d", "no date"), now)

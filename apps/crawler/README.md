@@ -94,6 +94,16 @@ backfill too). To run it by hand (batched, each batch committed, safe to stop an
 uv run python -m job_crawler --backfill-sections --batch 500
 ```
 
+### Retention (one month)
+
+The catalogue keeps only the last `db.JOB_RETENTION_DAYS` (30) days. `upsert_jobs` skips postings
+older than that, and the nightly crawl (daily-crawl.yml) deletes stored jobs posted (or, with no
+posting date, first seen) earlier, 1,000 rows per committed batch:
+
+```bash
+uv run python -m job_crawler --purge-old-jobs
+```
+
 ## CV matching (Claude)
 
 ```bash

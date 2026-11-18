@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -14,6 +15,12 @@ from job_crawler.text import normalize_description
 log = logging.getLogger(__name__)
 
 ERROR_MAX_LEN = 2000
+
+# Jobs posted (or, without a posting date, first seen) more than this many days ago are deleted
+# nightly (`purge_old_jobs`) and never written again (`upsert_jobs`), so the catalogue only
+# holds the last month (docs/DECISIONS.md, "Job retention").
+JOB_RETENTION_DAYS = 30
+PURGE_BATCH = 1000
 
 _WRITTEN = (*DERIVED_COLUMNS, *PARSED_COLUMNS)
 _DERIVED_INSERT = ", ".join(_WRITTEN)
@@ -119,11 +126,22 @@ def _stored_descriptions(conn: psycopg.Connection, jobs: list[JobRecord]) -> dic
     return {(r[0], r[1]): r[2] for r in rows}
 
 
+def is_too_old(job: JobRecord, now: datetime | None = None) -> bool:
+    """Whether the board's posting date is past `JOB_RETENTION_DAYS`. A job without one is kept:
+    the purge ages it by `first_seen_at` instead."""
+    if job.posted_at is None:
+        return False
+    posted = job.posted_at if job.posted_at.tzinfo else job.posted_at.replace(tzinfo=UTC)
+    return posted < (now or datetime.now(UTC)) - timedelta(days=JOB_RETENTION_DAYS)
+
+
 def upsert_jobs(conn: psycopg.Connection, jobs: list[JobRecord]) -> int:
     """Upsert jobs in one transaction; returns how many rows were newly inserted. A job that
     arrives without a description (Arc's listing; the runner reads job pages only for new ones)
-    keeps the stored one, and its sections / derived columns are computed from it too."""
-    jobs = dedupe(jobs)
+    keeps the stored one, and its sections / derived columns are computed from it too. Jobs
+    posted more than `JOB_RETENTION_DAYS` ago are skipped, so the nightly purge does not delete
+    a row that the next crawl puts back."""
+    jobs = [j for j in dedupe(jobs) if not is_too_old(j)]
     if not jobs:
         return 0
     stored = _stored_descriptions(conn, jobs)
@@ -143,6 +161,28 @@ def upsert_jobs(conn: psycopg.Connection, jobs: list[JobRecord]) -> int:
             if not cur.nextset():
                 break
     return new
+
+
+def purge_old_jobs(
+    conn: psycopg.Connection, days: int = JOB_RETENTION_DAYS, batch: int = PURGE_BATCH
+) -> int:
+    """Deletes jobs posted more than `days` ago (by `first_seen_at` when the board gives no
+    posting date), `batch` rows per committed statement so no single delete holds locks for
+    long. Matches, views, votes and profile links go with them (ON DELETE CASCADE); a tracked
+    application keeps its `job_snapshot` (ON DELETE SET NULL). Returns the number deleted."""
+    total = 0
+    while True:
+        with conn.transaction():
+            cur = conn.execute(
+                "DELETE FROM jobs WHERE id IN ("
+                "  SELECT id FROM jobs"
+                "  WHERE COALESCE(posted_at, first_seen_at) < now() - make_interval(days => %s)"
+                "  LIMIT %s)",
+                (days, batch),
+            )
+        total += cur.rowcount
+        if cur.rowcount < batch:
+            return total
 
 
 def start_run(conn: psycopg.Connection, source: str) -> int:
